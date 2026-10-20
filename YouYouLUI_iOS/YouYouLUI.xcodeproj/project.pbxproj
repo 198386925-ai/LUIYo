@@ -60,7 +60,6 @@
 		FAD5F0FE15B269903C61F37D /* Home/NativeHomeTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA33D43C5EF8D7B5164FB857 /* Home/NativeHomeTheme.swift */; };
 		FA49BC1FF3E5C04A5390D379 /* Home/NativeHomeCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAA76AC870C10D22A8769483 /* Home/NativeHomeCatalog.swift */; };
 		FAEDECA0BA59CD057B8E849D /* Home/HomeAssetIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA99001FD5EC63730A2CAA13 /* Home/HomeAssetIcon.swift */; };
-		FAC3489C4463BA90E136CFA2 /* Home/HomeCategoryPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA9A31156D1BA89624337903 /* Home/HomeCategoryPicker.swift */; };
 		FAD95A6FA31AE116F78209E3 /* Materials/NativeMaterialView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAA1954714F834F5AEB492EC /* Materials/NativeMaterialView.swift */; };
 		FA7B6DC1B5BFAD5D4A70AD1B /* Theme/ThemePreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAF58239D8B9BE6ED8095F1D /* Theme/ThemePreferences.swift */; };
 		FAB88770138095FADCA478E4 /* Theme/ThemePalette.swift in Sources */ = {isa = PBXBuildFile; fileRef = FADCB3D1A5D1D28DEBCEA31F /* Theme/ThemePalette.swift */; };
@@ -117,7 +116,6 @@
 		FA33D43C5EF8D7B5164FB857 /* Home/NativeHomeTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeHomeTheme.swift; sourceTree = "<group>"; };
 		FAA76AC870C10D22A8769483 /* Home/NativeHomeCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeHomeCatalog.swift; sourceTree = "<group>"; };
 		FA99001FD5EC63730A2CAA13 /* Home/HomeAssetIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeAssetIcon.swift; sourceTree = "<group>"; };
-		FA9A31156D1BA89624337903 /* Home/HomeCategoryPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeCategoryPicker.swift; sourceTree = "<group>"; };
 		FAA1954714F834F5AEB492EC /* Materials/NativeMaterialView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeMaterialView.swift; sourceTree = "<group>"; };
 		FAF58239D8B9BE6ED8095F1D /* Theme/ThemePreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemePreferences.swift; sourceTree = "<group>"; };
 		FADCB3D1A5D1D28DEBCEA31F /* Theme/ThemePalette.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemePalette.swift; sourceTree = "<group>"; };
@@ -235,7 +233,6 @@
 				FA9D4D0BFF98DFB2655727C4 /* HomeMaterialComponents.swift */,
 				FA99001FD5EC63730A2CAA13 /* HomeAssetIcon.swift */,
 				FA2D9F5B792AA426D968FF64 /* HomeActionButton.swift */,
-				FA9A31156D1BA89624337903 /* HomeCategoryPicker.swift */,
 				FAFE7E209DEBF0AA6D3BECEA /* HomeScrollLink.swift */,
 			);
 			path = Home;
@@ -418,7 +415,6 @@
 				FAD5F0FE15B269903C61F37D /* Home/NativeHomeTheme.swift in Sources */,
 				FA49BC1FF3E5C04A5390D379 /* Home/NativeHomeCatalog.swift in Sources */,
 				FAEDECA0BA59CD057B8E849D /* Home/HomeAssetIcon.swift in Sources */,
-				FAC3489C4463BA90E136CFA2 /* Home/HomeCategoryPicker.swift in Sources */,
 				FAD95A6FA31AE116F78209E3 /* Materials/NativeMaterialView.swift in Sources */,
 				FA7B6DC1B5BFAD5D4A70AD1B /* Theme/ThemePreferences.swift in Sources */,
 				FAB88770138095FADCA478E4 /* Theme/ThemePalette.swift in Sources */,

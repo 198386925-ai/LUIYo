@@ -622,7 +622,7 @@ final class HomeToolsCell: UICollectionViewCell {
 }
 
 final class HomePickerCell: UICollectionViewCell {
-    private let picker = NativeCategoryGlassView()
+    private let picker = PillSegmentedControl()
     var onSelection: ((Int) -> Void)?
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -634,13 +634,12 @@ final class HomePickerCell: UICollectionViewCell {
             picker.topAnchor.constraint(equalTo: contentView.topAnchor),
             picker.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
         ])
-        picker.control.addTarget(self, action: #selector(changed(_:)), for: .valueChanged)
+        picker.options = [("wechat", "原版微信"), ("liquidui", "LiquidUI")]
+        picker.onChange = { [weak self] value in self?.onSelection?(value == "wechat" ? 0 : 1) }
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-    @objc private func changed(_ control: UISegmentedControl) { onSelection?(control.selectedSegmentIndex) }
     func configure(model: NativeHomeModel, selection: Int) {
-        picker.update(theme: model.theme, font: model.importedFont, useBlur: model.useBlur)
-        picker.setSelection(selection)
+        picker.setSelectedValue(selection == 0 ? "wechat" : "liquidui")
     }
 }
 
