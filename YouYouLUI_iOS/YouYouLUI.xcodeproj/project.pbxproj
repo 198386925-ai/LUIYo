@@ -121,6 +121,7 @@
 		AA4000000000000000040010 /* tab-settings@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000030010 /* tab-settings@3x.png */; };
 		AA4000000000000000040005 /* update.png in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000030005 /* update.png */; };
 		AA5000000000000000002001 /* SettingsNative/UpdateCheckViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA5000000000000000001001 /* SettingsNative/UpdateCheckViewController.swift */; };
+		AA5000000000000000002003 /* SettingsNative/AppSettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA5000000000000000001003 /* SettingsNative/AppSettingsViewController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -230,6 +231,7 @@
 		AA4000000000000000030010 /* tab-settings@3x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "tab-settings@3x.png"; sourceTree = "<group>"; };
 		AA4000000000000000030005 /* update.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = update.png; sourceTree = "<group>"; };
 		AA5000000000000000001001 /* SettingsNative/UpdateCheckViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "YouYouLUI/SettingsNative/UpdateCheckViewController.swift"; sourceTree = SOURCE_ROOT; };
+		AA5000000000000000001003 /* SettingsNative/AppSettingsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "YouYouLUI/SettingsNative/AppSettingsViewController.swift"; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -594,6 +596,7 @@
 				AA4000000000000000002001 /* Theme/FontLibrary.swift in Sources */,
 				AA4000000000000000002002 /* SettingsNative/FontSettingsViewController.swift in Sources */,
 				AA5000000000000000002001 /* SettingsNative/UpdateCheckViewController.swift in Sources */,
+				AA5000000000000000002003 /* SettingsNative/AppSettingsViewController.swift in Sources */,
 				AA2900000000000000000105 /* SettingsNative/SettingsContent.swift in Sources */,
 				AA2900000000000000000106 /* Home/HomeViewController.swift in Sources */,
 				AA2900000000000000000107 /* Home/ColorSettingsViewController.swift in Sources */,

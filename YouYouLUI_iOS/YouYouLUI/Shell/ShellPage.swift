@@ -20,7 +20,7 @@ enum ShellPage: Int, CaseIterable {
         switch self {
         case .home: return "首页"
         case .rules: return "规则"
-        case .settings: return "设置"
+        case .settings: return "我的"
         }
     }
 
@@ -28,7 +28,7 @@ enum ShellPage: Int, CaseIterable {
         switch self {
         case .home: return "house"
         case .rules: return "list.bullet.rectangle"
-        case .settings: return "gearshape"
+        case .settings: return "person.crop.circle"
         }
     }
 
@@ -36,7 +36,7 @@ enum ShellPage: Int, CaseIterable {
         switch self {
         case .home: return "house.fill"
         case .rules: return "list.bullet.rectangle.fill"
-        case .settings: return "gearshape.fill"
+        case .settings: return "person.crop.circle.fill"
         }
     }
 

@@ -378,6 +378,11 @@ final class HomeHeaderCell: UICollectionViewCell {
         var config = UIButton.Configuration.plain()
         config.imagePadding = 6
         config.contentInsets = .zero
+        config.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attributes in
+            var attributes = attributes
+            attributes.font = UIFont.systemFont(ofSize: 12, weight: .medium)
+            return attributes
+        }
         feedback.configuration = config
         feedback.setTitle("反馈问题 · 联系客服", for: .normal)
         feedback.setTitleColor(.systemBlue, for: .normal)

@@ -48,7 +48,7 @@ final class SlideFadeTransitionAnimator: NSObject, UIViewControllerAnimatedTrans
 func luiyoPageHeader(title: String, backAction: Selector, target: Any?) -> UIView {
     let header = UIView()
     let back = UIButton(type: .system)
-    back.setImage(UIImage(systemName: "chevron.left", withConfiguration: UIImage.SymbolConfiguration(pointSize: 19, weight: .bold)), for: .normal)
+    back.setImage(UIImage(systemName: "chevron.left", withConfiguration: UIImage.SymbolConfiguration(pointSize: 16, weight: .semibold)), for: .normal)
     back.tintColor = UIAppColors.inkDynamic
     back.contentHorizontalAlignment = .left
     back.contentEdgeInsets = UIEdgeInsets(top: 0, left: 10, bottom: 0, right: 0)
@@ -125,6 +125,7 @@ final class FontSettingsViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        installEdgeSwipeBack()
         view.backgroundColor = UIColor(nativeHex: homeModel.theme.background)
 
         let header = luiyoPageHeader(title: "更改字体", backAction: #selector(backTapped), target: self)
@@ -176,7 +177,7 @@ final class FontSettingsViewController: UIViewController {
         // 3) Latin / Chinese switch.
         let scriptSeg = PillSegmentedControl()
         self.scriptSeg = scriptSeg
-        scriptSeg.options = [("latin", "英文字体"), ("chinese", "中文字体")]
+        scriptSeg.options = [("chinese", "中文字体"), ("latin", "英文字体")]
         scriptSeg.onChange = { [weak self] value in
             self?.chineseTab = (value == "chinese")
             UserDefaults.standard.set(value, forKey: "fontui.scriptTab")
@@ -184,7 +185,7 @@ final class FontSettingsViewController: UIViewController {
         }
         // Reopen on the tab the user last used, so their side is already
         // showing instead of always starting on the Latin tab.
-        chineseTab = UserDefaults.standard.string(forKey: "fontui.scriptTab") == "chinese"
+        chineseTab = (UserDefaults.standard.string(forKey: "fontui.scriptTab") ?? "chinese") == "chinese"
         scriptSeg.setSelectedValue(chineseTab ? "chinese" : "latin", animated: false)
         stack.addArrangedSubview(scriptSeg)
         // 4) Search card.
@@ -304,7 +305,7 @@ final class FontSettingsViewController: UIViewController {
             checkboxImages[area] = box
             let label = UILabel()
             label.text = area.title
-            label.font = UIFont.systemFont(ofSize: 15)
+            label.font = UIFont.systemFont(ofSize: 14)
             label.textColor = UIAppColors.inkDynamic
             let group = UIStackView(arrangedSubviews: [box, label])
             group.axis = .horizontal
@@ -315,9 +316,9 @@ final class FontSettingsViewController: UIViewController {
             group.translatesAutoresizingMaskIntoConstraints = false
             box.translatesAutoresizingMaskIntoConstraints = false
             NSLayoutConstraint.activate([
-                row.heightAnchor.constraint(equalToConstant: 52),
-                box.widthAnchor.constraint(equalToConstant: 23),
-                box.heightAnchor.constraint(equalToConstant: 23),
+                row.heightAnchor.constraint(equalToConstant: 44),
+                box.widthAnchor.constraint(equalToConstant: 20),
+                box.heightAnchor.constraint(equalToConstant: 20),
                 group.centerXAnchor.constraint(equalTo: row.centerXAnchor),
                 group.centerYAnchor.constraint(equalTo: row.centerYAnchor),
             ])
@@ -331,7 +332,7 @@ final class FontSettingsViewController: UIViewController {
         for (area, box) in checkboxImages {
             let on = library.isEnabled(area)
             box.image = UIImage(systemName: on ? "checkmark.square.fill" : "square",
-                                withConfiguration: UIImage.SymbolConfiguration(pointSize: 21, weight: .regular))
+                                withConfiguration: UIImage.SymbolConfiguration(pointSize: 18, weight: .regular))
             box.tintColor = on ? UIAppColors.inkDynamic : UIAppColors.secondary
         }
     }
@@ -363,7 +364,7 @@ final class FontSettingsViewController: UIViewController {
         icon.translatesAutoresizingMaskIntoConstraints = false
         field.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            card.heightAnchor.constraint(equalToConstant: 48),
+            card.heightAnchor.constraint(equalToConstant: 40),
             icon.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 16),
             icon.centerYAnchor.constraint(equalTo: card.centerYAnchor),
             icon.widthAnchor.constraint(equalToConstant: 18),

@@ -29,6 +29,7 @@ final class UpdateCheckViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        installEdgeSwipeBack()
         view.backgroundColor = UIColor(nativeHex: homeModel.theme.background)
 
         let header = luiyoPageHeader(title: "检查更新", backAction: #selector(backTapped), target: self)

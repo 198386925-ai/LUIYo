@@ -48,6 +48,7 @@ final class ColorSettingsViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        installEdgeSwipeBack()
         title = "自定义颜色"
         view.backgroundColor = .systemGroupedBackground
         navigationItem.rightBarButtonItem = UIBarButtonItem(title: "完成", style: .done, target: self, action: #selector(doneTapped))

@@ -159,9 +159,9 @@ final class SettingsViewController: UIViewController {
     private var guideFold: FoldView!
     private var changelogFold: FoldView!
     private let updateCard = GlassCardView(radius: 26)
+    private let appSettingsCard = GlassCardView(radius: 26)
     private var changelogCards: [GlassCardView] = []
     private var backgroundWell: UIColorWell!
-    private var cardWell: UIColorWell!
     private var minimizeSwitch: UISwitch!
     private var appearanceSeg: PillSegmentedControl!
     private var materialSeg: PillSegmentedControl!
@@ -204,12 +204,12 @@ final class SettingsViewController: UIViewController {
         ])
 
         let title = UILabel()
-        title.text = "设置"
+        title.text = "我的"
         title.font = UIFont.systemFont(ofSize: 25, weight: .bold)
         title.textColor = UIAppColors.inkDynamic
         stack.addArrangedSubview(title)
         let subtitle = UILabel()
-        subtitle.text = "主题、使用说明与更新日志"
+        subtitle.text = "外观、使用说明与更新日志"
         subtitle.font = UIFont.systemFont(ofSize: 12)
         subtitle.textColor = UIAppColors.secondary
         stack.addArrangedSubview(subtitle)
@@ -224,7 +224,7 @@ final class SettingsViewController: UIViewController {
         buildActivationCard()
         stack.addArrangedSubview(activationCard)
 
-        themeFold = FoldView(icon: "circle.lefthalf.filled", iconImage: luiyoBundledIcon("theme"), title: "主题", subtitle: "卡片材质、背景、按钮与字体")
+        themeFold = FoldView(icon: "circle.lefthalf.filled", iconImage: luiyoBundledIcon("theme"), title: "外观", subtitle: "卡片材质、背景、按钮与字体")
         themeFold.onToggle = { [weak self] in
             guard let self else { return }
             self.model.themeExpanded.toggle()
@@ -269,6 +269,9 @@ final class SettingsViewController: UIViewController {
         buildUpdateCard()
         stack.addArrangedSubview(updateCard)
 
+        buildAppSettingsCard()
+        stack.addArrangedSubview(appSettingsCard)
+
         let footer = UILabel()
         footer.text = "特别鸣谢 Mk · 作者：优优\n仅供学习交流"
         footer.numberOfLines = 2
@@ -277,6 +280,7 @@ final class SettingsViewController: UIViewController {
         footer.textColor = UIAppColors.secondary
         stack.addArrangedSubview(footer)
         stack.setCustomSpacing(12, after: updateCard)
+        stack.setCustomSpacing(12, after: appSettingsCard)
 
         model.objectWillChange
             .receive(on: DispatchQueue.main)
@@ -574,14 +578,6 @@ final class SettingsViewController: UIViewController {
         bgControl.alignment = .center
         inner.addArrangedSubview(themeRow(title: "背景颜色", subtitle: "浅色背景", control: bgControl, divider: true))
 
-        cardWell = colorWell(title: "卡片颜色")
-        cardWell.addTarget(self, action: #selector(cardWellChanged), for: .valueChanged)
-        let cardControl = UIStackView(arrangedSubviews: [cardWell, smallButton("恢复", action: #selector(resetCard))])
-        cardControl.axis = .horizontal
-        cardControl.spacing = 8
-        cardControl.alignment = .center
-        inner.addArrangedSubview(themeRow(title: "卡片颜色", subtitle: "仅修改激活授权上方的品牌卡", control: cardControl, divider: true))
-
         bottomSearchSeg = PillSegmentedControl()
         bottomSearchSeg.options = [("off", "关闭"), ("merged", "合并"), ("separate", "分开")]
         bottomSearchSeg.setSelectedValue(model.bottomSearchLayout)
@@ -620,9 +616,6 @@ final class SettingsViewController: UIViewController {
     @objc private func resetCard() { model.resetCardColor() }
     @objc private func backgroundWellChanged() {
         if let color = backgroundWell.selectedColor { model.updateBackgroundColor(color.nativeHex) }
-    }
-    @objc private func cardWellChanged() {
-        if let color = cardWell.selectedColor { model.updateCardColor(color.nativeHex) }
     }
     @objc private func fontEntryTapped() {
         guard let controller = model.fontController else { return }
@@ -811,6 +804,50 @@ final class SettingsViewController: UIViewController {
         present(page, animated: true)
     }
 
+    private func buildAppSettingsCard() {
+        let tap = UIControl()
+        tap.addTarget(self, action: #selector(appSettingsTapped), for: .touchUpInside)
+        appSettingsCard.content.addSubview(tap)
+        tap.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            tap.leadingAnchor.constraint(equalTo: appSettingsCard.content.leadingAnchor),
+            tap.trailingAnchor.constraint(equalTo: appSettingsCard.content.trailingAnchor),
+            tap.topAnchor.constraint(equalTo: appSettingsCard.content.topAnchor),
+            tap.bottomAnchor.constraint(equalTo: appSettingsCard.content.bottomAnchor),
+            tap.heightAnchor.constraint(equalToConstant: 46),
+        ])
+        let icon = UIImageView(image: UIImage(named: "tab-settings")?.withRenderingMode(.alwaysTemplate))
+        icon.tintColor = UIAppColors.inkDynamic
+        icon.contentMode = .scaleAspectFit
+        let title = UILabel()
+        title.text = "设置"
+        title.font = UIFont.systemFont(ofSize: 12, weight: .semibold)
+        title.textColor = UIAppColors.inkDynamic
+        let chevron = UIImageView(image: UIImage(systemName: "chevron.right", withConfiguration: UIImage.SymbolConfiguration(pointSize: 17, weight: .semibold)))
+        chevron.tintColor = UIAppColors.inkDynamic
+        tap.addSubview(icon)
+        tap.addSubview(title)
+        tap.addSubview(chevron)
+        icon.translatesAutoresizingMaskIntoConstraints = false
+        title.translatesAutoresizingMaskIntoConstraints = false
+        chevron.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            icon.leadingAnchor.constraint(equalTo: tap.leadingAnchor, constant: 16),
+            icon.centerYAnchor.constraint(equalTo: tap.centerYAnchor),
+            icon.widthAnchor.constraint(equalToConstant: 21),
+            icon.heightAnchor.constraint(equalToConstant: 21),
+            title.leadingAnchor.constraint(equalTo: icon.trailingAnchor, constant: 10),
+            title.centerYAnchor.constraint(equalTo: tap.centerYAnchor),
+            chevron.trailingAnchor.constraint(equalTo: tap.trailingAnchor, constant: -16),
+            chevron.centerYAnchor.constraint(equalTo: tap.centerYAnchor),
+        ])
+    }
+
+    @objc private func appSettingsTapped() {
+        let page = AppSettingsViewController(homeModel: homeModel)
+        present(page, animated: true)
+    }
+
 
 
     // MARK: - Page font
@@ -846,7 +883,6 @@ final class SettingsViewController: UIViewController {
             activateButton.setTitle("激活", for: .normal)
         }
         backgroundWell?.selectedColor = UIColor(nativeHex: model.backgroundColorHex)
-        cardWell?.selectedColor = UIColor(nativeHex: model.cardColorHex)
         minimizeSwitch?.setOn(model.minimizeBottomBar, animated: false)
         appearanceSeg?.setSelectedValue(model.appearanceMode)
         materialSeg?.setSelectedValue(model.cardMaterial)
