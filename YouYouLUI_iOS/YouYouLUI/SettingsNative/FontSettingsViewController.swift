@@ -169,12 +169,13 @@ final class FontSettingsViewController: UIViewController {
         stack.addArrangedSubview(areaNote)
         stack.setCustomSpacing(4, after: areaNote)
         // 3) Latin / Chinese switch.
-        let scriptSeg = PillSegmentedControl(
-            options: [("latin", "英文字体"), ("chinese", "中文字体")],
-            onChange: { [weak self] value in
-                self?.chineseTab = (value == "chinese")
-                self?.rebuildList()
-            })
+        let scriptSeg = PillSegmentedControl()
+        scriptSeg.options = [("latin", "英文字体"), ("chinese", "中文字体")]
+        scriptSeg.onChange = { [weak self] value in
+            self?.chineseTab = (value == "chinese")
+            self?.rebuildList()
+        }
+        scriptSeg.setSelectedValue("latin", animated: false)
         stack.addArrangedSubview(scriptSeg)
         // 4) Search card.
         stack.addArrangedSubview(searchCard())
