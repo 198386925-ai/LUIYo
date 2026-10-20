@@ -36,7 +36,7 @@ final class FoldView: UIView {
         titleLabel.text = title
         titleLabel.font = UIFont.systemFont(ofSize: 14.5, weight: .semibold)
         subtitleLabel.text = subtitle
-        subtitleLabel.font = UIFont.systemFont(ofSize: 11)
+        subtitleLabel.font = UIFont.systemFont(ofSize: 10)
         subtitleLabel.textColor = UIAppColors.secondary
         chevron.image = UIImage(systemName: "chevron.down", withConfiguration: UIImage.SymbolConfiguration(pointSize: 13, weight: .semibold))
         chevron.tintColor = UIColor(red: 0xC7 / 255, green: 0xC7 / 255, blue: 0xCC / 255, alpha: 1)
@@ -461,7 +461,7 @@ final class SettingsViewController: UIViewController {
         titleLabel.textColor = UIAppColors.ink(for: traitCollection)
         let subtitleLabel = UILabel()
         subtitleLabel.text = subtitle
-        subtitleLabel.font = UIFont.systemFont(ofSize: 11.5)
+        subtitleLabel.font = UIFont.systemFont(ofSize: 10)
         subtitleLabel.textColor = UIAppColors.secondary
         subtitleLabel.tag = 77
         row.addSubview(titleLabel)
@@ -527,11 +527,11 @@ final class SettingsViewController: UIViewController {
         inner.addArrangedSubview(topLine)
 
         appearanceSeg = PillSegmentedControl()
-        appearanceSeg.options = [("system", "跟随系统"), ("light", "浅色"), ("dark", "深色")]
+        appearanceSeg.options = [("system", "系统"), ("light", "浅色"), ("dark", "深色")]
         appearanceSeg.setSelectedValue(model.appearanceMode)
         appearanceSeg.onChange = { [weak self] value in self?.model.appearanceMode = value }
         appearanceSeg.translatesAutoresizingMaskIntoConstraints = false
-        appearanceSeg.widthAnchor.constraint(equalToConstant: 168).isActive = true
+        appearanceSeg.widthAnchor.constraint(equalToConstant: 140).isActive = true
         inner.addArrangedSubview(themeRow(title: "外观模式", subtitle: "跟随系统或固定浅色 / 深色", control: appearanceSeg, divider: true))
 
         materialSeg = PillSegmentedControl()
@@ -643,23 +643,48 @@ final class SettingsViewController: UIViewController {
     private func buildGuideContent() -> UIView {
         let inner = UIStackView()
         inner.axis = .vertical
-        inner.spacing = 12
-        for section in SettingsContent.guide {
-            let block = UIStackView()
-            block.axis = .vertical
-            block.spacing = 3
-            let title = UILabel()
-            title.text = section.title
-            title.font = UIFont.systemFont(ofSize: 13.5, weight: .semibold)
-            title.textColor = UIAppColors.ink(for: traitCollection)
-            let body = UILabel()
-            body.text = section.body
-            body.font = UIFont.systemFont(ofSize: 13)
-            body.textColor = UIColor(red: 0x3A / 255, green: 0x3A / 255, blue: 0x3C / 255, alpha: 1)
-            body.numberOfLines = 0
-            block.addArrangedSubview(title)
-            block.addArrangedSubview(body)
-            inner.addArrangedSubview(block)
+        inner.spacing = 10
+        for (index, section) in SettingsContent.guide.enumerated() {
+            let label = UILabel()
+            label.numberOfLines = 0
+            if index == 0 {
+                let text = NSMutableAttributedString()
+                text.append(NSAttributedString(string: section.title + "\n", attributes: [
+                    .font: UIFont.systemFont(ofSize: 16.5, weight: .bold),
+                    .foregroundColor: UIColor.label,
+                ]))
+                let para = NSMutableParagraphStyle()
+                para.lineSpacing = 4
+                text.append(NSAttributedString(string: section.body, attributes: [
+                    .font: UIFont.systemFont(ofSize: 13.5),
+                    .foregroundColor: UIColor.secondaryLabel,
+                    .paragraphStyle: para,
+                ]))
+                label.attributedText = text
+                inner.addArrangedSubview(label)
+                inner.setCustomSpacing(14, after: label)
+            } else {
+                let text = NSMutableAttributedString()
+                let para = NSMutableParagraphStyle()
+                para.lineSpacing = 3
+                text.append(NSAttributedString(string: "•  ", attributes: [
+                    .font: UIFont.systemFont(ofSize: 13.5),
+                    .foregroundColor: UIColor.secondaryLabel,
+                    .paragraphStyle: para,
+                ]))
+                text.append(NSAttributedString(string: section.title, attributes: [
+                    .font: UIFont.systemFont(ofSize: 13.5, weight: .semibold),
+                    .foregroundColor: UIColor.label,
+                    .paragraphStyle: para,
+                ]))
+                text.append(NSAttributedString(string: section.body, attributes: [
+                    .font: UIFont.systemFont(ofSize: 13.5),
+                    .foregroundColor: UIColor.secondaryLabel,
+                    .paragraphStyle: para,
+                ]))
+                label.attributedText = text
+                inner.addArrangedSubview(label)
+            }
         }
         return paddedContent(inner)
     }
@@ -676,11 +701,28 @@ final class SettingsViewController: UIViewController {
     private func buildChangelogContent() -> UIView {
         let inner = UIStackView()
         inner.axis = .vertical
-        inner.spacing = 16
+        inner.spacing = 12
         for version in SettingsContent.changelog {
+            let cardView = UIView()
+            cardView.backgroundColor = UIColor { traits in
+                traits.userInterfaceStyle == .dark
+                    ? UIColor(red: 0x2C / 255, green: 0x2C / 255, blue: 0x2E / 255, alpha: 0.55)
+                    : UIColor.white.withAlphaComponent(0.55)
+            }
+            cardView.layer.cornerRadius = 16
+            cardView.layer.borderWidth = 1 / UIScreen.main.scale
+            cardView.layer.borderColor = UIAppColors.divider.cgColor
             let block = UIStackView()
             block.axis = .vertical
-            block.spacing = 7
+            block.spacing = 10
+            cardView.addSubview(block)
+            block.translatesAutoresizingMaskIntoConstraints = false
+            NSLayoutConstraint.activate([
+                block.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 14),
+                block.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -14),
+                block.topAnchor.constraint(equalTo: cardView.topAnchor, constant: 13),
+                block.bottomAnchor.constraint(equalTo: cardView.bottomAnchor, constant: -13),
+            ])
             let head = UIStackView()
             head.axis = .horizontal
             head.spacing = 8
@@ -688,47 +730,39 @@ final class SettingsViewController: UIViewController {
             let title = UILabel()
             title.text = version.title
             title.font = UIFont.systemFont(ofSize: 15, weight: .semibold)
-            title.textColor = UIAppColors.ink(for: traitCollection)
+            title.textColor = .label
             head.addArrangedSubview(title)
             if version.isCurrent {
-                let chip = UILabel()
-                chip.text = " 当前版本 "
-                chip.font = UIFont.systemFont(ofSize: 10.5, weight: .semibold)
-                chip.textColor = UIColor(red: 0x24 / 255, green: 0x8A / 255, blue: 0x3D / 255, alpha: 1)
-                chip.backgroundColor = UIColor(red: 0x34 / 255, green: 0xC7 / 255, blue: 0x59 / 255, alpha: 0.14)
-                chip.layer.cornerRadius = 7
-                chip.clipsToBounds = true
-                head.addArrangedSubview(chip)
+                let current = UILabel()
+                current.text = "当前版本"
+                current.font = UIFont.systemFont(ofSize: 12.5, weight: .semibold)
+                current.textColor = .systemBlue
+                head.addArrangedSubview(current)
             }
             head.addArrangedSubview(UIView())
             block.addArrangedSubview(head)
             for entry in version.entries {
-                let row = UIStackView()
-                row.axis = .horizontal
-                row.spacing = 8
-                row.alignment = .top
-                let chip = UILabel()
+                let label = UILabel()
+                label.numberOfLines = 0
+                let text = NSMutableAttributedString()
+                let para = NSMutableParagraphStyle()
+                para.lineSpacing = 3
                 if let tag = entry.tag, !tag.isEmpty {
-                    chip.text = " \(tag) "
-                    chip.font = UIFont.systemFont(ofSize: 10.5, weight: .bold)
-                    chip.textColor = tagColor(tag)
-                    chip.backgroundColor = tagColor(tag).withAlphaComponent(0.13)
-                    chip.layer.cornerRadius = 6
-                    chip.clipsToBounds = true
-                    chip.setContentCompressionResistancePriority(.required, for: .horizontal)
-                } else {
-                    chip.isHidden = true
+                    text.append(NSAttributedString(string: tag + "  ", attributes: [
+                        .font: UIFont.systemFont(ofSize: 13.5, weight: .bold),
+                        .foregroundColor: tagColor(tag),
+                        .paragraphStyle: para,
+                    ]))
                 }
-                let text = UILabel()
-                text.text = entry.text
-                text.font = UIFont.systemFont(ofSize: 13)
-                text.textColor = UIAppColors.ink(for: traitCollection)
-                text.numberOfLines = 0
-                row.addArrangedSubview(chip)
-                row.addArrangedSubview(text)
-                block.addArrangedSubview(row)
+                text.append(NSAttributedString(string: entry.text, attributes: [
+                    .font: UIFont.systemFont(ofSize: 13.5),
+                    .foregroundColor: UIColor.secondaryLabel,
+                    .paragraphStyle: para,
+                ]))
+                label.attributedText = text
+                block.addArrangedSubview(label)
             }
-            inner.addArrangedSubview(block)
+            inner.addArrangedSubview(cardView)
         }
         return paddedContent(inner)
     }

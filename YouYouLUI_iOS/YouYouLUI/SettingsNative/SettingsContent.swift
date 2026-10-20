@@ -38,6 +38,7 @@ enum SettingsContent {
             ChangelogEntry(tag: "优化", text: "规则与设置页统一首页的原生液态玻璃效果。"),
             ChangelogEntry(tag: "优化", text: "界面全面改用 UIKit 原生实现，功能与布局保持不变。"),
             ChangelogEntry(tag: "优化", text: "授权逻辑调整：未授权时除导出 ZIP 外，上传、补全、改色等功能都可正常使用。"),
+            ChangelogEntry(tag: "优化", text: "设置页副标题字号调小，「跟随系统」改名为「系统」；更新日志与使用说明恢复之前的显示样式。"),
             ChangelogEntry(tag: "修复", text: "修复深色模式图标无条件反转的问题：现在只有打开对应开关才会反转，关闭时保留原图。"),
             ChangelogEntry(tag: "修复", text: "修复「全部图标」分组小字描述，与「打开才生效」的新逻辑对齐。"),
             ChangelogEntry(tag: "修复", text: "未授权时不再显示SVIP，只有授权才显示"),
