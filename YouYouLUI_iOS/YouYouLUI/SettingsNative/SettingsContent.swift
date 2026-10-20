@@ -34,6 +34,9 @@ enum SettingsContent {
             ChangelogEntry(tag: "优化", text: "检查更新改为独立页面：当前版本、检查状态、新版本内容与下载都在页面内完成。"),
             ChangelogEntry(tag: "优化", text: "主题、使用说明、更新日志的副标题只在展开时显示；自定义字体入口去掉副标题，只显示名称。"),
             ChangelogEntry(tag: "优化", text: "设置页卡片图标线条改细，箭头统一为与图标相同的颜色和大小。"),
+            ChangelogEntry(tag: "优化", text: "设置页箭头统一为与自定义字体入口相同的大小并改细；主题、使用说明、更新日志、检查更新的图标线条进一步改细。"),
+            ChangelogEntry(tag: "优化", text: "更改字体页的卡片改为纯色效果，不再使用液态玻璃；主题里自定义字体入口增加留白，不再贴边。"),
+            ChangelogEntry(tag: "优化", text: "背景颜色与卡片颜色按钮改为圆形，与系统颜色盘一致。"),
             ChangelogEntry(tag: "修复", text: "修复更改字体页返回按钮点按不灵敏的问题。"),
         ]),
         ChangelogVersion(title: "Version 1.0.7-1", isCurrent: false, entries: [

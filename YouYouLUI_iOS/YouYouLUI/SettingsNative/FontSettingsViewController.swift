@@ -112,9 +112,13 @@ final class FontSettingsViewController: UIViewController {
 
     private var cardTint: UIColor { UIColor(nativeHex: homeModel.theme.card) }
 
-    private func configuredCard(radius: CGFloat) -> GlassCardView {
-        let card = GlassCardView(radius: radius)
-        card.configure(useBlur: homeModel.useBlur, tint: cardTint)
+    /// The font page's cards are plain solid colour (no liquid glass), per
+    /// the user's request — the theme card colour as a flat fill.
+    private func configuredCard(radius: CGFloat) -> UIView {
+        let card = UIView()
+        card.backgroundColor = cardTint
+        card.layer.cornerRadius = radius
+        card.clipsToBounds = true
         return card
     }
 
@@ -221,13 +225,13 @@ final class FontSettingsViewController: UIViewController {
         let inner = UIStackView()
         inner.axis = .vertical
         inner.spacing = 8
-        card.content.addSubview(inner)
+        card.addSubview(inner)
         inner.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            inner.leadingAnchor.constraint(equalTo: card.content.leadingAnchor, constant: 16),
-            inner.trailingAnchor.constraint(equalTo: card.content.trailingAnchor, constant: -16),
-            inner.topAnchor.constraint(equalTo: card.content.topAnchor, constant: 14),
-            inner.bottomAnchor.constraint(equalTo: card.content.bottomAnchor, constant: -14),
+            inner.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 16),
+            inner.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -16),
+            inner.topAnchor.constraint(equalTo: card.topAnchor, constant: 14),
+            inner.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -14),
         ])
         let header = UILabel()
         header.text = "字体预览"
@@ -268,13 +272,13 @@ final class FontSettingsViewController: UIViewController {
         let inner = UIStackView()
         inner.axis = .vertical
         inner.spacing = 0
-        card.content.addSubview(inner)
+        card.addSubview(inner)
         inner.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            inner.leadingAnchor.constraint(equalTo: card.content.leadingAnchor),
-            inner.trailingAnchor.constraint(equalTo: card.content.trailingAnchor),
-            inner.topAnchor.constraint(equalTo: card.content.topAnchor),
-            inner.bottomAnchor.constraint(equalTo: card.content.bottomAnchor),
+            inner.leadingAnchor.constraint(equalTo: card.leadingAnchor),
+            inner.trailingAnchor.constraint(equalTo: card.trailingAnchor),
+            inner.topAnchor.constraint(equalTo: card.topAnchor),
+            inner.bottomAnchor.constraint(equalTo: card.bottomAnchor),
         ])
         let areas = FontArea.allCases
         for (index, area) in areas.enumerated() {
@@ -349,19 +353,19 @@ final class FontSettingsViewController: UIViewController {
         field.returnKeyType = .search
         field.addTarget(self, action: #selector(searchChanged), for: .editingChanged)
         searchField = field
-        card.content.addSubview(icon)
-        card.content.addSubview(field)
+        card.addSubview(icon)
+        card.addSubview(field)
         icon.translatesAutoresizingMaskIntoConstraints = false
         field.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             card.heightAnchor.constraint(equalToConstant: 48),
-            icon.leadingAnchor.constraint(equalTo: card.content.leadingAnchor, constant: 16),
-            icon.centerYAnchor.constraint(equalTo: card.content.centerYAnchor),
+            icon.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 16),
+            icon.centerYAnchor.constraint(equalTo: card.centerYAnchor),
             icon.widthAnchor.constraint(equalToConstant: 18),
             icon.heightAnchor.constraint(equalToConstant: 18),
             field.leadingAnchor.constraint(equalTo: icon.trailingAnchor, constant: 8),
-            field.trailingAnchor.constraint(equalTo: card.content.trailingAnchor, constant: -14),
-            field.centerYAnchor.constraint(equalTo: card.content.centerYAnchor),
+            field.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -14),
+            field.centerYAnchor.constraint(equalTo: card.centerYAnchor),
         ])
         return card
     }
@@ -452,7 +456,7 @@ final class FontSettingsViewController: UIViewController {
             withConfiguration: UIImage.SymbolConfiguration(pointSize: 21, weight: .regular)))
         radio.tintColor = selected ? UIAppColors.accentPurple : UIAppColors.secondary
         radio.contentMode = .scaleAspectFit
-        card.content.addSubview(tap)
+        card.addSubview(tap)
         tap.addSubview(nameLabel)
         tap.addSubview(previewLabel)
         tap.addSubview(radio)
@@ -461,10 +465,10 @@ final class FontSettingsViewController: UIViewController {
         previewLabel.translatesAutoresizingMaskIntoConstraints = false
         radio.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            tap.leadingAnchor.constraint(equalTo: card.content.leadingAnchor),
-            tap.trailingAnchor.constraint(equalTo: card.content.trailingAnchor),
-            tap.topAnchor.constraint(equalTo: card.content.topAnchor),
-            tap.bottomAnchor.constraint(equalTo: card.content.bottomAnchor),
+            tap.leadingAnchor.constraint(equalTo: card.leadingAnchor),
+            tap.trailingAnchor.constraint(equalTo: card.trailingAnchor),
+            tap.topAnchor.constraint(equalTo: card.topAnchor),
+            tap.bottomAnchor.constraint(equalTo: card.bottomAnchor),
             nameLabel.leadingAnchor.constraint(equalTo: tap.leadingAnchor, constant: 16),
             nameLabel.topAnchor.constraint(equalTo: tap.topAnchor, constant: 11),
             nameLabel.trailingAnchor.constraint(lessThanOrEqualTo: radio.leadingAnchor, constant: -10),
@@ -501,7 +505,7 @@ final class FontSettingsViewController: UIViewController {
         let chevron = UIImageView(image: UIImage(systemName: "chevron.right", withConfiguration: UIImage.SymbolConfiguration(pointSize: 16, weight: .bold)))
         chevron.tintColor = UIAppColors.inkDynamic
         chevron.contentMode = .scaleAspectFit
-        card.content.addSubview(tap)
+        card.addSubview(tap)
         tap.addSubview(title)
         tap.addSubview(sub)
         tap.addSubview(chevron)
@@ -510,10 +514,10 @@ final class FontSettingsViewController: UIViewController {
         sub.translatesAutoresizingMaskIntoConstraints = false
         chevron.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            tap.leadingAnchor.constraint(equalTo: card.content.leadingAnchor),
-            tap.trailingAnchor.constraint(equalTo: card.content.trailingAnchor),
-            tap.topAnchor.constraint(equalTo: card.content.topAnchor),
-            tap.bottomAnchor.constraint(equalTo: card.content.bottomAnchor),
+            tap.leadingAnchor.constraint(equalTo: card.leadingAnchor),
+            tap.trailingAnchor.constraint(equalTo: card.trailingAnchor),
+            tap.topAnchor.constraint(equalTo: card.topAnchor),
+            tap.bottomAnchor.constraint(equalTo: card.bottomAnchor),
             title.leadingAnchor.constraint(equalTo: tap.leadingAnchor, constant: 16),
             title.topAnchor.constraint(equalTo: tap.topAnchor, constant: 11),
             sub.leadingAnchor.constraint(equalTo: title.leadingAnchor),
@@ -563,13 +567,13 @@ final class FontSettingsViewController: UIViewController {
         let inner = UIStackView()
         inner.axis = .vertical
         inner.spacing = 8
-        card.content.addSubview(inner)
+        card.addSubview(inner)
         inner.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            inner.leadingAnchor.constraint(equalTo: card.content.leadingAnchor, constant: 16),
-            inner.trailingAnchor.constraint(equalTo: card.content.trailingAnchor, constant: -16),
-            inner.topAnchor.constraint(equalTo: card.content.topAnchor, constant: 14),
-            inner.bottomAnchor.constraint(equalTo: card.content.bottomAnchor, constant: -14),
+            inner.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 16),
+            inner.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -16),
+            inner.topAnchor.constraint(equalTo: card.topAnchor, constant: 14),
+            inner.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -14),
         ])
         let title = UILabel()
         title.text = "字体存储"

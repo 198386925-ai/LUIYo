@@ -43,7 +43,7 @@ final class FoldView: UIView {
         subtitleLabel.font = UIFont.systemFont(ofSize: 8)
         subtitleLabel.textColor = UIAppColors.secondary
         subtitleLabel.isHidden = true
-        chevron.image = UIImage(systemName: "chevron.down", withConfiguration: UIImage.SymbolConfiguration(pointSize: 17, weight: .bold))
+        chevron.image = UIImage(systemName: "chevron.down", withConfiguration: UIImage.SymbolConfiguration(pointSize: 17, weight: .semibold))
         chevron.tintColor = UIAppColors.ink
         chevron.contentMode = .scaleAspectFit
 
@@ -80,8 +80,6 @@ final class FoldView: UIView {
             subtitleLabel.centerYAnchor.constraint(equalTo: header.centerYAnchor),
             chevron.trailingAnchor.constraint(equalTo: header.trailingAnchor, constant: -16),
             chevron.centerYAnchor.constraint(equalTo: header.centerYAnchor),
-            chevron.widthAnchor.constraint(equalToConstant: 21),
-            chevron.heightAnchor.constraint(equalToConstant: 21),
         ])
         contentView.isHidden = true
         contentView.clipsToBounds = true
@@ -498,8 +496,8 @@ final class SettingsViewController: UIViewController {
         } else {
             NSLayoutConstraint.activate([
                 titleLabel.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: 15),
-                titleLabel.topAnchor.constraint(equalTo: row.topAnchor, constant: 12),
-                titleLabel.bottomAnchor.constraint(equalTo: row.bottomAnchor, constant: -12),
+                titleLabel.topAnchor.constraint(equalTo: row.topAnchor, constant: 15),
+                titleLabel.bottomAnchor.constraint(equalTo: row.bottomAnchor, constant: -15),
                 control.leadingAnchor.constraint(greaterThanOrEqualTo: titleLabel.trailingAnchor, constant: 10),
             ])
         }
@@ -524,7 +522,7 @@ final class SettingsViewController: UIViewController {
 
     private func colorWell() -> UIButton {
         let button = UIButton(type: .custom)
-        button.layer.cornerRadius = 10
+        button.layer.cornerRadius = 17
         button.layer.borderWidth = 1 / UIScreen.main.scale
         button.layer.borderColor = UIAppColors.dividerStrong.cgColor
         button.clipsToBounds = true
@@ -600,7 +598,7 @@ final class SettingsViewController: UIViewController {
 
         // Custom font is an entry row now: one tap opens the choices
         // (import / restore) instead of crowding the row with buttons.
-        let fontChevron = UIImageView(image: UIImage(systemName: "chevron.right", withConfiguration: UIImage.SymbolConfiguration(pointSize: 17, weight: .bold)))
+        let fontChevron = UIImageView(image: UIImage(systemName: "chevron.right", withConfiguration: UIImage.SymbolConfiguration(pointSize: 17, weight: .semibold)))
         fontChevron.tintColor = UIAppColors.inkDynamic
         fontChevron.contentMode = .scaleAspectFit
         fontChevron.translatesAutoresizingMaskIntoConstraints = false
@@ -611,6 +609,10 @@ final class SettingsViewController: UIViewController {
         fontRow.isUserInteractionEnabled = true
         fontRow.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(fontEntryTapped)))
         inner.addArrangedSubview(fontRow)
+        let fontSpacer = UIView()
+        fontSpacer.translatesAutoresizingMaskIntoConstraints = false
+        fontSpacer.heightAnchor.constraint(equalToConstant: 8).isActive = true
+        inner.addArrangedSubview(fontSpacer)
         return container
     }
 
@@ -812,7 +814,7 @@ final class SettingsViewController: UIViewController {
         title.text = "检查更新"
         title.font = UIFont.systemFont(ofSize: 12, weight: .semibold)
         title.textColor = UIAppColors.inkDynamic
-        let chevron = UIImageView(image: UIImage(systemName: "chevron.right", withConfiguration: UIImage.SymbolConfiguration(pointSize: 17, weight: .bold)))
+        let chevron = UIImageView(image: UIImage(systemName: "chevron.right", withConfiguration: UIImage.SymbolConfiguration(pointSize: 17, weight: .semibold)))
         chevron.tintColor = UIAppColors.inkDynamic
         tap.addSubview(icon)
         tap.addSubview(title)
@@ -829,8 +831,6 @@ final class SettingsViewController: UIViewController {
             title.centerYAnchor.constraint(equalTo: tap.centerYAnchor),
             chevron.trailingAnchor.constraint(equalTo: tap.trailingAnchor, constant: -16),
             chevron.centerYAnchor.constraint(equalTo: tap.centerYAnchor),
-            chevron.widthAnchor.constraint(equalToConstant: 21),
-            chevron.heightAnchor.constraint(equalToConstant: 21),
         ])
     }
 
