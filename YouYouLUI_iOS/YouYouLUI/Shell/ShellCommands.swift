@@ -102,7 +102,7 @@ extension MainShellViewController {
     private func showSearchOverlay(state: [String: Any]) {
         let page = SearchOverlayViewController()
         page.query = state["query"] as? String ?? ""
-        page.themeFont = fontController.font
+        page.themeFont = fontController.font(for: .home)
         page.backgroundImage = backgroundImageView.image
         page.placeholder = state["placeholder"] as? String ?? "搜索"
         page.onSearch = { [weak self] query in self?.applyBottomSearch(query) }

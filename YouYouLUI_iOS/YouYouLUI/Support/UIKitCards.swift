@@ -215,3 +215,9 @@ enum UIAppColors {
     static var dividerStrong: UIColor { UIColor(red: 120 / 255, green: 120 / 255, blue: 128 / 255, alpha: 0.18) }
     static var accentPurple: UIColor { UIColor(red: 0x69 / 255, green: 0x68 / 255, blue: 0xE8 / 255, alpha: 1) }
 }
+
+/// One of the user's bundled line icons (Icons/*.png), drawn as a template so
+/// it follows the current ink colour in light and dark mode.
+func luiyoBundledIcon(_ name: String) -> UIImage? {
+    UIImage(named: name)?.withRenderingMode(.alwaysTemplate)
+}

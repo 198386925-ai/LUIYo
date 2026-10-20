@@ -37,6 +37,7 @@ enum SettingsContent {
             ChangelogEntry(tag: "优化", text: "全局字号按字号表精细调整；设置页卡片标题、副标题改为同行显示并居中；首页分类切换改为滑动分段效果；精简更新日志。"),
             ChangelogEntry(tag: "优化", text: "首页搜索只匹配图标标题；「双分类补全」支持按搜索过滤。"),
             ChangelogEntry(tag: "优化", text: "设置页自定义字体改为入口，点开再选导入或恢复；「跟随系统」改名为「系统」。"),
+            ChangelogEntry(tag: "优化", text: "自定义字体改为独立页面：内置多套字体，英文与中文字体可分开选择，首页、规则页、设置页可分别使用不同字体；设置页五个卡片换上新图标。"),
             ChangelogEntry(tag: "修复", text: "修复深色模式图标无条件反转、设置页标题颜色不跟随深色模式的问题。"),
             ChangelogEntry(tag: "修复", text: "修复启动闪退，以及首页工具按钮文字被玻璃盖住、顶部搜索框被压扁的问题。"),
             ChangelogEntry(tag: "修复", text: "修复设置页折叠卡展开收起时内容重叠、收起有残留的问题。"),

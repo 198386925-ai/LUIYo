@@ -11,10 +11,8 @@ extension MainShellViewController {
         }
         let model = SettingsNativeModel()
         model.fontController = self.fontController
-        if let font = self.fontController.font {
-            model.hasCustomFont = true
-            model.customFontName = "已导入自定义字体"
-        }
+        model.hasCustomFont = self.fontController.library.hasAnyCustomSelection
+        model.customFontName = self.fontController.library.summary(area: .settings)
         model.isAuthorized = isAuthorized
         model.authMessage = authorizationMessage
         model.authBusy = authorizationBusy
@@ -43,9 +41,9 @@ extension MainShellViewController {
         }
         model.onFontChanged = { [weak self] in
             guard let self else { return }
-            self.homeModel.fontName = self.fontController.font?.fontName
-            self.homeModel.importedFont = self.fontController.font
-            self.applyFont(self.fontController.font)
+            self.distributeFonts()
+            model.customFontName = self.fontController.library.summary(area: .settings)
+            model.hasCustomFont = self.fontController.library.hasAnyCustomSelection
         }
         objc_setAssociatedObject(self, &AssociatedKeys.settingsModel, model, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         return model
@@ -68,6 +66,7 @@ extension MainShellViewController {
         }
         let controller = SettingsViewController(model: settingsModel, homeModel: homeModel)
         controller.view.backgroundColor = .clear
+        controller.applyPageFont(self.fontController.font(for: .settings))
         objc_setAssociatedObject(self, &AssociatedKeys.settingsHost, controller, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         return controller
     }
@@ -79,8 +78,19 @@ extension MainShellViewController {
         }
         let controller = RulesViewController(model: rulesModel, homeModel: homeModel)
         controller.view.backgroundColor = .clear
+        controller.applyPageFont(self.fontController.font(for: .rules))
         objc_setAssociatedObject(self, &AssociatedKeys.rulesHost, controller, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         return controller
+    }
+
+    /// The Settings host if it has been created already (never creates it).
+    var existingSettingsHost: SettingsViewController? {
+        objc_getAssociatedObject(self, &AssociatedKeys.settingsHost) as? SettingsViewController
+    }
+
+    /// The Rules host if it has been created already (never creates it).
+    var existingRulesHost: RulesViewController? {
+        objc_getAssociatedObject(self, &AssociatedKeys.rulesHost) as? RulesViewController
     }
 
     /// Pushes the shell's current authorization state into the native

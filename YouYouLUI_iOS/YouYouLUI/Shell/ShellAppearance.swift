@@ -85,6 +85,21 @@ extension MainShellViewController {
         tabBar.setNeedsLayout()
     }
 
+
+    /// Pushes each area's chosen font to its page: tab bar, hero and the
+    /// settings page use the settings font; home and the search overlay use
+    /// the home font; the rules page uses the rules font.
+    func distributeFonts() {
+        let settingsFont = fontController.font(for: .settings)
+        applyFont(settingsFont)
+        let homeFont = fontController.font(for: .home)
+        homeModel.importedFont = homeFont
+        homeModel.fontName = homeFont?.fontName
+        activeSearchController?.themeFont = homeFont
+        existingSettingsHost?.applyPageFont(settingsFont)
+        existingRulesHost?.applyPageFont(fontController.font(for: .rules))
+    }
+
     private static func applyFont(_ font: UIFont?, to appearance: UITabBarAppearance) {
         guard let font else { return }
         for layout in [appearance.stackedLayoutAppearance,

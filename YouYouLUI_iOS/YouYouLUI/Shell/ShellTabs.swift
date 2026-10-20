@@ -47,7 +47,7 @@ extension MainShellViewController {
         // Keep the shared WebKit document alive while native tabs change.
         selectPage(activePage)
         for (index, item) in (tabBar.items ?? []).enumerated() { item.tag = index }
-        applyFont(fontController.font)
+        distributeFonts()
         keepContentBelowNativeBar()
         view.setNeedsLayout()
         updateLayoutMetrics(force: true)

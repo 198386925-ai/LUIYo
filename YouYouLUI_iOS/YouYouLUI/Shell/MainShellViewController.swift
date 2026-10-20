@@ -188,9 +188,8 @@ final class MainShellViewController: UITabBarController {
             self.writeNativeHomeDiagnostics()
             #endif
         }
-        fontController.onFontChanged = { [weak self] font in
-            self?.applyFont(font)
-            self?.homeModel.importedFont = font
+        fontController.onFontChanged = { [weak self] _ in
+            self?.distributeFonts()
         }
     }
 
@@ -220,7 +219,7 @@ final class MainShellViewController: UITabBarController {
         defaultTabAppearance = tabBar.standardAppearance
         defaultScrollEdgeAppearance = tabBar.scrollEdgeAppearance?.copy() as? UITabBarAppearance
         restoredNativeFont = fontController.restore()
-        homeModel.importedFont = fontController.font
+        homeModel.importedFont = fontController.font(for: .home)
     }
 
     func setAuthorization(_ allowed: Bool, message: String? = nil, busy: Bool = false) {

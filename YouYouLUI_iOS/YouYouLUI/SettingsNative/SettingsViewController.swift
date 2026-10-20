@@ -17,7 +17,7 @@ final class FoldView: UIView {
     private var lastUseBlur = false
     private var lastTint: UIColor = .white
 
-    init(icon: String, title: String, subtitle: String) {
+    init(icon: String, iconImage: UIImage? = nil, title: String, subtitle: String) {
         super.init(frame: .zero)
         addSubview(card)
         card.translatesAutoresizingMaskIntoConstraints = false
@@ -30,7 +30,11 @@ final class FoldView: UIView {
 
         let header = UIControl()
         header.addTarget(self, action: #selector(headerTapped), for: .touchUpInside)
-        iconView.image = UIImage(systemName: icon, withConfiguration: UIImage.SymbolConfiguration(pointSize: 19, weight: .medium))
+        if let iconImage {
+            iconView.image = iconImage
+        } else {
+            iconView.image = UIImage(systemName: icon, withConfiguration: UIImage.SymbolConfiguration(pointSize: 19, weight: .medium))
+        }
         iconView.contentMode = .scaleAspectFit
         iconView.tintColor = UIAppColors.ink
         titleLabel.text = title
@@ -165,6 +169,7 @@ final class SettingsViewController: UIViewController {
     private var bottomSearchSeg: PillSegmentedControl!
     private var colorTarget: ColorTarget = .background
     private var fontSubtitleLabel: UILabel?
+    private var authIconView: UIImageView?
     private var cancellables = Set<AnyCancellable>()
 
     private enum ColorTarget { case background, card }
@@ -222,7 +227,7 @@ final class SettingsViewController: UIViewController {
         buildActivationCard()
         stack.addArrangedSubview(activationCard)
 
-        themeFold = FoldView(icon: "circle.lefthalf.filled", title: "主题", subtitle: "卡片材质、背景、按钮与字体")
+        themeFold = FoldView(icon: "circle.lefthalf.filled", iconImage: luiyoBundledIcon("theme"), title: "主题", subtitle: "卡片材质、背景、按钮与字体")
         themeFold.onToggle = { [weak self] in
             guard let self else { return }
             self.model.themeExpanded.toggle()
@@ -238,7 +243,7 @@ final class SettingsViewController: UIViewController {
         ])
         stack.addArrangedSubview(themeFold)
 
-        guideFold = FoldView(icon: "questionmark", title: "使用说明", subtitle: "查看功能说明与操作方法")
+        guideFold = FoldView(icon: "questionmark", iconImage: luiyoBundledIcon("guide"), title: "使用说明", subtitle: "查看功能说明与操作方法")
         guideFold.onToggle = { [weak self] in self?.model.guideExpanded.toggle() }
         let guideContent = buildGuideContent()
         guideFold.contentView.addSubview(guideContent)
@@ -251,7 +256,7 @@ final class SettingsViewController: UIViewController {
         ])
         stack.addArrangedSubview(guideFold)
 
-        changelogFold = FoldView(icon: "clock.arrow.circlepath", title: "更新日志", subtitle: "Version 1.0.7-1 · 当前版本")
+        changelogFold = FoldView(icon: "clock.arrow.circlepath", iconImage: luiyoBundledIcon("changelog"), title: "更新日志", subtitle: "Version 1.0.7-1 · 当前版本")
         changelogFold.onToggle = { [weak self] in self?.model.changelogExpanded.toggle() }
         let changelogContent = buildChangelogContent()
         changelogFold.contentView.addSubview(changelogContent)
@@ -384,7 +389,8 @@ final class SettingsViewController: UIViewController {
         titleRow.axis = .horizontal
         titleRow.spacing = 8
         titleRow.alignment = .center
-        let shield = UIImageView(image: UIImage(systemName: "checkmark.shield"))
+        let shield = UIImageView(image: luiyoBundledIcon(model.isAuthorized ? "auth-yes" : "auth-no"))
+        authIconView = shield
         shield.tintColor = UIAppColors.inkDynamic
         shield.contentMode = .scaleAspectFit
         shield.translatesAutoresizingMaskIntoConstraints = false
@@ -618,31 +624,17 @@ final class SettingsViewController: UIViewController {
         picker.delegate = self
         present(picker, animated: true)
     }
-    @objc private func resetFont() {
-        model.fontController?.reset()
-        model.customFontName = "使用默认字体"
-        model.hasCustomFont = false
-        model.onFontChanged?()
-    }
     @objc private func fontEntryTapped() {
-        let sheet = UIAlertController(title: "自定义字体", message: model.customFontName, preferredStyle: .actionSheet)
-        sheet.addAction(UIAlertAction(title: "导入字体", style: .default) { [weak self] _ in self?.importFont() })
-        if model.hasCustomFont {
-            sheet.addAction(UIAlertAction(title: "恢复默认字体", style: .destructive) { [weak self] _ in self?.resetFont() })
+        guard let controller = model.fontController else { return }
+        let page = FontSettingsViewController(fontController: controller)
+        page.modalPresentationStyle = .fullScreen
+        page.onChanged = { [weak self] in
+            guard let self else { return }
+            self.model.customFontName = controller.library.summary(area: .settings)
+            self.model.hasCustomFont = controller.library.hasAnyCustomSelection
+            self.fontSubtitleLabel?.text = self.model.customFontName
         }
-        sheet.addAction(UIAlertAction(title: "取消", style: .cancel))
-        if let pop = sheet.popoverPresentationController {
-            pop.sourceView = view
-            pop.sourceRect = CGRect(x: view.bounds.midX, y: view.bounds.midY, width: 0, height: 0)
-        }
-        present(sheet, animated: true)
-    }
-
-    @objc private func importFont() {
-        let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.font], asCopy: true)
-        picker.delegate = self
-        picker.allowsMultipleSelection = false
-        present(picker, animated: true)
+        present(page, animated: true)
     }
 
     // MARK: - Guide / changelog content
@@ -805,7 +797,7 @@ final class SettingsViewController: UIViewController {
             tap.bottomAnchor.constraint(equalTo: updateCard.content.bottomAnchor),
             tap.heightAnchor.constraint(equalToConstant: 46),
         ])
-        let icon = UIImageView(image: UIImage(systemName: "arrow.down.circle", withConfiguration: UIImage.SymbolConfiguration(pointSize: 19, weight: .medium)))
+        let icon = UIImageView(image: luiyoBundledIcon("update"))
         icon.tintColor = UIAppColors.inkDynamic
         icon.contentMode = .scaleAspectFit
         let title = UILabel()
@@ -859,10 +851,29 @@ final class SettingsViewController: UIViewController {
         }
     }
 
+
+    // MARK: - Page font
+
+    private var pageFont: UIFont?
+    private var pageFontSet = false
+
+    /// Applies this page area's chosen font (nil = system font).
+    func applyPageFont(_ font: UIFont?) {
+        pageFont = font
+        pageFontSet = true
+        if isViewLoaded { PageFontApplier.apply(font, to: view) }
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        if pageFontSet { PageFontApplier.apply(pageFont, to: view) }
+    }
+
     // MARK: - Refresh
 
     private func refreshFromModel() {
         authStatus.text = model.authMessage
+        authIconView?.image = luiyoBundledIcon(model.isAuthorized ? "auth-yes" : "auth-no")
         authStatus.textColor = model.isAuthorized
             ? UIColor(red: 0x24 / 255, green: 0x8A / 255, blue: 0x3D / 255, alpha: 1)
             : UIAppColors.secondary
@@ -908,17 +919,6 @@ extension SettingsViewController: UIColorPickerViewControllerDelegate {
         switch colorTarget {
         case .background: model.updateBackgroundColor(hex)
         case .card: model.updateCardColor(hex)
-        }
-    }
-}
-
-extension SettingsViewController: UIDocumentPickerDelegate {
-    func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
-        guard let url = urls.first, let data = try? Data(contentsOf: url) else { return }
-        if model.fontController?.apply(data) == true {
-            model.customFontName = url.lastPathComponent
-            model.hasCustomFont = true
-            model.onFontChanged?()
         }
     }
 }

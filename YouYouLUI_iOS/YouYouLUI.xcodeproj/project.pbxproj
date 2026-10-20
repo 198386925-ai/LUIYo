@@ -73,6 +73,52 @@
 		FA0197164BBDC4D1364D5584 /* Support/AppPaths.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAD3AE38299A7305304AC558 /* Support/AppPaths.swift */; };
 		FA8FE9F1280372A83E3DA893 /* SettingsHero/LUISettingsHeroAdapter.m in Sources */ = {isa = PBXBuildFile; fileRef = FA557DA7540F20A47917A65C /* SettingsHero/LUISettingsHeroAdapter.m */; };
 		FA222F0DBFFE5EB23DCD3FD1 /* Assets.xcassets in Sources */ = {isa = PBXBuildFile; fileRef = FA5B04B2273026590A440D27 /* Assets.xcassets */; };
+		AA4000000000000000002001 /* Theme/FontLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000001001 /* Theme/FontLibrary.swift */; };
+		AA4000000000000000002002 /* SettingsNative/FontSettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000001002 /* SettingsNative/FontSettingsViewController.swift */; };
+		AA4000000000000000020000 /* GoogleSans-Variable.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000010000 /* GoogleSans-Variable.ttf */; };
+		AA4000000000000000020001 /* GoogleSansCode-Variable.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000010001 /* GoogleSansCode-Variable.ttf */; };
+		AA4000000000000000020002 /* GoogleSansCode-VariableItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000010002 /* GoogleSansCode-VariableItalic.ttf */; };
+		AA4000000000000000020003 /* GoogleSansFlex-Variable.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000010003 /* GoogleSansFlex-Variable.ttf */; };
+		AA4000000000000000020004 /* IBMPlexMono-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000010004 /* IBMPlexMono-Bold.ttf */; };
+		AA4000000000000000020005 /* IBMPlexMono-BoldItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000010005 /* IBMPlexMono-BoldItalic.ttf */; };
+		AA4000000000000000020006 /* IBMPlexMono-Italic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000010006 /* IBMPlexMono-Italic.ttf */; };
+		AA4000000000000000020007 /* IBMPlexMono-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000010007 /* IBMPlexMono-Medium.ttf */; };
+		AA4000000000000000020008 /* IBMPlexMono-MediumItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000010008 /* IBMPlexMono-MediumItalic.ttf */; };
+		AA4000000000000000020009 /* IBMPlexMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000010009 /* IBMPlexMono-Regular.ttf */; };
+		AA4000000000000000020010 /* IBMPlexMono-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000010010 /* IBMPlexMono-SemiBold.ttf */; };
+		AA4000000000000000020011 /* IBMPlexMono-SemiBoldItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000010011 /* IBMPlexMono-SemiBoldItalic.ttf */; };
+		AA4000000000000000020012 /* IBMPlexSans-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000010012 /* IBMPlexSans-Bold.ttf */; };
+		AA4000000000000000020013 /* IBMPlexSans-BoldItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000010013 /* IBMPlexSans-BoldItalic.ttf */; };
+		AA4000000000000000020014 /* IBMPlexSans-Italic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000010014 /* IBMPlexSans-Italic.ttf */; };
+		AA4000000000000000020015 /* IBMPlexSans-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000010015 /* IBMPlexSans-Medium.ttf */; };
+		AA4000000000000000020016 /* IBMPlexSans-MediumItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000010016 /* IBMPlexSans-MediumItalic.ttf */; };
+		AA4000000000000000020017 /* IBMPlexSans-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000010017 /* IBMPlexSans-Regular.ttf */; };
+		AA4000000000000000020018 /* IBMPlexSans-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000010018 /* IBMPlexSans-SemiBold.ttf */; };
+		AA4000000000000000020019 /* IBMPlexSans-SemiBoldItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000010019 /* IBMPlexSans-SemiBoldItalic.ttf */; };
+		AA4000000000000000020020 /* IBMPlexSansSC-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000010020 /* IBMPlexSansSC-Regular.ttf */; };
+		AA4000000000000000020021 /* IBMPlexSansSC-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000010021 /* IBMPlexSansSC-SemiBold.ttf */; };
+		AA4000000000000000020022 /* IBMPlexSerif-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000010022 /* IBMPlexSerif-Bold.ttf */; };
+		AA4000000000000000020023 /* IBMPlexSerif-BoldItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000010023 /* IBMPlexSerif-BoldItalic.ttf */; };
+		AA4000000000000000020024 /* IBMPlexSerif-Italic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000010024 /* IBMPlexSerif-Italic.ttf */; };
+		AA4000000000000000020025 /* IBMPlexSerif-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000010025 /* IBMPlexSerif-Medium.ttf */; };
+		AA4000000000000000020026 /* IBMPlexSerif-MediumItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000010026 /* IBMPlexSerif-MediumItalic.ttf */; };
+		AA4000000000000000020027 /* IBMPlexSerif-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000010027 /* IBMPlexSerif-Regular.ttf */; };
+		AA4000000000000000020028 /* IBMPlexSerif-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000010028 /* IBMPlexSerif-SemiBold.ttf */; };
+		AA4000000000000000020029 /* IBMPlexSerif-SemiBoldItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000010029 /* IBMPlexSerif-SemiBoldItalic.ttf */; };
+		AA4000000000000000020030 /* Inter-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000010030 /* Inter-Bold.ttf */; };
+		AA4000000000000000020031 /* Inter-BoldItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000010031 /* Inter-BoldItalic.ttf */; };
+		AA4000000000000000020032 /* Inter-Italic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000010032 /* Inter-Italic.ttf */; };
+		AA4000000000000000020033 /* Inter-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000010033 /* Inter-Medium.ttf */; };
+		AA4000000000000000020034 /* Inter-MediumItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000010034 /* Inter-MediumItalic.ttf */; };
+		AA4000000000000000020035 /* Inter-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000010035 /* Inter-Regular.ttf */; };
+		AA4000000000000000020036 /* Inter-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000010036 /* Inter-SemiBold.ttf */; };
+		AA4000000000000000020037 /* Inter-SemiBoldItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000010037 /* Inter-SemiBoldItalic.ttf */; };
+		AA4000000000000000040000 /* auth-no.png in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000030000 /* auth-no.png */; };
+		AA4000000000000000040001 /* auth-yes.png in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000030001 /* auth-yes.png */; };
+		AA4000000000000000040002 /* changelog.png in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000030002 /* changelog.png */; };
+		AA4000000000000000040003 /* guide.png in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000030003 /* guide.png */; };
+		AA4000000000000000040004 /* theme.png in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000030004 /* theme.png */; };
+		AA4000000000000000040005 /* update.png in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000030005 /* update.png */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -134,6 +180,52 @@
 		FA1507F021100E808DBE2FAB /* LUIYo.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = LUIYo.entitlements; sourceTree = "<group>"; };
 		FA5B04B2273026590A440D27 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B10000000000000000000006 /* YouYouLUI.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = YouYouLUI.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		AA4000000000000000001001 /* Theme/FontLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "YouYouLUI/Theme/FontLibrary.swift"; sourceTree = SOURCE_ROOT; };
+		AA4000000000000000001002 /* SettingsNative/FontSettingsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "YouYouLUI/SettingsNative/FontSettingsViewController.swift"; sourceTree = SOURCE_ROOT; };
+		AA4000000000000000010000 /* GoogleSans-Variable.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = GoogleSans-Variable.ttf; sourceTree = "<group>"; };
+		AA4000000000000000010001 /* GoogleSansCode-Variable.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = GoogleSansCode-Variable.ttf; sourceTree = "<group>"; };
+		AA4000000000000000010002 /* GoogleSansCode-VariableItalic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = GoogleSansCode-VariableItalic.ttf; sourceTree = "<group>"; };
+		AA4000000000000000010003 /* GoogleSansFlex-Variable.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = GoogleSansFlex-Variable.ttf; sourceTree = "<group>"; };
+		AA4000000000000000010004 /* IBMPlexMono-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = IBMPlexMono-Bold.ttf; sourceTree = "<group>"; };
+		AA4000000000000000010005 /* IBMPlexMono-BoldItalic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = IBMPlexMono-BoldItalic.ttf; sourceTree = "<group>"; };
+		AA4000000000000000010006 /* IBMPlexMono-Italic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = IBMPlexMono-Italic.ttf; sourceTree = "<group>"; };
+		AA4000000000000000010007 /* IBMPlexMono-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = IBMPlexMono-Medium.ttf; sourceTree = "<group>"; };
+		AA4000000000000000010008 /* IBMPlexMono-MediumItalic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = IBMPlexMono-MediumItalic.ttf; sourceTree = "<group>"; };
+		AA4000000000000000010009 /* IBMPlexMono-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = IBMPlexMono-Regular.ttf; sourceTree = "<group>"; };
+		AA4000000000000000010010 /* IBMPlexMono-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = IBMPlexMono-SemiBold.ttf; sourceTree = "<group>"; };
+		AA4000000000000000010011 /* IBMPlexMono-SemiBoldItalic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = IBMPlexMono-SemiBoldItalic.ttf; sourceTree = "<group>"; };
+		AA4000000000000000010012 /* IBMPlexSans-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = IBMPlexSans-Bold.ttf; sourceTree = "<group>"; };
+		AA4000000000000000010013 /* IBMPlexSans-BoldItalic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = IBMPlexSans-BoldItalic.ttf; sourceTree = "<group>"; };
+		AA4000000000000000010014 /* IBMPlexSans-Italic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = IBMPlexSans-Italic.ttf; sourceTree = "<group>"; };
+		AA4000000000000000010015 /* IBMPlexSans-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = IBMPlexSans-Medium.ttf; sourceTree = "<group>"; };
+		AA4000000000000000010016 /* IBMPlexSans-MediumItalic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = IBMPlexSans-MediumItalic.ttf; sourceTree = "<group>"; };
+		AA4000000000000000010017 /* IBMPlexSans-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = IBMPlexSans-Regular.ttf; sourceTree = "<group>"; };
+		AA4000000000000000010018 /* IBMPlexSans-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = IBMPlexSans-SemiBold.ttf; sourceTree = "<group>"; };
+		AA4000000000000000010019 /* IBMPlexSans-SemiBoldItalic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = IBMPlexSans-SemiBoldItalic.ttf; sourceTree = "<group>"; };
+		AA4000000000000000010020 /* IBMPlexSansSC-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = IBMPlexSansSC-Regular.ttf; sourceTree = "<group>"; };
+		AA4000000000000000010021 /* IBMPlexSansSC-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = IBMPlexSansSC-SemiBold.ttf; sourceTree = "<group>"; };
+		AA4000000000000000010022 /* IBMPlexSerif-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = IBMPlexSerif-Bold.ttf; sourceTree = "<group>"; };
+		AA4000000000000000010023 /* IBMPlexSerif-BoldItalic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = IBMPlexSerif-BoldItalic.ttf; sourceTree = "<group>"; };
+		AA4000000000000000010024 /* IBMPlexSerif-Italic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = IBMPlexSerif-Italic.ttf; sourceTree = "<group>"; };
+		AA4000000000000000010025 /* IBMPlexSerif-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = IBMPlexSerif-Medium.ttf; sourceTree = "<group>"; };
+		AA4000000000000000010026 /* IBMPlexSerif-MediumItalic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = IBMPlexSerif-MediumItalic.ttf; sourceTree = "<group>"; };
+		AA4000000000000000010027 /* IBMPlexSerif-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = IBMPlexSerif-Regular.ttf; sourceTree = "<group>"; };
+		AA4000000000000000010028 /* IBMPlexSerif-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = IBMPlexSerif-SemiBold.ttf; sourceTree = "<group>"; };
+		AA4000000000000000010029 /* IBMPlexSerif-SemiBoldItalic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = IBMPlexSerif-SemiBoldItalic.ttf; sourceTree = "<group>"; };
+		AA4000000000000000010030 /* Inter-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Inter-Bold.ttf; sourceTree = "<group>"; };
+		AA4000000000000000010031 /* Inter-BoldItalic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Inter-BoldItalic.ttf; sourceTree = "<group>"; };
+		AA4000000000000000010032 /* Inter-Italic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Inter-Italic.ttf; sourceTree = "<group>"; };
+		AA4000000000000000010033 /* Inter-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Inter-Medium.ttf; sourceTree = "<group>"; };
+		AA4000000000000000010034 /* Inter-MediumItalic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Inter-MediumItalic.ttf; sourceTree = "<group>"; };
+		AA4000000000000000010035 /* Inter-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Inter-Regular.ttf; sourceTree = "<group>"; };
+		AA4000000000000000010036 /* Inter-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Inter-SemiBold.ttf; sourceTree = "<group>"; };
+		AA4000000000000000010037 /* Inter-SemiBoldItalic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Inter-SemiBoldItalic.ttf; sourceTree = "<group>"; };
+		AA4000000000000000030000 /* auth-no.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = auth-no.png; sourceTree = "<group>"; };
+		AA4000000000000000030001 /* auth-yes.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = auth-yes.png; sourceTree = "<group>"; };
+		AA4000000000000000030002 /* changelog.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = changelog.png; sourceTree = "<group>"; };
+		AA4000000000000000030003 /* guide.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = guide.png; sourceTree = "<group>"; };
+		AA4000000000000000030004 /* theme.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = theme.png; sourceTree = "<group>"; };
+		AA4000000000000000030005 /* update.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = update.png; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -155,6 +247,8 @@
 				FA72B4D395CBFFB3EEC69CDE /* Shell */,
 				FA05E1B6709B573B6A023CF5 /* Bridge */,
 				AA3000000000000000000001 /* Engine */,
+				AA4000000000000000001F01 /* Fonts */,
+				AA4000000000000000001F02 /* Icons */,
 				FA3E84BE39BF35B88E7410F9 /* Home */,
 				FA27B1106F06DD6560D97045 /* Materials */,
 				FA4ACEE3D9AAF2685CA995A4 /* Theme */,
@@ -313,6 +407,64 @@
 			path = Engine;
 			sourceTree = "<group>";
 		};
+		AA4000000000000000001F01 /* Fonts */ = {
+			isa = PBXGroup;
+			children = (
+				AA4000000000000000010000 /* GoogleSans-Variable.ttf */,
+				AA4000000000000000010001 /* GoogleSansCode-Variable.ttf */,
+				AA4000000000000000010002 /* GoogleSansCode-VariableItalic.ttf */,
+				AA4000000000000000010003 /* GoogleSansFlex-Variable.ttf */,
+				AA4000000000000000010004 /* IBMPlexMono-Bold.ttf */,
+				AA4000000000000000010005 /* IBMPlexMono-BoldItalic.ttf */,
+				AA4000000000000000010006 /* IBMPlexMono-Italic.ttf */,
+				AA4000000000000000010007 /* IBMPlexMono-Medium.ttf */,
+				AA4000000000000000010008 /* IBMPlexMono-MediumItalic.ttf */,
+				AA4000000000000000010009 /* IBMPlexMono-Regular.ttf */,
+				AA4000000000000000010010 /* IBMPlexMono-SemiBold.ttf */,
+				AA4000000000000000010011 /* IBMPlexMono-SemiBoldItalic.ttf */,
+				AA4000000000000000010012 /* IBMPlexSans-Bold.ttf */,
+				AA4000000000000000010013 /* IBMPlexSans-BoldItalic.ttf */,
+				AA4000000000000000010014 /* IBMPlexSans-Italic.ttf */,
+				AA4000000000000000010015 /* IBMPlexSans-Medium.ttf */,
+				AA4000000000000000010016 /* IBMPlexSans-MediumItalic.ttf */,
+				AA4000000000000000010017 /* IBMPlexSans-Regular.ttf */,
+				AA4000000000000000010018 /* IBMPlexSans-SemiBold.ttf */,
+				AA4000000000000000010019 /* IBMPlexSans-SemiBoldItalic.ttf */,
+				AA4000000000000000010020 /* IBMPlexSansSC-Regular.ttf */,
+				AA4000000000000000010021 /* IBMPlexSansSC-SemiBold.ttf */,
+				AA4000000000000000010022 /* IBMPlexSerif-Bold.ttf */,
+				AA4000000000000000010023 /* IBMPlexSerif-BoldItalic.ttf */,
+				AA4000000000000000010024 /* IBMPlexSerif-Italic.ttf */,
+				AA4000000000000000010025 /* IBMPlexSerif-Medium.ttf */,
+				AA4000000000000000010026 /* IBMPlexSerif-MediumItalic.ttf */,
+				AA4000000000000000010027 /* IBMPlexSerif-Regular.ttf */,
+				AA4000000000000000010028 /* IBMPlexSerif-SemiBold.ttf */,
+				AA4000000000000000010029 /* IBMPlexSerif-SemiBoldItalic.ttf */,
+				AA4000000000000000010030 /* Inter-Bold.ttf */,
+				AA4000000000000000010031 /* Inter-BoldItalic.ttf */,
+				AA4000000000000000010032 /* Inter-Italic.ttf */,
+				AA4000000000000000010033 /* Inter-Medium.ttf */,
+				AA4000000000000000010034 /* Inter-MediumItalic.ttf */,
+				AA4000000000000000010035 /* Inter-Regular.ttf */,
+				AA4000000000000000010036 /* Inter-SemiBold.ttf */,
+				AA4000000000000000010037 /* Inter-SemiBoldItalic.ttf */,
+			);
+			path = Fonts;
+			sourceTree = "<group>";
+		};
+		AA4000000000000000001F02 /* Icons */ = {
+			isa = PBXGroup;
+			children = (
+				AA4000000000000000030000 /* auth-no.png */,
+				AA4000000000000000030001 /* auth-yes.png */,
+				AA4000000000000000030002 /* changelog.png */,
+				AA4000000000000000030003 /* guide.png */,
+				AA4000000000000000030004 /* theme.png */,
+				AA4000000000000000030005 /* update.png */,
+			);
+			path = Icons;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 		C10000000000000000000001 /* Frameworks */ = {
@@ -366,6 +518,50 @@
 			files = (
 				FA222F0DBFFE5EB23DCD3FD1 /* Assets.xcassets in Resources */,
 				AA3000000000000000000114 /* items.json in Resources */,
+				AA4000000000000000020000 /* GoogleSans-Variable.ttf in Resources */,
+				AA4000000000000000020001 /* GoogleSansCode-Variable.ttf in Resources */,
+				AA4000000000000000020002 /* GoogleSansCode-VariableItalic.ttf in Resources */,
+				AA4000000000000000020003 /* GoogleSansFlex-Variable.ttf in Resources */,
+				AA4000000000000000020004 /* IBMPlexMono-Bold.ttf in Resources */,
+				AA4000000000000000020005 /* IBMPlexMono-BoldItalic.ttf in Resources */,
+				AA4000000000000000020006 /* IBMPlexMono-Italic.ttf in Resources */,
+				AA4000000000000000020007 /* IBMPlexMono-Medium.ttf in Resources */,
+				AA4000000000000000020008 /* IBMPlexMono-MediumItalic.ttf in Resources */,
+				AA4000000000000000020009 /* IBMPlexMono-Regular.ttf in Resources */,
+				AA4000000000000000020010 /* IBMPlexMono-SemiBold.ttf in Resources */,
+				AA4000000000000000020011 /* IBMPlexMono-SemiBoldItalic.ttf in Resources */,
+				AA4000000000000000020012 /* IBMPlexSans-Bold.ttf in Resources */,
+				AA4000000000000000020013 /* IBMPlexSans-BoldItalic.ttf in Resources */,
+				AA4000000000000000020014 /* IBMPlexSans-Italic.ttf in Resources */,
+				AA4000000000000000020015 /* IBMPlexSans-Medium.ttf in Resources */,
+				AA4000000000000000020016 /* IBMPlexSans-MediumItalic.ttf in Resources */,
+				AA4000000000000000020017 /* IBMPlexSans-Regular.ttf in Resources */,
+				AA4000000000000000020018 /* IBMPlexSans-SemiBold.ttf in Resources */,
+				AA4000000000000000020019 /* IBMPlexSans-SemiBoldItalic.ttf in Resources */,
+				AA4000000000000000020020 /* IBMPlexSansSC-Regular.ttf in Resources */,
+				AA4000000000000000020021 /* IBMPlexSansSC-SemiBold.ttf in Resources */,
+				AA4000000000000000020022 /* IBMPlexSerif-Bold.ttf in Resources */,
+				AA4000000000000000020023 /* IBMPlexSerif-BoldItalic.ttf in Resources */,
+				AA4000000000000000020024 /* IBMPlexSerif-Italic.ttf in Resources */,
+				AA4000000000000000020025 /* IBMPlexSerif-Medium.ttf in Resources */,
+				AA4000000000000000020026 /* IBMPlexSerif-MediumItalic.ttf in Resources */,
+				AA4000000000000000020027 /* IBMPlexSerif-Regular.ttf in Resources */,
+				AA4000000000000000020028 /* IBMPlexSerif-SemiBold.ttf in Resources */,
+				AA4000000000000000020029 /* IBMPlexSerif-SemiBoldItalic.ttf in Resources */,
+				AA4000000000000000020030 /* Inter-Bold.ttf in Resources */,
+				AA4000000000000000020031 /* Inter-BoldItalic.ttf in Resources */,
+				AA4000000000000000020032 /* Inter-Italic.ttf in Resources */,
+				AA4000000000000000020033 /* Inter-Medium.ttf in Resources */,
+				AA4000000000000000020034 /* Inter-MediumItalic.ttf in Resources */,
+				AA4000000000000000020035 /* Inter-Regular.ttf in Resources */,
+				AA4000000000000000020036 /* Inter-SemiBold.ttf in Resources */,
+				AA4000000000000000020037 /* Inter-SemiBoldItalic.ttf in Resources */,
+				AA4000000000000000040000 /* auth-no.png in Resources */,
+				AA4000000000000000040001 /* auth-yes.png in Resources */,
+				AA4000000000000000040002 /* changelog.png in Resources */,
+				AA4000000000000000040003 /* guide.png in Resources */,
+				AA4000000000000000040004 /* theme.png in Resources */,
+				AA4000000000000000040005 /* update.png in Resources */,
 				AA3000000000000000000115 /* extra-rules.json in Resources */,
 				AA3000000000000000000116 /* native-preview-catalog.json in Resources */,
 			);
@@ -389,6 +585,8 @@
 				AA2900000000000000000102 /* RulesNative/RulesViewController.swift in Sources */,
 				AA2900000000000000000103 /* RulesNative/RulesNativeModel.swift in Sources */,
 				AA2900000000000000000104 /* SettingsNative/SettingsViewController.swift in Sources */,
+				AA4000000000000000002001 /* Theme/FontLibrary.swift in Sources */,
+				AA4000000000000000002002 /* SettingsNative/FontSettingsViewController.swift in Sources */,
 				AA2900000000000000000105 /* SettingsNative/SettingsContent.swift in Sources */,
 				AA2900000000000000000106 /* Home/HomeViewController.swift in Sources */,
 				AA2900000000000000000107 /* Home/ColorSettingsViewController.swift in Sources */,

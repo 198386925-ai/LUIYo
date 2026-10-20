@@ -191,6 +191,24 @@ final class RulesViewController: UIViewController {
         }
     }
 
+
+    // MARK: - Page font
+
+    private var pageFont: UIFont?
+    private var pageFontSet = false
+
+    /// Applies this page area's chosen font (nil = system font).
+    func applyPageFont(_ font: UIFont?) {
+        pageFont = font
+        pageFontSet = true
+        if isViewLoaded { PageFontApplier.apply(font, to: view) }
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        if pageFontSet { PageFontApplier.apply(pageFont, to: view) }
+    }
+
     private func refreshTheme() {
         view.backgroundColor = UIColor(nativeHex: homeModel.theme.background)
         let tint = UIColor(nativeHex: homeModel.theme.card)
