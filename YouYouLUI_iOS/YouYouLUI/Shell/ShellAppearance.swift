@@ -3,38 +3,27 @@ import UIKit
 extension MainShellViewController {
     /// Applies light / dark / system and persists the choice.
     func applyAppearance(_ rawMode: String) {
-        applyAppearance(rawMode, notifyEngine: true)
-    }
-
-    /// When the change comes FROM the engine (its own picker), the engine
-    /// already knows — skip the notification to avoid an echo loop.
-    func applyAppearance(_ rawMode: String, notifyEngine: Bool) {
         let mode = ["light", "dark"].contains(rawMode) ? rawMode : "system"
         preferences.appearanceMode = mode
         let style = Self.savedAppearanceStyle
         overrideUserInterfaceStyle = style
         view.window?.overrideUserInterfaceStyle = style
-        webView.overrideUserInterfaceStyle = style
         applyStoredPalette()
         setNeedsStatusBarAppearanceUpdate()
-        // Keep the hidden work layer on the same appearance: without this it
-        // keeps computing colours from its stored mode and the native pages
-        // stay in the previous mode (or a mix of both).
-        if notifyEngine {
-            evaluate("window.__luiyoApplyAppearanceMode?.('\(mode)')")
-        }
     }
 
-    /// The engine reports background / card / button colours as three
-    /// separate messages per appearance change; coalesce them into a single
-    /// palette application so a switch doesn't re-render everything 3x.
-    @objc func applyStoredPaletteDeferred() { applyStoredPalette() }
-
-    func schedulePaletteApplication() {
-        NSObject.cancelPreviousPerformRequests(withTarget: self,
-                                               selector: #selector(applyStoredPaletteDeferred),
-                                               object: nil)
-        perform(#selector(applyStoredPaletteDeferred), with: nil, afterDelay: 0.05, inModes: [.common])
+    /// Recomputes the homepage theme from the natively stored palette: page
+    /// background, card colour, dark flag and the bottom-search visibility.
+    func refreshHomeTheme() {
+        let dark = traitCollection.userInterfaceStyle == .dark
+        let appearance = dark ? "dark" : "light"
+        var theme = NativeHomeTheme()
+        theme.background = preferences.colorHex(.background, appearance: appearance)
+            ?? (dark ? ThemePalette.darkBackground : ThemePalette.lightBackground)
+        theme.card = ThemePalette.storedCardHex(isDark: dark)
+        theme.dark = dark
+        theme.bottomSearchEnabled = preferences.bottomSearchEnabled
+        if homeModel.theme != theme { homeModel.theme = theme }
     }
 
     static var savedAppearanceStyle: UIUserInterfaceStyle {
@@ -56,11 +45,8 @@ extension MainShellViewController {
             view.backgroundColor = .clear
         }
         nativeHomeHost?.view.backgroundColor = backgroundImageView.image == nil ? view.backgroundColor : .clear
-        materialLayer.tintColor = ThemePalette.cardTint
-        materialLayer.interfaceStyle = traitCollection.userInterfaceStyle
         refreshHero()
-        materialLayer.refreshTint()
-        materialLayer.render()
+        refreshHomeTheme()
     }
 
     /// Re-renders the settings hero card (name, version, tier, avatar, colours, font).
@@ -73,8 +59,6 @@ extension MainShellViewController {
 
     func setCardMaterialMode(_ rawMode: String) {
         homeModel.useBlur = rawMode == "blur"
-        materialLayer.materialMode = rawMode == "blur" ? .blur : .liquid
-        materialLayer.refreshEffects()
     }
 
     /// Applies the theme font to the tab bar, the search overlay, the hero card
@@ -98,10 +82,7 @@ extension MainShellViewController {
         activeSearchController?.themeFont = font
         // Apply theme font to the settings hero card (native view).
         if let hero = settingsHero { LUIYoSetSettingsHeroFont(hero, font) }
-        materialLayer.themeFont = font
         tabBar.setNeedsLayout()
-        // Defer expensive material rendering to avoid stutter during tab switch.
-        DispatchQueue.main.async { [weak self] in self?.materialLayer.render() }
     }
 
     private static func applyFont(_ font: UIFont?, to appearance: UITabBarAppearance) {

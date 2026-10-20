@@ -1,23 +1,34 @@
 import UIKit
 
 extension MainShellViewController {
-    /// Sends a command into the shared web engine. Authorization rule: an
+    /// Routes a command to the native work layer. Authorization rule: an
     /// unauthorized user may use everything EXCEPT exporting the ZIP, so
-    /// only the export action is gated here (the engine gates it too).
+    /// only the export action is gated here (the work layer is only ever
+    /// reached through this router and handleHomeCommand).
     func runNativeEngine(_ action: String, _ values: [String: Any]) {
         if action == "export", !isAuthorized {
             showAuthorizationRequired()
             return
         }
-        guard let data = try? JSONSerialization.data(withJSONObject: [action, values]),
-              let arguments = String(data: data, encoding: .utf8) else { return }
-        let script = "Promise.resolve(window.__nativeHomeCommand?.(..." + arguments
-            + ")).catch(error => alert(error.message)); undefined;"
-        webView.evaluateJavaScript(script) { [weak self] _, error in
-            guard let self, let error else { return }
-            let alert = UIAlertController(title: "操作失败", message: error.localizedDescription, preferredStyle: .alert)
-            alert.addAction(UIAlertAction(title: "好", style: .default))
-            if self.presentedViewController == nil { self.present(alert, animated: true) }
+        switch action {
+        case "state":
+            engine.start()
+        case "category":
+            engine.setCategory(values["category"] as? String ?? "wechat")
+        case "search":
+            break // the homepage filters its own list from the same query
+        case "remove":
+            if let id = values["id"] as? Int { engine.remove(index: id) }
+        case "clear":
+            engine.clear()
+        case "fill":
+            engine.applyFill(query: values["query"] as? String ?? "")
+        case "colors":
+            engine.colorsUpdated()
+        case "export":
+            engine.startExport()
+        default:
+            break
         }
     }
 
@@ -45,9 +56,20 @@ extension MainShellViewController {
     }
 
     func receiveFiles(_ files: [[String: String]], kind: ImagePickerCoordinator.Kind, index: Int?) {
-        var payload: [String: Any] = ["files": files, "kind": kind.rawValue]
-        if let index { payload["id"] = index }
-        runNativeEngine("files", payload)
+        let engineFiles = files.compactMap { raw -> EngineFile? in
+            guard let base64 = raw["base64"], let data = Data(base64Encoded: base64) else { return nil }
+            return EngineFile(name: raw["name"] ?? "image.png", data: data)
+        }
+        switch kind {
+        case .upload:
+            if let index, let first = engineFiles.first { engine.receiveSingle(index: index, file: first) }
+        case .batch:
+            engine.receiveBatch(engineFiles)
+        case .fillImage:
+            if let first = engineFiles.first { engine.receiveFillImage(first) }
+        case .heroAvatar:
+            break // avatar picks arrive through imagePicker.onAvatar instead
+        }
     }
 
     func showNotice(_ text: String) {
@@ -72,15 +94,9 @@ extension MainShellViewController {
     func presentBottomSearch() {
         guard bottomSearchEnabled, !openingSearch, activeSearchController == nil,
               presentedViewController == nil else { return }
-        openingSearch = true
-        evaluate("window.__bottomSearchState?.()") { [weak self] value, _ in
-            guard let self else { return }
-            self.openingSearch = false
-            guard self.presentedViewController == nil else { return }
-            let state = value as? [String: Any] ?? [:]
-            self.activeSearchPage = state["page"] as? String ?? "home"
-            self.showSearchOverlay(state: state)
-        }
+        activeSearchPage = activePage.name
+        let query = activePage == .rules ? rulesModel.query : homeModel.query
+        showSearchOverlay(state: ["query": query, "page": activeSearchPage, "placeholder": "搜索"])
     }
 
     private func showSearchOverlay(state: [String: Any]) {
@@ -94,7 +110,6 @@ extension MainShellViewController {
             guard let self else { return }
             self.homeModel.query = ""
             self.rulesModel.query = ""
-            self.evaluate("window.__clearBottomSearch?.()")
             let overlay = self.activeSearchController
             self.activeSearchController = nil
             overlay?.willMove(toParent: nil)
@@ -105,11 +120,6 @@ extension MainShellViewController {
                 self.view.layoutIfNeeded()
                 self.updateLayoutMetrics(force: true)
             }
-        }
-        page.onLayout = { [weak self] in
-            guard let self, let overlay = self.activeSearchController else { return }
-            let top = overlay.searchField.convert(overlay.searchField.bounds, to: self.webView).minY
-            self.evaluate("window.__setNativeTabTop?.(" + String(describing: top) + ");window.__syncNativeCardGlass?.()")
         }
         activeSearchController = page
         // A transparent child overlay leaves the live page and tab bar attached.
@@ -126,14 +136,9 @@ extension MainShellViewController {
     func applyBottomSearch(_ query: String) {
         if activeSearchPage == "home" { homeModel.query = query }
         if activeSearchPage == "rules" { rulesModel.query = query }
-        evaluate(arguments: [query, activeSearchPage], function: "applyBottomSearch")
     }
 
     // MARK: - Settings hero
-
-    func openHeroSection(_ selector: String) {
-        evaluate("window.__toggleHeroSection?.('" + selector + "')")
-    }
 
     func editHeroAvatar() {
         guard presentedViewController == nil else { return }

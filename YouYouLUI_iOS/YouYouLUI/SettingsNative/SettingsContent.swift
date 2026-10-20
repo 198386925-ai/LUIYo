@@ -40,6 +40,7 @@ enum SettingsContent {
             ChangelogEntry(tag: "优化", text: "授权逻辑调整：未授权时除导出 ZIP 外，上传、补全、改色等功能都可正常使用。"),
             ChangelogEntry(tag: "优化", text: "设置页副标题字号调小，「跟随系统」改名为「系统」；更新日志与使用说明恢复之前的显示样式。"),
             ChangelogEntry(tag: "优化", text: "按字号表调整三页字体大小；更新日志的版本卡改回液态玻璃效果。"),
+            ChangelogEntry(tag: "优化", text: "主程序改为纯原生实现：图标匹配、补全、改色、打包全部由 APP 本身完成，不再依赖内置网页。"),
             ChangelogEntry(tag: "修复", text: "修复深色模式图标无条件反转的问题：现在只有打开对应开关才会反转，关闭时保留原图。"),
             ChangelogEntry(tag: "修复", text: "修复「全部图标」分组小字描述，与「打开才生效」的新逻辑对齐。"),
             ChangelogEntry(tag: "修复", text: "未授权时不再显示SVIP，只有授权才显示"),

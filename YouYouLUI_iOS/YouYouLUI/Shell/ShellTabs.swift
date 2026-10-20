@@ -68,78 +68,23 @@ extension MainShellViewController {
     func preparePageSelection(_ tag: Int) -> Bool {
         let page = ShellPage(clamping: tag)
         guard nativeHomeReady, page != activePage else { return true }
-        // Root cause of the tab-switch flash: the old code moved the shared
-        // WKWebView into the new tab and revealed it BEFORE the async
-        // appNavTo() JS swapped the page, so the old page's DOM showed through
-        // the new tab for a few frames. Fix: keep the webView hidden until the
-        // new page's DOM is live, then seat it and reveal.
         pageSwitchGeneration += 1
-        let generation = pageSwitchGeneration
         switchingPage = true
-        suppressWebViewReveal = true
-        // Don't hide or fade out at start - keep old content visible.
-        // The smooth fade-in at the end will mask the transition.
         UIView.performWithoutAnimation {
             self.selectPage(page)
             self.updatePageScroll(page)
         }
-        // The page's own checkboxes disappear with the outgoing DOM section;
-        // drop the native mirrors immediately so none can outlive the switch.
-        materialLayer.hideAllToggles()
         keepContentBelowNativeBar()
-        updateLayoutMetrics(force: true)
-        evaluate("appNavTo('" + page.name + "');window.__syncNativeCardGlass?.();") { [weak self] _, _ in
-            guard let self, self.pageSwitchGeneration == generation else { return }
-            // Wait a tick for render, then reveal.
-            DispatchQueue.main.async {
-                guard self.pageSwitchGeneration == generation else { return }
-                if page == .rules || page == .settings {
-                    // Native page: already seated by selectPage; no WebView to reveal.
-                    self.switchingPage = false
-                    self.suppressWebViewReveal = false
-                } else {
-                    self.revealWebViewAfterSwitch(to: page)
-                }
-            }
-        }
+        switchingPage = false
         return false
     }
 
-    private func revealWebViewAfterSwitch(to page: ShellPage) {
-        if page == .home {
-            // Homepage is native: fade WebView out, keep hidden.
-            UIView.animate(withDuration: 0.3, animations: {
-                self.webView?.alpha = 0.0
-            }, completion: { [weak self] _ in
-                self?.webView?.isHidden = true
-            })
-        } else {
-            // Web pages: gradual fade-in for smooth appearance.
-            self.webView?.isHidden = false
-            self.webView?.alpha = 0.0
-            UIView.animate(withDuration: 0.35, delay: 0.05, options: .curveEaseOut, animations: {
-                self.webView?.alpha = 1.0
-            }, completion: nil)
-        }
-        switchingPage = false
-        suppressWebViewReveal = false
-    }
-
-    /// Navigates the shared page after a tab change driven by UIKit.
+    /// Navigates after a tab change driven by UIKit.
     func navigateFromNativeTab(_ tag: Int) {
         let page = ShellPage(clamping: tag)
         activePage = page
         updatePageScroll(page)
-        materialLayer.hideAllToggles()
-        guard nativeHomeReady else {
-            keepContentBelowNativeBar()
-            return
-        }
-        // Switch content FIRST via JS (instant CSS toggle), then move WebView.
-        // This prevents ghosting: the WebView already shows the right page when moved.
-        evaluate("appNavTo(\'" + page.name + "\')") { [weak self] _, _ in
-            DispatchQueue.main.async { self?.keepContentBelowNativeBar() }
-        }
+        keepContentBelowNativeBar()
     }
 
     func setScrollMinimize(_ enabled: Bool) {

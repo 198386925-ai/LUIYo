@@ -1,19 +1,18 @@
 import PhotosUI
 import UIKit
 import UniformTypeIdentifiers
-import WebKit
 
-/// The app shell: one WKWebView shared by three tabs, a native UIKit
-/// homepage, the floating bottom search and the material layer behind the HTML.
+/// The app shell: three native UIKit pages in a tab bar, the floating
+/// bottom search, and the native work layer (IconEngine) behind the
+/// homepage. There is no web content anywhere in the app.
 ///
 /// This type owns composition and state only; behaviour is split across
 /// extensions, one file each:
 ///  - `ShellTabs`            — tab construction and page selection
-///  - `ShellWebPlacement`    — where the shared web view lives
+///  - `ShellWebPlacement`    — where the native pages are seated
 ///  - `ShellAppearance`      — appearance, palette, fonts, material mode
-///  - `ShellCommands`        — requests sent to the web engine
-///  - `ShellBridgeHandling`  — messages arriving from the web engine
-///  - `ShellWebDelegates`    — navigation/UI delegates and tab bar delegate
+///  - `ShellCommands`        — requests sent to the work layer
+///  - `ShellWebDelegates`    — tab bar delegate
 ///  - `ShellSnapshot`        — CI snapshot scenarios
 ///
 /// Members are `internal` because those extensions live in separate files.
@@ -32,8 +31,7 @@ final class MainShellViewController: UITabBarController {
     let preferences = ThemePreferences.shared
     let homeModel = NativeHomeModel()
     let fontController = ThemeFontController()
-    var webHost: WebContentHost!
-    var materialLayer: CardMaterialLayer!
+    var engine: IconEngine!
     var imagePicker: ImagePickerCoordinator!
     var zipExport: ZipExportCoordinator!
 
@@ -47,10 +45,8 @@ final class MainShellViewController: UITabBarController {
     var separateSearch = false
     var activePage: ShellPage = .home
 
-    // MARK: - Web placement
+    // MARK: - Page placement
 
-    var webView: WKWebView!
-    var webHostConstraints: [NSLayoutConstraint] = []
     var boundScrollViews: [ObjectIdentifier: UIScrollView] = [:]
     var nativeHomeHost: HomeViewController?
     var nativeHomeConstraints: [NSLayoutConstraint] = []
@@ -93,29 +89,25 @@ final class MainShellViewController: UITabBarController {
         // Shared native background on every page.
         rootView.backgroundColor = ThemePalette.adaptiveBackground
         installBackground(in: rootView)
-        installWebContent(in: rootView)
+        installEngine()
         configureTabs()
     }
 
     override func viewDidLoad() {
-        // Clear cache to force fresh HTML.
-        WKWebsiteDataStore.default().removeData(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(),
-                                                modifiedSince: Date(timeIntervalSince1970: 0)) { }
         super.viewDidLoad()
         preferences.registerDefaults()
         setScrollMinimize(preferences.minimizeBottomBar)
         separateSearch = preferences.isSeparateSearch
         setBottomSearchEnabled(preferences.bottomSearchEnabled)
         applyAppearance(preferences.appearanceMode)
-        guard webHost.loadBundledPage() else {
-            showLoadFailure()
-            return
-        }
+        nativeHomeReady = true
+        refreshHomeTheme()
+        engine.start()
+        runSnapshotScenarioIfNeeded()
     }
 
     deinit {
         scrollOffsetObservation?.invalidate()
-        webHost.invalidate()
     }
 
     override func viewDidLayoutSubviews() {
@@ -125,7 +117,6 @@ final class MainShellViewController: UITabBarController {
         updateTabLabelFonts(in: tabBar)
         keepContentBelowNativeBar()
         updateLayoutMetrics()
-        materialLayer.render()
     }
 
     override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
@@ -161,25 +152,23 @@ final class MainShellViewController: UITabBarController {
         homeModel.backgroundImage = nil
     }
 
-    private func installWebContent(in rootView: UIView) {
-        webHost = WebContentHost(messageHandler: self)
-        let webView = webHost.webView
-        webView.navigationDelegate = self
-        webView.uiDelegate = self
-        self.webView = webView
-
-        materialLayer = CardMaterialLayer(scrollView: webView.scrollView)
-        materialLayer.onToggleChanged = { [weak self] id, enabled in
-            self?.evaluate(arguments: [id, enabled], function: "setBrandSwitch")
+    private func installEngine() {
+        engine = IconEngine()
+        engine.onState = { [weak self] payload in self?.homeModel.apply(payload) }
+        engine.onNotice = { [weak self] text in self?.showNotice(text) }
+        engine.onExportReady = { [weak self] in
+            self?.zipExport.askFileName(default: ZipExportCoordinator.defaultFileName)
         }
+        engine.onShareZip = { [weak self] data, fileName in
+            self?.zipExport.share(data: data, fileName: fileName)
+        }
+
         imagePicker = ImagePickerCoordinator(presenter: self)
         imagePicker.onFiles = { [weak self] files, kind, index in self?.receiveFiles(files, kind: kind, index: index) }
         imagePicker.onAvatar = { [weak self] data in self?.saveHeroAvatar(data) }
         imagePicker.onFailure = { [weak self] text in self?.showNotice(text) }
         zipExport = ZipExportCoordinator(presenter: self)
-        zipExport.onNameChosen = { [weak self] name in
-            self?.evaluate(arguments: [name], function: "shareZipWithName")
-        }
+        zipExport.onNameChosen = { [weak self] name in self?.engine.finishExport(name: name) }
 
         homeModel.onCommand = { [weak self] action, values in
             guard let self else { return }
@@ -201,26 +190,8 @@ final class MainShellViewController: UITabBarController {
         }
         fontController.onFontChanged = { [weak self] font in
             self?.applyFont(font)
-            // Update web font scheme handler
-            FontSchemeHandlerStore.shared.handler?.fontData = self?.fontController.savedFontData
-            // Update native home font
             self?.homeModel.importedFont = font
         }
-
-        // Put materials in the SAME scrolling coordinate space as WebKit content.
-        // UIScrollView moves both together, including momentum and rubber-banding.
-        // No per-frame JS/native offset reconciliation is needed.
-        scrollOffsetObservation = webView.scrollView.observe(\.contentOffset, options: [.new]) { [weak self] _, _ in
-            self?.materialLayer.render()
-        }
-
-        rootView.addSubview(webView)
-        NSLayoutConstraint.activate([
-            webView.topAnchor.constraint(equalTo: rootView.topAnchor),
-            webView.leadingAnchor.constraint(equalTo: rootView.leadingAnchor),
-            webView.trailingAnchor.constraint(equalTo: rootView.trailingAnchor),
-            webView.bottomAnchor.constraint(equalTo: rootView.bottomAnchor)
-        ])
     }
 
     private func configureTabs() {
@@ -249,36 +220,15 @@ final class MainShellViewController: UITabBarController {
         defaultTabAppearance = tabBar.standardAppearance
         defaultScrollEdgeAppearance = tabBar.scrollEdgeAppearance?.copy() as? UITabBarAppearance
         restoredNativeFont = fontController.restore()
-        // Update the web view font scheme handler
-        FontSchemeHandlerStore.shared.handler?.fontData = fontController.savedFontData
-        // Update native home font
         homeModel.importedFont = fontController.font
     }
-
-    private func showLoadFailure() {
-        let label = UILabel()
-        label.text = "内置网页资源缺失"
-        label.textAlignment = .center
-        label.numberOfLines = 0
-        label.frame = view.bounds.insetBy(dx: 24, dy: 24)
-        label.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        view.addSubview(label)
-    }
-
-    // MARK: - Authorization
 
     func setAuthorization(_ allowed: Bool, message: String? = nil, busy: Bool = false) {
         homeModel.authorized = allowed
         isAuthorized = allowed
         authorizationMessage = message ?? (allowed ? "已授权" : "未激活 · 仅可浏览")
         authorizationBusy = busy
-        syncAuthorization()
         syncNativeSettingsAuth()
-        if allowed, nativeHomeReady { runNativeEngine("colors", ["values": homeModel.savedColors]) }
-    }
-
-    func syncAuthorization() {
-        guard isViewLoaded, webView != nil else { return }
-        evaluate(arguments: [isAuthorized, authorizationMessage, authorizationBusy], function: "luiyoSetAuthorized")
+        if nativeHomeReady { engine.colorsUpdated() }
     }
 }

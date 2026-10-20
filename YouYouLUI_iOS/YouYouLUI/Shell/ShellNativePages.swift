@@ -2,9 +2,7 @@ import UIKit
 import ObjectiveC
 
 /// Native page models + hosts for the UIKit Settings and Rules pages.
-/// The visible pages are UIKit; the shared work layer keeps running hidden
-/// under the homepage. Hosts are seated per-tab by
-/// ShellWebPlacement.keepContentBelowNativeBar().
+/// Hosts are seated per-tab by ShellWebPlacement.keepContentBelowNativeBar().
 extension MainShellViewController {
     /// The shared Settings model, created once and wired to the shell.
     var settingsModel: SettingsNativeModel {
@@ -43,7 +41,6 @@ extension MainShellViewController {
             guard let self else { return }
             self.homeModel.fontName = self.fontController.font?.fontName
             self.homeModel.importedFont = self.fontController.font
-            FontSchemeHandlerStore.shared.handler?.fontData = self.fontController.savedFontData
             self.applyFont(self.fontController.font)
         }
         objc_setAssociatedObject(self, &AssociatedKeys.settingsModel, model, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)

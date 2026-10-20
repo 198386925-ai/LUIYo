@@ -15,7 +15,7 @@ struct NativeIconCatalog: Decodable {
     let entries: [NativeIconEntry]
 
     static func load() -> NativeIconCatalog {
-        guard let url = Bundle.main.url(forResource: "native-preview-catalog", withExtension: "json", subdirectory: "Web"),
+        guard let url = Bundle.main.url(forResource: "native-preview-catalog", withExtension: "json", subdirectory: nil),
               let data = try? Data(contentsOf: url),
               let catalog = try? JSONDecoder().decode(NativeIconCatalog.self, from: data) else {
             fatalError("Complete homepage catalog is missing")

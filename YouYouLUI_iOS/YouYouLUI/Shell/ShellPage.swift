@@ -1,13 +1,13 @@
 import Foundation
 
 /// The three content pages. Home is rendered natively (SwiftUI); rules and
-/// settings come from the bundled HTML. All three share one WKWebView.
+/// settings are native pages seated in their own tabs.
 enum ShellPage: Int, CaseIterable {
     case home = 0
     case rules = 1
     case settings = 2
 
-    /// Value used by `appNavTo()` and reported back through `pageState`.
+    /// Page identifier used by the shell and the search overlay.
     var name: String {
         switch self {
         case .home: return "home"
