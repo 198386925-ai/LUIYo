@@ -42,6 +42,9 @@ enum SettingsContent {
             ChangelogEntry(tag: "优化", text: "按字号表调整三页字体大小；更新日志的版本卡改回液态玻璃效果。"),
             ChangelogEntry(tag: "优化", text: "主程序改为纯原生实现：图标匹配、补全、改色、打包全部由 APP 本身完成，不再依赖内置网页。"),
             ChangelogEntry(tag: "优化", text: "设置页卡片圆角加大，更接近之前的圆润效果。"),
+            ChangelogEntry(tag: "优化", text: "去掉液态玻璃卡片的阴影，卡片间距调小，界面更紧凑。"),
+            ChangelogEntry(tag: "优化", text: "自定义颜色行的副标题改到标题后面同一行显示；设置里自定义字体改为入口，点开再选导入或恢复。"),
+            ChangelogEntry(tag: "优化", text: "按新字号表调整：折叠卡标题 12、副标题 8，更新日志版本号 13.5、标签改常规，检查更新标题 12、状态 10，颜色页行名 12.5、说明 10。"),
             ChangelogEntry(tag: "修复", text: "修复深色模式图标无条件反转的问题：现在只有打开对应开关才会反转，关闭时保留原图。"),
             ChangelogEntry(tag: "修复", text: "修复「全部图标」分组小字描述，与「打开才生效」的新逻辑对齐。"),
             ChangelogEntry(tag: "修复", text: "未授权时不再显示SVIP，只有授权才显示"),
@@ -57,6 +60,7 @@ enum SettingsContent {
             ChangelogEntry(tag: "修复", text: "修复设置页折叠卡展开、收起时内容互相重叠错乱的问题。"),
             ChangelogEntry(tag: "修复", text: "修复设置里切换底栏搜索按钮不立即生效、要重进 APP 的问题。"),
             ChangelogEntry(tag: "修复", text: "修复首页顶部搜索框被压扁、显示不全的问题。"),
+            ChangelogEntry(tag: "修复", text: "修复首页隐藏顶部搜索框、状态行时仍留空白的问题。"),
         ]),
         ChangelogVersion(title: "Version 1.0.7", isCurrent: false, entries: [
             ChangelogEntry(tag: "优化", text: "启动授权秒进：已登录时直接进入界面，后台静默验证，不再等待转圈。"),

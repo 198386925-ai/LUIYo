@@ -34,9 +34,9 @@ final class FoldView: UIView {
         iconView.contentMode = .scaleAspectFit
         iconView.tintColor = UIAppColors.ink
         titleLabel.text = title
-        titleLabel.font = UIFont.systemFont(ofSize: 13, weight: .semibold)
+        titleLabel.font = UIFont.systemFont(ofSize: 12, weight: .semibold)
         subtitleLabel.text = subtitle
-        subtitleLabel.font = UIFont.systemFont(ofSize: 10)
+        subtitleLabel.font = UIFont.systemFont(ofSize: 8)
         subtitleLabel.textColor = UIAppColors.secondary
         chevron.image = UIImage(systemName: "chevron.down", withConfiguration: UIImage.SymbolConfiguration(pointSize: 13, weight: .semibold))
         chevron.tintColor = UIColor(red: 0xC7 / 255, green: 0xC7 / 255, blue: 0xCC / 255, alpha: 1)
@@ -190,7 +190,7 @@ final class SettingsViewController: UIViewController {
             scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
         ])
         stack.axis = .vertical
-        stack.spacing = 12
+        stack.spacing = 8
         scrollView.addSubview(stack)
         stack.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
@@ -212,7 +212,7 @@ final class SettingsViewController: UIViewController {
         subtitle.textColor = UIAppColors.secondary
         stack.addArrangedSubview(subtitle)
         stack.setCustomSpacing(4, after: title)
-        stack.setCustomSpacing(14, after: subtitle)
+        stack.setCustomSpacing(10, after: subtitle)
 
         heroContainer.translatesAutoresizingMaskIntoConstraints = false
         heroContainer.heightAnchor.constraint(equalToConstant: 116).isActive = true
@@ -274,7 +274,7 @@ final class SettingsViewController: UIViewController {
         footer.font = UIFont.systemFont(ofSize: 12)
         footer.textColor = UIAppColors.secondary
         stack.addArrangedSubview(footer)
-        stack.setCustomSpacing(18, after: updateCard)
+        stack.setCustomSpacing(12, after: updateCard)
 
         model.objectWillChange
             .receive(on: DispatchQueue.main)
@@ -584,15 +584,18 @@ final class SettingsViewController: UIViewController {
         minimizeSwitch.addTarget(self, action: #selector(minimizeChanged(_:)), for: .valueChanged)
         inner.addArrangedSubview(themeRow(title: "滚动时缩小底栏", subtitle: "向下滚动缩小，向上滚动恢复", control: minimizeSwitch, divider: true))
 
-        let fontControl = UIStackView(arrangedSubviews: [
-            smallButton("导入字体", action: #selector(importFont)),
-            smallButton("恢复", action: #selector(resetFont)),
-        ])
-        fontControl.axis = .horizontal
-        fontControl.spacing = 8
-        fontControl.alignment = .center
-        let fontRow = themeRow(title: "自定义字体", subtitle: model.customFontName, control: fontControl, divider: false)
+        // Custom font is an entry row now: one tap opens the choices
+        // (import / restore) instead of crowding the row with buttons.
+        let fontChevron = UIImageView(image: UIImage(systemName: "chevron.right", withConfiguration: UIImage.SymbolConfiguration(pointSize: 13, weight: .semibold)))
+        fontChevron.tintColor = UIColor(red: 0xC7 / 255, green: 0xC7 / 255, blue: 0xCC / 255, alpha: 1)
+        fontChevron.contentMode = .scaleAspectFit
+        fontChevron.translatesAutoresizingMaskIntoConstraints = false
+        fontChevron.widthAnchor.constraint(equalToConstant: 16).isActive = true
+        fontChevron.heightAnchor.constraint(equalToConstant: 16).isActive = true
+        let fontRow = themeRow(title: "自定义字体", subtitle: model.customFontName, control: fontChevron, divider: false)
         fontSubtitleLabel = fontRow.viewWithTag(77) as? UILabel
+        fontRow.isUserInteractionEnabled = true
+        fontRow.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(fontEntryTapped)))
         inner.addArrangedSubview(fontRow)
         return container
     }
@@ -621,6 +624,20 @@ final class SettingsViewController: UIViewController {
         model.hasCustomFont = false
         model.onFontChanged?()
     }
+    @objc private func fontEntryTapped() {
+        let sheet = UIAlertController(title: "自定义字体", message: model.customFontName, preferredStyle: .actionSheet)
+        sheet.addAction(UIAlertAction(title: "导入字体", style: .default) { [weak self] _ in self?.importFont() })
+        if model.hasCustomFont {
+            sheet.addAction(UIAlertAction(title: "恢复默认字体", style: .destructive) { [weak self] _ in self?.resetFont() })
+        }
+        sheet.addAction(UIAlertAction(title: "取消", style: .cancel))
+        if let pop = sheet.popoverPresentationController {
+            pop.sourceView = view
+            pop.sourceRect = CGRect(x: view.bounds.midX, y: view.bounds.midY, width: 0, height: 0)
+        }
+        present(sheet, animated: true)
+    }
+
     @objc private func importFont() {
         let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.font], asCopy: true)
         picker.delegate = self
@@ -736,7 +753,7 @@ final class SettingsViewController: UIViewController {
             head.alignment = .center
             let title = UILabel()
             title.text = version.title
-            title.font = UIFont.systemFont(ofSize: 15, weight: .semibold)
+            title.font = UIFont.systemFont(ofSize: 13.5, weight: .semibold)
             title.textColor = .label
             head.addArrangedSubview(title)
             if version.isCurrent {
@@ -756,7 +773,7 @@ final class SettingsViewController: UIViewController {
                 para.lineSpacing = 3
                 if let tag = entry.tag, !tag.isEmpty {
                     text.append(NSAttributedString(string: tag + "  ", attributes: [
-                        .font: UIFont.systemFont(ofSize: 13, weight: .semibold),
+                        .font: UIFont.systemFont(ofSize: 13),
                         .foregroundColor: tagColor(tag),
                         .paragraphStyle: para,
                     ]))
@@ -793,9 +810,9 @@ final class SettingsViewController: UIViewController {
         icon.contentMode = .scaleAspectFit
         let title = UILabel()
         title.text = "检查更新"
-        title.font = UIFont.systemFont(ofSize: 14.5, weight: .semibold)
+        title.font = UIFont.systemFont(ofSize: 12)
         title.textColor = UIAppColors.inkDynamic
-        updateStatus.font = UIFont.systemFont(ofSize: 11)
+        updateStatus.font = UIFont.systemFont(ofSize: 10)
         updateStatus.textColor = UIAppColors.secondary
         let chevron = UIImageView(image: UIImage(systemName: "chevron.right", withConfiguration: UIImage.SymbolConfiguration(pointSize: 13, weight: .semibold)))
         chevron.tintColor = UIColor(red: 0xC7 / 255, green: 0xC7 / 255, blue: 0xCC / 255, alpha: 1)

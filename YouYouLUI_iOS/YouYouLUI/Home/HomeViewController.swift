@@ -91,9 +91,9 @@ final class ColorRowView: UIControl {
             iconView.widthAnchor.constraint(equalToConstant: 20),
             iconView.heightAnchor.constraint(equalToConstant: 20),
             titleLabel.leadingAnchor.constraint(equalTo: iconView.trailingAnchor, constant: 10),
-            titleLabel.topAnchor.constraint(equalTo: topAnchor, constant: 7),
-            subtitleLabel.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),
-            subtitleLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 1),
+            titleLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
+            subtitleLabel.leadingAnchor.constraint(equalTo: titleLabel.trailingAnchor, constant: 6),
+            subtitleLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
             chevron.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -14),
             chevron.centerYAnchor.constraint(equalTo: centerYAnchor),
             chevron.widthAnchor.constraint(equalToConstant: 16),
@@ -136,6 +136,20 @@ final class HomeViewController: UIViewController {
     private var showsSearch: Bool { !model.theme.bottomSearchEnabled }
     private var showsStatus: Bool { !model.status.isEmpty && !model.status.hasPrefix("已上传 ") }
 
+    /// Sections that actually exist right now. A hidden section must not
+    /// exist at all: a compositional-layout section with zero items still
+    /// reserves its height, which left the blank holes the user circled.
+    private var visibleSections: [Section] {
+        var list: [Section] = [.header]
+        if showsSearch { list.append(.search) }
+        list.append(.tools)
+        list.append(.picker)
+        if showsStatus { list.append(.status) }
+        list.append(.heading)
+        list.append(.items)
+        return list
+    }
+
     func hfont(_ size: CGFloat, _ weight: UIFont.Weight = .regular) -> UIFont {
         if let imported = model.importedFont { return imported.withSize(size) }
         return UIFont.systemFont(ofSize: size, weight: weight)
@@ -151,7 +165,7 @@ final class HomeViewController: UIViewController {
                     subitems: [NSCollectionLayoutItem(layoutSize: NSCollectionLayoutSize(widthDimension: .fractionalWidth(1), heightDimension: .estimated(60)))]))
         }
         let config = UICollectionViewCompositionalLayoutConfiguration()
-        config.interSectionSpacing = 18
+        config.interSectionSpacing = 12
         layout.configuration = config
         collectionView = UICollectionView(frame: view.bounds, collectionViewLayout: layout)
         collectionView.backgroundColor = .clear
@@ -193,7 +207,7 @@ final class HomeViewController: UIViewController {
     }
 
     private func layoutSection(_ index: Int) -> NSCollectionLayoutSection {
-        let section = Section(rawValue: index) ?? .items
+        let section = visibleSections.indices.contains(index) ? visibleSections[index] : .items
         if section == .items {
             let item = NSCollectionLayoutItem(layoutSize: NSCollectionLayoutSize(
                 widthDimension: .fractionalWidth(0.5), heightDimension: .estimated(76)))
@@ -202,7 +216,7 @@ final class HomeViewController: UIViewController {
                 subitems: [item, item])
             group.interItemSpacing = .fixed(10)
             let result = NSCollectionLayoutSection(group: group)
-            result.interGroupSpacing = 10
+            result.interGroupSpacing = 8
             result.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 20, bottom: 24, trailing: 20)
             return result
         }
@@ -255,19 +269,17 @@ final class HomeViewController: UIViewController {
 }
 
 extension HomeViewController: UICollectionViewDataSource, UICollectionViewDelegate {
-    func numberOfSections(in collectionView: UICollectionView) -> Int { Section.allCases.count }
+    func numberOfSections(in collectionView: UICollectionView) -> Int { visibleSections.count }
 
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        switch Section(rawValue: section) ?? .items {
-        case .header, .tools, .picker, .heading: return 1
-        case .search: return showsSearch ? 1 : 0
-        case .status: return showsStatus ? 1 : 0
+        switch visibleSections[section] {
+        case .header, .tools, .picker, .heading, .search, .status: return 1
         case .items: return visibleEntries.count
         }
     }
 
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
-        let section = Section(rawValue: indexPath.section) ?? .items
+        let section = visibleSections[indexPath.section]
         switch section {
         case .header:
             let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "header", for: indexPath) as! HomeHeaderCell
@@ -326,13 +338,13 @@ extension HomeViewController: UICollectionViewDataSource, UICollectionViewDelega
     }
 
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-        guard Section(rawValue: indexPath.section) == .items else { return }
+        guard visibleSections[indexPath.section] == .items else { return }
         let item = visibleEntries[indexPath.item]
         model.send("upload", ["id": item.id])
     }
 
     func collectionView(_ collectionView: UICollectionView, contextMenuConfigurationForItemsAt indexPaths: [IndexPath], point: CGPoint) -> UIContextMenuConfiguration? {
-        guard let indexPath = indexPaths.first, Section(rawValue: indexPath.section) == .items else { return nil }
+        guard let indexPath = indexPaths.first, visibleSections[indexPath.section] == .items else { return nil }
         let item = visibleEntries[indexPath.item]
         guard model.images[item.id] != nil else { return nil }
         return UIContextMenuConfiguration(identifier: nil, previewProvider: nil) { [weak self] _ in

@@ -148,7 +148,7 @@ final class ColorSettingsViewController: UIViewController {
 
         let footerLabel = UILabel()
         footerLabel.text = footer
-        footerLabel.font = hfont(12.5)
+        footerLabel.font = hfont(10)
         footerLabel.textColor = .secondaryLabel
         footerLabel.numberOfLines = 0
         container.addArrangedSubview(footerLabel)
@@ -159,7 +159,7 @@ final class ColorSettingsViewController: UIViewController {
         let row = UIView()
         let label = UILabel()
         label.text = title
-        label.font = hfont(15)
+        label.font = hfont(12.5)
         row.addSubview(label)
         row.addSubview(control)
         label.translatesAutoresizingMaskIntoConstraints = false

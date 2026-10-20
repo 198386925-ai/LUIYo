@@ -36,7 +36,7 @@ final class RulesViewController: UIViewController {
             scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
         ])
         stack.axis = .vertical
-        stack.spacing = 18
+        stack.spacing = 10
         scrollView.addSubview(stack)
         stack.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([

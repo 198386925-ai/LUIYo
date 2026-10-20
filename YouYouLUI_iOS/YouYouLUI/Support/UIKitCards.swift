@@ -29,6 +29,10 @@ final class StaticGlassView: UIVisualEffectView {
 
     override func layoutSubviews() {
         super.layoutSubviews()
+        // The system glass implementation parks an elevation shadow on
+        // this layer; the old material layer dropped it on every layout
+        // pass and the cards read flat. Do the same here.
+        removeExtraLayerShadows(layer)
         guard bounds.width > 0, bounds.height > 0 else { return }
         layer.cornerRadius = min(glassRadius, min(bounds.width, bounds.height) / 2)
         if #available(iOS 26.0, *), effect is UIGlassEffect {
