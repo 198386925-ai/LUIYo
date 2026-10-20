@@ -4,7 +4,7 @@ extension MainShellViewController: WKNavigationDelegate, WKUIDelegate {
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         nativeHomeReady = true
         syncAuthorization()
-        if isAuthorized { runNativeEngine("colors", ["values": homeModel.savedColors]) }
+        runNativeEngine("colors", ["values": homeModel.savedColors])
         runNativeEngine("state", [:])
         navigateFromNativeTab(activePage.rawValue)
         keepContentBelowNativeBar()

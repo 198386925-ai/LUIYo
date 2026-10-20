@@ -1,10 +1,11 @@
 import UIKit
 
 extension MainShellViewController {
-    /// Sends a command into the shared web engine. Every mutation is gated on
-    /// authorization again, because pickers return asynchronously.
+    /// Sends a command into the shared web engine. Authorization rule: an
+    /// unauthorized user may use everything EXCEPT exporting the ZIP, so
+    /// only the export action is gated here (the engine gates it too).
     func runNativeEngine(_ action: String, _ values: [String: Any]) {
-        guard ["state", "category", "search"].contains(action) || isAuthorized else {
+        if action == "export", !isAuthorized {
             showAuthorizationRequired()
             return
         }
@@ -22,7 +23,7 @@ extension MainShellViewController {
 
     /// Commands raised by the native homepage.
     func handleHomeCommand(_ action: String, _ values: [String: Any]) {
-        guard isAuthorized else { showAuthorizationRequired(); return }
+        if action == "export", !isAuthorized { showAuthorizationRequired(); return }
         guard nativeHomeReady else { return }
         switch action {
         case "upload", "batch", "fillImage":
@@ -55,7 +56,7 @@ extension MainShellViewController {
 
     func showAuthorizationRequired() {
         let alert = UIAlertController(title: "尚未激活",
-                                      message: "当前可以浏览页面。前往设置输入卡密，激活后才可使用功能。",
+                                      message: "其他功能都可以正常使用，只有导出 ZIP 需要激活。前往设置输入卡密即可激活。",
                                       preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "知道了", style: .cancel))
         alert.addAction(UIAlertAction(title: "前往设置", style: .default) { [weak self] _ in

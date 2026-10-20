@@ -118,8 +118,8 @@ final class FoldView: UIView {
     }
 
     func refreshAppearance() {
-        iconView.tintColor = UIAppColors.ink(for: traitCollection)
-        titleLabel.textColor = UIAppColors.ink(for: traitCollection)
+        iconView.tintColor = UIAppColors.inkDynamic
+        titleLabel.textColor = UIAppColors.inkDynamic
     }
 
     override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
@@ -198,7 +198,7 @@ final class SettingsViewController: UIViewController {
         let title = UILabel()
         title.text = "设置"
         title.font = UIFont.systemFont(ofSize: 25, weight: .bold)
-        title.textColor = UIAppColors.ink(for: traitCollection)
+        title.textColor = UIAppColors.inkDynamic
         stack.addArrangedSubview(title)
         let subtitle = UILabel()
         subtitle.text = "主题、使用说明与更新日志"
@@ -379,7 +379,7 @@ final class SettingsViewController: UIViewController {
         titleRow.spacing = 8
         titleRow.alignment = .center
         let shield = UIImageView(image: UIImage(systemName: "checkmark.shield"))
-        shield.tintColor = UIAppColors.ink(for: traitCollection)
+        shield.tintColor = UIAppColors.inkDynamic
         shield.contentMode = .scaleAspectFit
         shield.translatesAutoresizingMaskIntoConstraints = false
         shield.widthAnchor.constraint(equalToConstant: 19).isActive = true
@@ -387,7 +387,7 @@ final class SettingsViewController: UIViewController {
         let title = UILabel()
         title.text = "激活授权"
         title.font = UIFont.systemFont(ofSize: 13, weight: .semibold)
-        title.textColor = UIAppColors.ink(for: traitCollection)
+        title.textColor = UIAppColors.inkDynamic
         titleRow.addArrangedSubview(shield)
         titleRow.addArrangedSubview(title)
         inner.addArrangedSubview(titleRow)
@@ -451,7 +451,7 @@ final class SettingsViewController: UIViewController {
     private func smallButton(_ title: String, action: Selector) -> UIButton {
         let button = UIButton(type: .system)
         button.setTitle(title, for: .normal)
-        button.setTitleColor(UIAppColors.ink(for: traitCollection), for: .normal)
+        button.setTitleColor(UIAppColors.inkDynamic, for: .normal)
         button.titleLabel?.font = UIFont.systemFont(ofSize: 12.5)
         button.backgroundColor = UIColor(red: 120 / 255, green: 120 / 255, blue: 128 / 255, alpha: 0.10)
         button.layer.cornerRadius = 14
@@ -465,7 +465,7 @@ final class SettingsViewController: UIViewController {
         let titleLabel = UILabel()
         titleLabel.text = title
         titleLabel.font = UIFont.systemFont(ofSize: 12)
-        titleLabel.textColor = UIAppColors.ink(for: traitCollection)
+        titleLabel.textColor = UIAppColors.inkDynamic
         let subtitleLabel = UILabel()
         subtitleLabel.text = subtitle
         subtitleLabel.font = UIFont.systemFont(ofSize: 10)
@@ -783,12 +783,12 @@ final class SettingsViewController: UIViewController {
             tap.heightAnchor.constraint(equalToConstant: 46),
         ])
         let icon = UIImageView(image: UIImage(systemName: "arrow.down.circle", withConfiguration: UIImage.SymbolConfiguration(pointSize: 19, weight: .medium)))
-        icon.tintColor = UIAppColors.ink(for: traitCollection)
+        icon.tintColor = UIAppColors.inkDynamic
         icon.contentMode = .scaleAspectFit
         let title = UILabel()
         title.text = "检查更新"
         title.font = UIFont.systemFont(ofSize: 14.5, weight: .semibold)
-        title.textColor = UIAppColors.ink(for: traitCollection)
+        title.textColor = UIAppColors.inkDynamic
         updateStatus.font = UIFont.systemFont(ofSize: 11)
         updateStatus.textColor = UIAppColors.secondary
         let chevron = UIImageView(image: UIImage(systemName: "chevron.right", withConfiguration: UIImage.SymbolConfiguration(pointSize: 13, weight: .semibold)))

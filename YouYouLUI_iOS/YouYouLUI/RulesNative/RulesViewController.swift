@@ -50,7 +50,7 @@ final class RulesViewController: UIViewController {
         let title = UILabel()
         title.text = "规则"
         title.font = UIFont.systemFont(ofSize: 25, weight: .bold)
-        title.textColor = UIAppColors.ink(for: traitCollection)
+        title.textColor = UIAppColors.inkDynamic
         stack.addArrangedSubview(title)
         let subtitle = UILabel()
         subtitle.text = "LiquidUI 全局换图标命名规则"
@@ -96,7 +96,7 @@ final class RulesViewController: UIViewController {
         let name = UILabel()
         name.text = section
         name.font = UIFont.systemFont(ofSize: 15, weight: .semibold)
-        name.textColor = UIAppColors.ink(for: traitCollection)
+        name.textColor = UIAppColors.inkDynamic
         let count = UILabel()
         count.text = "\(rules.count) 项"
         count.font = UIFont.systemFont(ofSize: 12)
@@ -120,7 +120,7 @@ final class RulesViewController: UIViewController {
             let title = UILabel()
             title.text = rule.title
             title.font = UIFont.systemFont(ofSize: 12.5, weight: .semibold)
-            title.textColor = UIAppColors.ink(for: traitCollection)
+            title.textColor = UIAppColors.inkDynamic
             title.numberOfLines = 0
             let file = UILabel()
             file.text = rule.file

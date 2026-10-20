@@ -50,6 +50,8 @@ enum SettingsContent {
             ChangelogEntry(tag: "修复", text: "修复切换深色模式时颜色不同步、切换慢的问题。"),
             ChangelogEntry(tag: "修复", text: "修复首页工具按钮文字图标被玻璃盖住发闷、折叠箭头过小的问题。"),
             ChangelogEntry(tag: "修复", text: "修复设置页主题折叠收起时有一点残留的问题。"),
+            ChangelogEntry(tag: "修复", text: "修复未授权时功能仍被拦截的问题：现在除导出 ZIP 外，上传、补全、改色等都可正常使用。"),
+            ChangelogEntry(tag: "修复", text: "修复深色模式下设置页标题文字看不见的问题。"),
         ]),
         ChangelogVersion(title: "Version 1.0.7", isCurrent: false, entries: [
             ChangelogEntry(tag: "优化", text: "启动授权秒进：已登录时直接进入界面，后台静默验证，不再等待转圈。"),

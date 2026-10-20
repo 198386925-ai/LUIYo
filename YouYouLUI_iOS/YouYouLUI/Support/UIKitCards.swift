@@ -201,6 +201,11 @@ enum UIAppColors {
     static func ink(for trait: UITraitCollection) -> UIColor {
         trait.userInterfaceStyle == .dark ? inkDark : ink
     }
+    /// Ink as a dynamic colour: labels using it follow light/dark switches
+    /// on their own, without needing a rebuild or a trait-change refresh.
+    static var inkDynamic: UIColor {
+        UIColor { traits in traits.userInterfaceStyle == .dark ? inkDark : ink }
+    }
     static var secondary: UIColor { UIColor(red: 0x8E / 255, green: 0x8E / 255, blue: 0x93 / 255, alpha: 1) }
     static var divider: UIColor { UIColor(red: 120 / 255, green: 120 / 255, blue: 128 / 255, alpha: 0.12) }
     static var dividerStrong: UIColor { UIColor(red: 120 / 255, green: 120 / 255, blue: 128 / 255, alpha: 0.18) }
