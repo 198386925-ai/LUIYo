@@ -35,6 +35,10 @@ extension MainShellViewController {
                 self.preferences.bottomSearchEnabled = enabled
                 self.preferences.isSeparateSearch = separate
                 UIView.performWithoutAnimation { self.refreshTabItems() }
+                // The home page shows its own search box only while the
+                // bottom search is off; refresh its theme right away or the
+                // switch only takes effect after a relaunch.
+                self.refreshHomeTheme()
             }
         }
         model.onFontChanged = { [weak self] in

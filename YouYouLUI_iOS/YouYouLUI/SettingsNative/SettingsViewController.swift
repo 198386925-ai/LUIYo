@@ -6,7 +6,7 @@ import UniformTypeIdentifiers
 /// title, subtitle, chevron) and a collapsible content area. Collapsed it is
 /// capsule-shaped like the reference design; expanded it opens to radius 22.
 final class FoldView: UIView {
-    let card = GlassCardView(radius: 23)
+    let card = GlassCardView(radius: 24)
     let contentView = UIView()
     private let iconView = UIImageView()
     private let titleLabel = UILabel()
@@ -55,7 +55,7 @@ final class FoldView: UIView {
         ])
         inner.addArrangedSubview(header)
         header.translatesAutoresizingMaskIntoConstraints = false
-        header.heightAnchor.constraint(equalToConstant: 46).isActive = true
+        header.heightAnchor.constraint(equalToConstant: 48).isActive = true
         header.addSubview(iconView)
         header.addSubview(titleLabel)
         header.addSubview(subtitleLabel)
@@ -81,7 +81,7 @@ final class FoldView: UIView {
         contentView.isHidden = true
         contentView.clipsToBounds = true
         card.content.clipsToBounds = true
-        card.content.layer.cornerRadius = 23
+        card.content.layer.cornerRadius = 24
         inner.addArrangedSubview(contentView)
         refreshAppearance()
     }
@@ -94,20 +94,26 @@ final class FoldView: UIView {
 
     func setExpanded(_ value: Bool, animated: Bool) {
         expanded = value
-        // Hide/show FIRST, then animate the layout: with the content clipped
-        // to the card, a collapsing fold cannot leave residue behind.
+        // No height animation: stretching a glass surface frame-by-frame
+        // makes its backdrop sampling lag, so neighbouring folds' text
+        // shows through the card mid-animation (the overlap/ghosting seen
+        // on device). The layout switches instantly instead; only the
+        // chevron turns and the content fades in, which stays clean.
         contentView.isHidden = !value
-        card.surface.glassRadius = value ? 20 : 23
-        card.content.layer.cornerRadius = value ? 20 : 23
+        card.surface.glassRadius = value ? 26 : 24
+        card.content.layer.cornerRadius = value ? 26 : 24
         card.configure(useBlur: lastUseBlur, tint: lastTint)
-        let animations = {
-            self.chevron.transform = value ? CGAffineTransform(rotationAngle: .pi) : .identity
-            self.superview?.layoutIfNeeded()
-        }
+        superview?.layoutIfNeeded()
         if animated {
-            UIView.animate(withDuration: 0.28, delay: 0, options: [.curveEaseInOut, .beginFromCurrentState], animations: animations)
+            UIView.animate(withDuration: 0.2, delay: 0, options: [.curveEaseInOut, .beginFromCurrentState]) {
+                self.chevron.transform = value ? CGAffineTransform(rotationAngle: .pi) : .identity
+            }
+            if value {
+                contentView.alpha = 0
+                UIView.animate(withDuration: 0.18) { self.contentView.alpha = 1 }
+            }
         } else {
-            animations()
+            chevron.transform = value ? CGAffineTransform(rotationAngle: .pi) : .identity
         }
     }
 
@@ -140,7 +146,7 @@ final class SettingsViewController: UIViewController {
     private let stack = UIStackView()
     private let heroContainer = UIView()
     private var heroView: UIView?
-    private let activationCard = GlassCardView(radius: 22)
+    private let activationCard = GlassCardView(radius: 26)
     private let authStatus = UILabel()
     private let codeField = UITextField()
     private let activateButton = UIButton(type: .system)
@@ -148,7 +154,7 @@ final class SettingsViewController: UIViewController {
     private var themeFold: FoldView!
     private var guideFold: FoldView!
     private var changelogFold: FoldView!
-    private let updateCard = GlassCardView(radius: 23)
+    private let updateCard = GlassCardView(radius: 26)
     private var changelogCards: [GlassCardView] = []
     private let updateStatus = UILabel()
     private var backgroundWell: UIButton!
@@ -710,7 +716,7 @@ final class SettingsViewController: UIViewController {
         inner.axis = .vertical
         inner.spacing = 12
         for version in SettingsContent.changelog {
-            let cardView = GlassCardView(radius: 16)
+            let cardView = GlassCardView(radius: 26)
             cardView.configure(useBlur: homeModel.useBlur, tint: UIColor(nativeHex: homeModel.theme.card))
             changelogCards.append(cardView)
             let block = UIStackView()

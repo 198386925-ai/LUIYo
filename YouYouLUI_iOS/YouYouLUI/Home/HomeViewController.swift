@@ -217,10 +217,15 @@ final class HomeViewController: UIViewController {
             return result
         }
         let heights: [Section: CGFloat] = [.header: 76, .search: 44, .picker: 34, .status: 18, .heading: 24]
+        let height = heights[section] ?? 60
+        // The search capsule must keep its full 44pt: as an estimated
+        // (self-sizing) section it collapsed to the icon's height on device
+        // and rendered as a thin slit.
+        let heightDimension: NSCollectionLayoutDimension = section == .search ? .absolute(height) : .estimated(height)
         let item = NSCollectionLayoutItem(layoutSize: NSCollectionLayoutSize(
-            widthDimension: .fractionalWidth(1), heightDimension: .estimated(heights[section] ?? 60)))
+            widthDimension: .fractionalWidth(1), heightDimension: heightDimension))
         let group = NSCollectionLayoutGroup.vertical(
-            layoutSize: NSCollectionLayoutSize(widthDimension: .fractionalWidth(1), heightDimension: .estimated(heights[section] ?? 60)),
+            layoutSize: NSCollectionLayoutSize(widthDimension: .fractionalWidth(1), heightDimension: heightDimension),
             subitems: [item])
         let result = NSCollectionLayoutSection(group: group)
         result.contentInsets = NSDirectionalEdgeInsets(top: index == 0 ? 12 : 0, leading: 20, bottom: 0, trailing: 20)
