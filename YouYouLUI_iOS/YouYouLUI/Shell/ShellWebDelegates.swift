@@ -7,6 +7,7 @@ extension MainShellViewController: UITabBarControllerDelegate {
                           shouldSelect viewController: UIViewController) -> Bool {
         if viewController === searchTabController {
             // Action-only item: keep the currently selected page.
+            AppFeedback.tap()
             presentBottomSearch()
             return false
         }
@@ -17,6 +18,7 @@ extension MainShellViewController: UITabBarControllerDelegate {
     func tabBarController(_ tabBarController: UITabBarController,
                           didSelect viewController: UIViewController) {
         if #available(iOS 18.0, *) { return }
+        AppFeedback.tap()
         if viewController === searchTabController {
             selectPage(activePage)
             presentBottomSearch()
@@ -31,6 +33,7 @@ extension MainShellViewController: UITabBarControllerDelegate {
         if tab is UISearchTab || tab.identifier == "action.search" {
             // Both native entries open the same full-screen search page.
             // Keep the content tab selected so closing search restores it.
+            AppFeedback.tap()
             presentBottomSearch()
             return false
         }
@@ -42,6 +45,7 @@ extension MainShellViewController: UITabBarControllerDelegate {
     func tabBarController(_ tabBarController: UITabBarController,
                           didSelectTab selectedTab: UITab,
                           previousTab: UITab?) {
+        AppFeedback.tap()
         guard let tag = Int(selectedTab.identifier.replacingOccurrences(of: "page.", with: "")) else { return }
         navigateFromNativeTab(tag)
     }

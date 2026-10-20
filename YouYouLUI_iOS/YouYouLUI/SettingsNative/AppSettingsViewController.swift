@@ -29,6 +29,10 @@ enum AppFeedback {
     ]
 
     static func install() {
+        // Ambient category: the click mixes with other apps' audio instead
+        // of interrupting it, and it respects the silent switch.
+        try? AVAudioSession.sharedInstance().setCategory(.ambient, options: [])
+        try? AVAudioSession.sharedInstance().setActive(true)
         _ = UIControl.feedbackSwizzleOnce
         generators.forEach { $0.prepare() }
         // One-time migration from the old on/off switches (Builds 4–5).
@@ -61,7 +65,7 @@ private enum ClickSound {
             player = try? AVAudioPlayer(data: clickData(), fileTypeHint: AVFileType.wav.rawValue)
         }
         guard let player else { return }
-        player.volume = [0.35, 0.7, 1.0][level - 1]
+        player.volume = [0.15, 0.4, 0.7][level - 1]
         player.currentTime = 0
         player.play()
     }
@@ -73,8 +77,8 @@ private enum ClickSound {
         pcm.reserveCapacity(frames * 2)
         for index in 0..<frames {
             let t = Double(index) / Double(sampleRate)
-            let envelope = exp(-t * 160)
-            let value = Int16(12000 * envelope * sin(2 * Double.pi * 1900 * t))
+            let envelope = exp(-t * 220)
+            let value = Int16(5000 * envelope * sin(2 * Double.pi * 1500 * t))
             var little = value.littleEndian
             pcm.append(Data(bytes: &little, count: 2))
         }

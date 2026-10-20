@@ -48,6 +48,7 @@ enum SettingsContent {
             ChangelogEntry(tag: "优化", text: "更改字体页每次打开默认停在中文字体，不再记忆上次页签；应用位置条再压小。"),
             ChangelogEntry(tag: "优化", text: "五个入口行高度统一为 42；设置页触控反馈与声音改为四档切换（关闭/轻微/中度/高度、关闭/柔和/适中/响亮）。"),
             ChangelogEntry(tag: "优化", text: "开关与调色盘圆钮改小一号；设置页卡片行高统一为 48。"),
+            ChangelogEntry(tag: "优化", text: "应用位置勾选改为圆形黑勾；点击音量整体调低且不再打断其他应用的音乐；底栏切换补上触控反馈与声音。"),
             ChangelogEntry(tag: "修复", text: "修复更改字体页返回按钮点按不灵敏的问题。"),
             ChangelogEntry(tag: "修复", text: "修复更改字体页英文字体/中文字体切换打开时不显示当前选中状态、点按后才显示的问题。"),
             ChangelogEntry(tag: "修复", text: "修复使用说明第一条与其余条目排版不一致的问题，统一为圆点条目。"),
@@ -57,6 +58,8 @@ enum SettingsContent {
             ChangelogEntry(tag: "修复", text: "修复首页顶部状态行蓝字与灰字大小不一致的问题。"),
             ChangelogEntry(tag: "修复", text: "修复打开更改字体页时选中状态闪一下的问题。"),
             ChangelogEntry(tag: "修复", text: "修复分段切换打开时不显示选中块的问题（选中块改按控件宽度直接定位，不再受布局时机影响）。"),
+            ChangelogEntry(tag: "修复", text: "修复设置页检查更新与设置之间间距比其他卡片大的问题；入口行箭头改小。"),
+            ChangelogEntry(tag: "修复", text: "修复多个内置字体文件残缺导致预览不显示的问题（IBM Plex Sans SC、Google Sans Flex、Inter 斜体），已全部换成完整的官方文件。"),
         ]),
         ChangelogVersion(title: "Version 1.0.7-1", isCurrent: false, entries: [
             ChangelogEntry(tag: "新增", text: "自定义颜色新增「深色模式」分组：可单独开关深色图标反转，并自定义深色颜色。"),

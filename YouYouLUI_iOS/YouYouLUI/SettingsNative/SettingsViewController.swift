@@ -43,7 +43,7 @@ final class FoldView: UIView {
         subtitleLabel.font = UIFont.systemFont(ofSize: 8)
         subtitleLabel.textColor = UIAppColors.secondary
         subtitleLabel.isHidden = true
-        chevron.image = UIImage(systemName: "chevron.down", withConfiguration: UIImage.SymbolConfiguration(pointSize: 17, weight: .semibold))
+        chevron.image = UIImage(systemName: "chevron.down", withConfiguration: UIImage.SymbolConfiguration(pointSize: 13, weight: .semibold))
         chevron.tintColor = UIAppColors.ink
         chevron.contentMode = .scaleAspectFit
 
@@ -279,7 +279,7 @@ final class SettingsViewController: UIViewController {
         footer.font = UIFont.systemFont(ofSize: 12)
         footer.textColor = UIAppColors.secondary
         stack.addArrangedSubview(footer)
-        stack.setCustomSpacing(12, after: updateCard)
+        stack.setCustomSpacing(8, after: updateCard)
         stack.setCustomSpacing(12, after: appSettingsCard)
 
         model.objectWillChange
@@ -593,7 +593,7 @@ final class SettingsViewController: UIViewController {
 
         // Custom font is an entry row now: one tap opens the choices
         // (import / restore) instead of crowding the row with buttons.
-        let fontChevron = UIImageView(image: UIImage(systemName: "chevron.right", withConfiguration: UIImage.SymbolConfiguration(pointSize: 17, weight: .semibold)))
+        let fontChevron = UIImageView(image: UIImage(systemName: "chevron.right", withConfiguration: UIImage.SymbolConfiguration(pointSize: 13, weight: .semibold)))
         fontChevron.tintColor = UIAppColors.inkDynamic
         fontChevron.contentMode = .scaleAspectFit
         fontChevron.translatesAutoresizingMaskIntoConstraints = false
@@ -779,7 +779,7 @@ final class SettingsViewController: UIViewController {
         title.text = "检查更新"
         title.font = UIFont.systemFont(ofSize: 12, weight: .semibold)
         title.textColor = UIAppColors.inkDynamic
-        let chevron = UIImageView(image: UIImage(systemName: "chevron.right", withConfiguration: UIImage.SymbolConfiguration(pointSize: 17, weight: .semibold)))
+        let chevron = UIImageView(image: UIImage(systemName: "chevron.right", withConfiguration: UIImage.SymbolConfiguration(pointSize: 13, weight: .semibold)))
         chevron.tintColor = UIAppColors.inkDynamic
         tap.addSubview(icon)
         tap.addSubview(title)
@@ -823,7 +823,7 @@ final class SettingsViewController: UIViewController {
         title.text = "设置"
         title.font = UIFont.systemFont(ofSize: 12, weight: .semibold)
         title.textColor = UIAppColors.inkDynamic
-        let chevron = UIImageView(image: UIImage(systemName: "chevron.right", withConfiguration: UIImage.SymbolConfiguration(pointSize: 17, weight: .semibold)))
+        let chevron = UIImageView(image: UIImage(systemName: "chevron.right", withConfiguration: UIImage.SymbolConfiguration(pointSize: 13, weight: .semibold)))
         chevron.tintColor = UIAppColors.inkDynamic
         tap.addSubview(icon)
         tap.addSubview(title)

@@ -323,8 +323,8 @@ final class FontSettingsViewController: UIViewController {
     private func refreshCheckboxes() {
         for (area, box) in checkboxImages {
             let on = library.isEnabled(area)
-            box.image = UIImage(systemName: on ? "checkmark.square.fill" : "square",
-                                withConfiguration: UIImage.SymbolConfiguration(pointSize: 16, weight: .regular))
+            box.image = UIImage(systemName: on ? "checkmark.circle.fill" : "circle",
+                                withConfiguration: UIImage.SymbolConfiguration(pointSize: 17, weight: .regular))
             box.tintColor = on ? UIAppColors.inkDynamic : UIAppColors.secondary
         }
     }
