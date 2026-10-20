@@ -12,7 +12,7 @@ final class RulesViewController: UIViewController {
     private let stack = UIStackView()
     private var sectionCards: [String: GlassCardView] = [:]
     private var rowViews: [String: [UIView]] = [:]
-    private var emptyLabels: [String: UILabel] = [:]
+    private var emptyLabels: [String: UIView] = [:]
     private var cancellables = Set<AnyCancellable>()
 
     init(model: RulesNativeModel, homeModel: NativeHomeModel) {
@@ -77,7 +77,7 @@ final class RulesViewController: UIViewController {
     }
 
     private func makeSectionCard(_ section: String) -> GlassCardView {
-        let rules = namingRules.filter { $0.section == section }
+        let rules = NamingRulesData.rules.filter { $0.section == section }
         let card = GlassCardView(radius: 24)
         sectionCards[section] = card
         let inner = UIStackView()
@@ -180,7 +180,7 @@ final class RulesViewController: UIViewController {
     private func applyFilter() {
         let query = model.query.trimmingCharacters(in: .whitespacesAndNewlines)
         for section in ["LiquidUI", "原版微信"] {
-            let rules = namingRules.filter { $0.section == section }
+            let rules = NamingRulesData.rules.filter { $0.section == section }
             var visible = 0
             for (index, rule) in rules.enumerated() {
                 let show = query.isEmpty || rule.title.contains(query) || rule.file.lowercased().contains(query.lowercased())

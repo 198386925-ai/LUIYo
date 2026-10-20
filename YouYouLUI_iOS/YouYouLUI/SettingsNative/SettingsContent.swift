@@ -7,15 +7,15 @@ struct SettingsGuideSection {
     let body: String
 }
 
-struct SettingsChangelogEntry {
+struct ChangelogEntry {
     let tag: String
     let text: String
 }
 
-struct SettingsChangelogVersion {
+struct ChangelogVersion {
     let title: String
     let isCurrent: Bool
-    let entries: [SettingsChangelogEntry]
+    let entries: [ChangelogEntry]
 }
 
 enum SettingsContent {
@@ -28,7 +28,7 @@ enum SettingsContent {
         ("导出：", "生成 ZIP 后可改名，再通过 iPhone 系统分享菜单保存或分享。导出的 ZIP 解压后，把全部图片放进「文件」App → 微信 → LiquidUI/Icons 根目录（不带 @3x 的那组图也放这里），再到 LiquidUI 设置 → 全局换图标点「重新扫描图片文件夹」或重启微信。"),
     ].map { SettingsGuideSection(title: $0.0, body: $0.1) }
 
-    static let changelog: [SettingsChangelogVersion] = [
+    static let changelog: [ChangelogVersion] = [
         ChangelogVersion(title: "Version 1.0.7-1", isCurrent: true, entries: [
             ChangelogEntry(tag: "新增", text: "自定义颜色新增「深色模式」分组：可单独开关深色图标反转，并自定义深色颜色。"),
             ChangelogEntry(tag: "优化", text: "设置页「滚动时缩小底栏」开关改为网页原生样式，直接焊死在 HTML 里，展开/收起自动同步，不再飘移。"),
