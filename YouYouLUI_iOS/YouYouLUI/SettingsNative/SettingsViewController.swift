@@ -160,18 +160,16 @@ final class SettingsViewController: UIViewController {
     private var changelogFold: FoldView!
     private let updateCard = GlassCardView(radius: 26)
     private var changelogCards: [GlassCardView] = []
-    private var backgroundWell: UIButton!
-    private var cardWell: UIButton!
+    private var backgroundWell: UIColorWell!
+    private var cardWell: UIColorWell!
     private var minimizeSwitch: UISwitch!
     private var appearanceSeg: PillSegmentedControl!
     private var materialSeg: PillSegmentedControl!
     private var bottomSearchSeg: PillSegmentedControl!
-    private var colorTarget: ColorTarget = .background
     private var fontSubtitleLabel: UILabel?
     private var authIconView: UIImageView?
     private var cancellables = Set<AnyCancellable>()
 
-    private enum ColorTarget { case background, card }
 
     init(model: SettingsNativeModel, homeModel: NativeHomeModel) {
         self.model = model
@@ -520,16 +518,17 @@ final class SettingsViewController: UIViewController {
         return row
     }
 
-    private func colorWell() -> UIButton {
-        let button = UIButton(type: .custom)
-        button.layer.cornerRadius = 17
-        button.layer.borderWidth = 1 / UIScreen.main.scale
-        button.layer.borderColor = UIAppColors.dividerStrong.cgColor
-        button.clipsToBounds = true
-        button.translatesAutoresizingMaskIntoConstraints = false
-        button.widthAnchor.constraint(equalToConstant: 34).isActive = true
-        button.heightAnchor.constraint(equalToConstant: 34).isActive = true
-        return button
+    /// The official system colour well: iOS draws it (colour disc with the
+    /// spectrum ring) and presents the official colour picker on tap;
+    /// changes arrive as `.valueChanged`.
+    private func colorWell(title: String) -> UIColorWell {
+        let well = UIColorWell()
+        well.title = title
+        well.supportsAlpha = false
+        well.translatesAutoresizingMaskIntoConstraints = false
+        well.widthAnchor.constraint(equalToConstant: 34).isActive = true
+        well.heightAnchor.constraint(equalToConstant: 34).isActive = true
+        return well
     }
 
     private func buildThemeContent() -> UIView {
@@ -567,16 +566,16 @@ final class SettingsViewController: UIViewController {
         materialSeg.widthAnchor.constraint(equalToConstant: 132).isActive = true
         inner.addArrangedSubview(themeRow(title: "卡片材质", subtitle: "iOS 26+ 原生液态玻璃 / UIKit 原生磨砂", control: materialSeg, divider: true))
 
-        backgroundWell = colorWell()
-        backgroundWell.addTarget(self, action: #selector(pickBackgroundColor), for: .touchUpInside)
+        backgroundWell = colorWell(title: "背景颜色")
+        backgroundWell.addTarget(self, action: #selector(backgroundWellChanged), for: .valueChanged)
         let bgControl = UIStackView(arrangedSubviews: [backgroundWell, smallButton("恢复", action: #selector(resetBackground))])
         bgControl.axis = .horizontal
         bgControl.spacing = 8
         bgControl.alignment = .center
         inner.addArrangedSubview(themeRow(title: "背景颜色", subtitle: "浅色背景", control: bgControl, divider: true))
 
-        cardWell = colorWell()
-        cardWell.addTarget(self, action: #selector(pickCardColor), for: .touchUpInside)
+        cardWell = colorWell(title: "卡片颜色")
+        cardWell.addTarget(self, action: #selector(cardWellChanged), for: .valueChanged)
         let cardControl = UIStackView(arrangedSubviews: [cardWell, smallButton("恢复", action: #selector(resetCard))])
         cardControl.axis = .horizontal
         cardControl.spacing = 8
@@ -619,20 +618,11 @@ final class SettingsViewController: UIViewController {
     @objc private func minimizeChanged(_ sender: UISwitch) { model.minimizeBottomBar = sender.isOn }
     @objc private func resetBackground() { model.resetBackgroundColor() }
     @objc private func resetCard() { model.resetCardColor() }
-    @objc private func pickBackgroundColor() {
-        colorTarget = .background
-        presentColorPicker(current: model.backgroundColorHex)
+    @objc private func backgroundWellChanged() {
+        if let color = backgroundWell.selectedColor { model.updateBackgroundColor(color.nativeHex) }
     }
-    @objc private func pickCardColor() {
-        colorTarget = .card
-        presentColorPicker(current: model.cardColorHex)
-    }
-    private func presentColorPicker(current hex: String) {
-        let picker = UIColorPickerViewController()
-        picker.selectedColor = UIColor(nativeHex: hex)
-        picker.supportsAlpha = false
-        picker.delegate = self
-        present(picker, animated: true)
+    @objc private func cardWellChanged() {
+        if let color = cardWell.selectedColor { model.updateCardColor(color.nativeHex) }
     }
     @objc private func fontEntryTapped() {
         guard let controller = model.fontController else { return }
@@ -676,26 +666,9 @@ final class SettingsViewController: UIViewController {
         let inner = UIStackView()
         inner.axis = .vertical
         inner.spacing = 10
-        for (index, section) in SettingsContent.guide.enumerated() {
+        for section in SettingsContent.guide {
             let label = UILabel()
             label.numberOfLines = 0
-            if index == 0 {
-                let text = NSMutableAttributedString()
-                text.append(NSAttributedString(string: section.title + "\n", attributes: [
-                    .font: UIFont.systemFont(ofSize: 13.5, weight: .semibold),
-                    .foregroundColor: UIColor.label,
-                ]))
-                let para = NSMutableParagraphStyle()
-                para.lineSpacing = 4
-                text.append(NSAttributedString(string: section.body, attributes: [
-                    .font: UIFont.systemFont(ofSize: 13.5),
-                    .foregroundColor: UIColor.secondaryLabel,
-                    .paragraphStyle: para,
-                ]))
-                label.attributedText = text
-                inner.addArrangedSubview(label)
-                inner.setCustomSpacing(14, after: label)
-            } else {
                 let text = NSMutableAttributedString()
                 let para = NSMutableParagraphStyle()
                 para.lineSpacing = 3
@@ -716,7 +689,6 @@ final class SettingsViewController: UIViewController {
                 ]))
                 label.attributedText = text
                 inner.addArrangedSubview(label)
-            }
         }
         return paddedContent(inner)
     }
@@ -873,8 +845,8 @@ final class SettingsViewController: UIViewController {
             spinner.stopAnimating()
             activateButton.setTitle("激活", for: .normal)
         }
-        backgroundWell?.backgroundColor = UIColor(nativeHex: model.backgroundColorHex)
-        cardWell?.backgroundColor = UIColor(nativeHex: model.cardColorHex)
+        backgroundWell?.selectedColor = UIColor(nativeHex: model.backgroundColorHex)
+        cardWell?.selectedColor = UIColor(nativeHex: model.cardColorHex)
         minimizeSwitch?.setOn(model.minimizeBottomBar, animated: false)
         appearanceSeg?.setSelectedValue(model.appearanceMode)
         materialSeg?.setSelectedValue(model.cardMaterial)
@@ -902,12 +874,3 @@ extension SettingsViewController: UITextFieldDelegate {
     }
 }
 
-extension SettingsViewController: UIColorPickerViewControllerDelegate {
-    func colorPickerViewControllerDidSelectColor(_ viewController: UIColorPickerViewController) {
-        let hex = viewController.selectedColor.nativeHex
-        switch colorTarget {
-        case .background: model.updateBackgroundColor(hex)
-        case .card: model.updateCardColor(hex)
-        }
-    }
-}

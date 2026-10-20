@@ -118,6 +118,7 @@
 		AA4000000000000000040002 /* changelog.png in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000030002 /* changelog.png */; };
 		AA4000000000000000040003 /* guide.png in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000030003 /* guide.png */; };
 		AA4000000000000000040004 /* theme.png in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000030004 /* theme.png */; };
+		AA4000000000000000040010 /* tab-settings@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000030010 /* tab-settings@3x.png */; };
 		AA4000000000000000040005 /* update.png in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000030005 /* update.png */; };
 		AA5000000000000000002001 /* SettingsNative/UpdateCheckViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA5000000000000000001001 /* SettingsNative/UpdateCheckViewController.swift */; };
 /* End PBXBuildFile section */
@@ -226,6 +227,7 @@
 		AA4000000000000000030002 /* changelog.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = changelog.png; sourceTree = "<group>"; };
 		AA4000000000000000030003 /* guide.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = guide.png; sourceTree = "<group>"; };
 		AA4000000000000000030004 /* theme.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = theme.png; sourceTree = "<group>"; };
+		AA4000000000000000030010 /* tab-settings@3x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "tab-settings@3x.png"; sourceTree = "<group>"; };
 		AA4000000000000000030005 /* update.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = update.png; sourceTree = "<group>"; };
 		AA5000000000000000001001 /* SettingsNative/UpdateCheckViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "YouYouLUI/SettingsNative/UpdateCheckViewController.swift"; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
@@ -462,6 +464,7 @@
 				AA4000000000000000030002 /* changelog.png */,
 				AA4000000000000000030003 /* guide.png */,
 				AA4000000000000000030004 /* theme.png */,
+				AA4000000000000000030010 /* tab-settings@3x.png */,
 				AA4000000000000000030005 /* update.png */,
 			);
 			path = Icons;
@@ -563,6 +566,7 @@
 				AA4000000000000000040002 /* changelog.png in Resources */,
 				AA4000000000000000040003 /* guide.png in Resources */,
 				AA4000000000000000040004 /* theme.png in Resources */,
+				AA4000000000000000040010 /* tab-settings@3x.png in Resources */,
 				AA4000000000000000040005 /* update.png in Resources */,
 				AA3000000000000000000115 /* extra-rules.json in Resources */,
 				AA3000000000000000000116 /* native-preview-catalog.json in Resources */,

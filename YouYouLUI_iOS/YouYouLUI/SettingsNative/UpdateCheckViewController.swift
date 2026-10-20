@@ -95,18 +95,20 @@ final class UpdateCheckViewController: UIViewController {
     @objc private func backTapped() { dismiss(animated: true) }
 
     private func infoCard() -> UIView {
-        let card = GlassCardView(radius: 26)
-        card.configure(useBlur: homeModel.useBlur, tint: UIColor(nativeHex: homeModel.theme.card))
+        let card = UIView()
+        card.backgroundColor = UIColor(nativeHex: homeModel.theme.card)
+        card.layer.cornerRadius = 26
+        card.clipsToBounds = true
         let inner = UIStackView()
         inner.axis = .vertical
         inner.spacing = 8
-        card.content.addSubview(inner)
+        card.addSubview(inner)
         inner.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            inner.leadingAnchor.constraint(equalTo: card.content.leadingAnchor, constant: 16),
-            inner.trailingAnchor.constraint(equalTo: card.content.trailingAnchor, constant: -16),
-            inner.topAnchor.constraint(equalTo: card.content.topAnchor, constant: 14),
-            inner.bottomAnchor.constraint(equalTo: card.content.bottomAnchor, constant: -14),
+            inner.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 16),
+            inner.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -16),
+            inner.topAnchor.constraint(equalTo: card.topAnchor, constant: 14),
+            inner.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -14),
         ])
         let name = UILabel()
         name.text = "LUIYo"

@@ -37,8 +37,12 @@ enum SettingsContent {
             ChangelogEntry(tag: "优化", text: "设置页箭头统一为与自定义字体入口相同的大小并改细；主题、使用说明、更新日志、检查更新的图标线条进一步改细。"),
             ChangelogEntry(tag: "优化", text: "更改字体页的卡片改为纯色效果，不再使用液态玻璃；主题里自定义字体入口增加留白，不再贴边。"),
             ChangelogEntry(tag: "优化", text: "背景颜色与卡片颜色按钮改为圆形，与系统颜色盘一致。"),
+            ChangelogEntry(tag: "优化", text: "设置页主题、使用说明、更新日志、检查更新换上新图标，底部设置标签换上齿轮图标。"),
+            ChangelogEntry(tag: "优化", text: "背景颜色、卡片颜色与首页自定义颜色按钮换成系统官方颜色盘组件，点开为官方取色器。"),
+            ChangelogEntry(tag: "优化", text: "更改字体页应用位置改为一行并排显示，并记住上次停留的英文字体或中文字体页签；首页自定义颜色页卡片圆角加大，检查更新页卡片改为纯色。"),
             ChangelogEntry(tag: "修复", text: "修复更改字体页返回按钮点按不灵敏的问题。"),
             ChangelogEntry(tag: "修复", text: "修复更改字体页英文字体/中文字体切换打开时不显示当前选中状态、点按后才显示的问题。"),
+            ChangelogEntry(tag: "修复", text: "修复使用说明第一条与其余条目排版不一致的问题，统一为圆点条目。"),
         ]),
         ChangelogVersion(title: "Version 1.0.7-1", isCurrent: false, entries: [
             ChangelogEntry(tag: "新增", text: "自定义颜色新增「深色模式」分组：可单独开关深色图标反转，并自定义深色颜色。"),

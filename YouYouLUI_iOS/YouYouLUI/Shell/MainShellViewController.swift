@@ -200,9 +200,18 @@ final class MainShellViewController: UITabBarController {
         // system appearance.
         delegate = self
         pageTabs = ShellPage.allCases.map { page in
-            let item = UITabBarItem(title: page.title,
-                                    image: UIImage(systemName: page.iconName),
-                                    selectedImage: UIImage(systemName: page.selectedIconName))
+            let image: UIImage?
+            let selectedImage: UIImage?
+            if page == .settings, let gear = UIImage(named: "tab-settings") {
+                // The settings tab uses the user's own gear artwork as a
+                // template image (tinted by the tab bar like the others).
+                image = gear.withRenderingMode(.alwaysTemplate)
+                selectedImage = gear.withRenderingMode(.alwaysTemplate)
+            } else {
+                image = UIImage(systemName: page.iconName)
+                selectedImage = UIImage(systemName: page.selectedIconName)
+            }
+            let item = UITabBarItem(title: page.title, image: image, selectedImage: selectedImage)
             item.tag = page.rawValue
             return item
         }

@@ -20,8 +20,7 @@ final class ColorSettingsViewController: UIViewController {
     private var saved = false
 
     private enum PickerTarget { case selected, darkSelected, all, darkMode }
-    private var pickerTarget: PickerTarget = .selected
-    private var wells: [PickerTarget: UIButton] = [:]
+    private var wells: [PickerTarget: UIColorWell] = [:]
     private var switches: [PickerTarget: UISwitch] = [:]
 
     init(model: NativeHomeModel) {
@@ -107,7 +106,7 @@ final class ColorSettingsViewController: UIViewController {
 
         let card = UIView()
         card.backgroundColor = .secondarySystemGroupedBackground
-        card.layer.cornerRadius = 12
+        card.layer.cornerRadius = 26
         let rows = UIStackView()
         rows.axis = .vertical
         rows.spacing = 0
@@ -132,16 +131,16 @@ final class ColorSettingsViewController: UIViewController {
         divider.heightAnchor.constraint(equalToConstant: 1 / UIScreen.main.scale).isActive = true
         rows.addArrangedSubview(divider)
 
-        let well = UIButton(type: .custom)
-        well.backgroundColor = color
-        well.layer.cornerRadius = 8
-        well.layer.borderWidth = 1 / UIScreen.main.scale
-        well.layer.borderColor = UIAppColors.dividerStrong.cgColor
-        well.clipsToBounds = true
+        // The official system colour well (drawn by iOS, presents the
+        // official picker on tap); changes arrive as `.valueChanged`.
+        let well = UIColorWell()
+        well.title = colorTitle
+        well.supportsAlpha = false
+        well.selectedColor = color
         well.translatesAutoresizingMaskIntoConstraints = false
-        well.widthAnchor.constraint(equalToConstant: 30).isActive = true
-        well.heightAnchor.constraint(equalToConstant: 30).isActive = true
-        well.addTarget(self, action: #selector(wellTapped(_:)), for: .touchUpInside)
+        well.widthAnchor.constraint(equalToConstant: 34).isActive = true
+        well.heightAnchor.constraint(equalToConstant: 34).isActive = true
+        well.addTarget(self, action: #selector(wellChanged(_:)), for: .valueChanged)
         wells[target] = well
         rows.addArrangedSubview(switchRow(title: colorTitle, control: well))
         container.addArrangedSubview(card)
@@ -186,14 +185,15 @@ final class ColorSettingsViewController: UIViewController {
         refreshEnabledStates()
     }
 
-    @objc private func wellTapped(_ sender: UIButton) {
+    @objc private func wellChanged(_ sender: UIColorWell) {
         for (target, well) in wells where well === sender {
-            pickerTarget = target
-            let picker = UIColorPickerViewController()
-            picker.supportsAlpha = false
-            picker.selectedColor = color(for: target)
-            picker.delegate = self
-            present(picker, animated: true)
+            guard let color = sender.selectedColor else { return }
+            switch target {
+            case .selected: selectedColor = color; selectedLightCustom = true
+            case .darkSelected: darkSelectedColor = color; selectedDarkCustom = true
+            case .all: allColor = color
+            case .darkMode: darkModeColor = color
+            }
             return
         }
     }
@@ -249,15 +249,3 @@ final class ColorSettingsViewController: UIViewController {
     }
 }
 
-extension ColorSettingsViewController: UIColorPickerViewControllerDelegate {
-    func colorPickerViewControllerDidSelectColor(_ viewController: UIColorPickerViewController) {
-        let color = viewController.selectedColor
-        switch pickerTarget {
-        case .selected: selectedColor = color; selectedLightCustom = true
-        case .darkSelected: darkSelectedColor = color; selectedDarkCustom = true
-        case .all: allColor = color
-        case .darkMode: darkModeColor = color
-        }
-        wells[pickerTarget]?.backgroundColor = color
-    }
-}

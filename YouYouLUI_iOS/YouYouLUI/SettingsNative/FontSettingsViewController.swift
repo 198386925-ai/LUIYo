@@ -86,6 +86,7 @@ final class FontSettingsViewController: UIViewController {
     var onChanged: (() -> Void)?
 
     private var chineseTab = false
+    private var scriptSeg: PillSegmentedControl?
     private var query = ""
 
     private let scrollView = UIScrollView()
@@ -174,12 +175,17 @@ final class FontSettingsViewController: UIViewController {
         stack.setCustomSpacing(4, after: areaNote)
         // 3) Latin / Chinese switch.
         let scriptSeg = PillSegmentedControl()
+        self.scriptSeg = scriptSeg
         scriptSeg.options = [("latin", "英文字体"), ("chinese", "中文字体")]
         scriptSeg.onChange = { [weak self] value in
             self?.chineseTab = (value == "chinese")
+            UserDefaults.standard.set(value, forKey: "fontui.scriptTab")
             self?.rebuildList()
         }
-        scriptSeg.setSelectedValue("latin", animated: false)
+        // Reopen on the tab the user last used, so their side is already
+        // showing instead of always starting on the Latin tab.
+        chineseTab = UserDefaults.standard.string(forKey: "fontui.scriptTab") == "chinese"
+        scriptSeg.setSelectedValue(chineseTab ? "chinese" : "latin", animated: false)
         stack.addArrangedSubview(scriptSeg)
         // 4) Search card.
         stack.addArrangedSubview(searchCard())
@@ -219,6 +225,13 @@ final class FontSettingsViewController: UIViewController {
     }
 
     // MARK: - Preview
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        // Re-assert the segmented selection once the page is fully on
+        // screen, so the current tab shows as selected without a tap.
+        scriptSeg?.setSelectedValue(chineseTab ? "chinese" : "latin", animated: false)
+    }
 
     private func previewCard() -> UIView {
         let card = configuredCard(radius: 26)
@@ -270,7 +283,8 @@ final class FontSettingsViewController: UIViewController {
     private func areaCard() -> UIView {
         let card = configuredCard(radius: 20)
         let inner = UIStackView()
-        inner.axis = .vertical
+        inner.axis = .horizontal
+        inner.distribution = .fillEqually
         inner.spacing = 0
         card.addSubview(inner)
         inner.translatesAutoresizingMaskIntoConstraints = false
@@ -292,31 +306,22 @@ final class FontSettingsViewController: UIViewController {
             label.text = area.title
             label.font = UIFont.systemFont(ofSize: 15)
             label.textColor = UIAppColors.inkDynamic
-            row.addSubview(box)
-            row.addSubview(label)
+            let group = UIStackView(arrangedSubviews: [box, label])
+            group.axis = .horizontal
+            group.spacing = 8
+            group.alignment = .center
+            group.isUserInteractionEnabled = false
+            row.addSubview(group)
+            group.translatesAutoresizingMaskIntoConstraints = false
             box.translatesAutoresizingMaskIntoConstraints = false
-            label.translatesAutoresizingMaskIntoConstraints = false
             NSLayoutConstraint.activate([
                 row.heightAnchor.constraint(equalToConstant: 52),
-                box.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: 16),
-                box.centerYAnchor.constraint(equalTo: row.centerYAnchor),
                 box.widthAnchor.constraint(equalToConstant: 23),
                 box.heightAnchor.constraint(equalToConstant: 23),
-                label.leadingAnchor.constraint(equalTo: box.trailingAnchor, constant: 12),
-                label.centerYAnchor.constraint(equalTo: row.centerYAnchor),
+                group.centerXAnchor.constraint(equalTo: row.centerXAnchor),
+                group.centerYAnchor.constraint(equalTo: row.centerYAnchor),
             ])
             inner.addArrangedSubview(row)
-            if index < areas.count - 1 {
-                let line = UIView()
-                line.backgroundColor = UIAppColors.divider
-                inner.addArrangedSubview(line)
-                line.translatesAutoresizingMaskIntoConstraints = false
-                NSLayoutConstraint.activate([
-                    line.heightAnchor.constraint(equalToConstant: 1 / UIScreen.main.scale),
-                    line.leadingAnchor.constraint(equalTo: inner.leadingAnchor, constant: 51),
-                    line.trailingAnchor.constraint(equalTo: inner.trailingAnchor, constant: -16),
-                ])
-            }
         }
         refreshCheckboxes()
         return card
