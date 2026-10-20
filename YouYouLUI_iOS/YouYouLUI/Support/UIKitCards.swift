@@ -172,6 +172,10 @@ final class PillSegmentedControl: UIView {
         }
         thumbView.isHidden = false
         let target = buttons[index]
+        // The buttons' frames are only final after the stack has laid out;
+        // without this the thumb lands at a zero frame on first display and
+        // only shows up after a tap forces a fresh pass.
+        stack?.layoutIfNeeded()
         let work = {
             if let stack = self.stack {
                 self.thumbView.frame = self.trackView.convert(target.frame, from: stack)

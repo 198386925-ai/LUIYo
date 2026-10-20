@@ -38,6 +38,7 @@ enum SettingsContent {
             ChangelogEntry(tag: "优化", text: "更改字体页的卡片改为纯色效果，不再使用液态玻璃；主题里自定义字体入口增加留白，不再贴边。"),
             ChangelogEntry(tag: "优化", text: "背景颜色与卡片颜色按钮改为圆形，与系统颜色盘一致。"),
             ChangelogEntry(tag: "修复", text: "修复更改字体页返回按钮点按不灵敏的问题。"),
+            ChangelogEntry(tag: "修复", text: "修复更改字体页英文字体/中文字体切换打开时不显示当前选中状态、点按后才显示的问题。"),
         ]),
         ChangelogVersion(title: "Version 1.0.7-1", isCurrent: false, entries: [
             ChangelogEntry(tag: "新增", text: "自定义颜色新增「深色模式」分组：可单独开关深色图标反转，并自定义深色颜色。"),
