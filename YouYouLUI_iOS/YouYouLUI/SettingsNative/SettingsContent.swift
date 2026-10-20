@@ -8,7 +8,7 @@ struct SettingsGuideSection {
 }
 
 struct ChangelogEntry {
-    let tag: String
+    let tag: String?
     let text: String
 }
 
