@@ -46,6 +46,8 @@ enum SettingsContent {
             ChangelogEntry(tag: "优化", text: "子页面支持从屏幕左边缘侧滑返回。"),
             ChangelogEntry(tag: "优化", text: "我的页五个入口卡片统一液态玻璃并降低高度；自定义颜色页卡片整体压扁。"),
             ChangelogEntry(tag: "优化", text: "更改字体页每次打开默认停在中文字体，不再记忆上次页签；应用位置条再压小。"),
+            ChangelogEntry(tag: "优化", text: "五个入口行高度统一为 42；设置页触控反馈与声音改为四档切换（关闭/轻微/中度/高度、关闭/柔和/适中/响亮）。"),
+            ChangelogEntry(tag: "优化", text: "开关与调色盘圆钮改小一号；设置页卡片行高统一为 48。"),
             ChangelogEntry(tag: "修复", text: "修复更改字体页返回按钮点按不灵敏的问题。"),
             ChangelogEntry(tag: "修复", text: "修复更改字体页英文字体/中文字体切换打开时不显示当前选中状态、点按后才显示的问题。"),
             ChangelogEntry(tag: "修复", text: "修复使用说明第一条与其余条目排版不一致的问题，统一为圆点条目。"),
@@ -54,6 +56,7 @@ enum SettingsContent {
             ChangelogEntry(tag: "修复", text: "修复内置 Google Sans 字体文件残缺导致预览无法显示的问题，已换成完整字体文件。"),
             ChangelogEntry(tag: "修复", text: "修复首页顶部状态行蓝字与灰字大小不一致的问题。"),
             ChangelogEntry(tag: "修复", text: "修复打开更改字体页时选中状态闪一下的问题。"),
+            ChangelogEntry(tag: "修复", text: "修复分段切换打开时不显示选中块的问题（选中块改按控件宽度直接定位，不再受布局时机影响）。"),
         ]),
         ChangelogVersion(title: "Version 1.0.7-1", isCurrent: false, entries: [
             ChangelogEntry(tag: "新增", text: "自定义颜色新增「深色模式」分组：可单独开关深色图标反转，并自定义深色颜色。"),

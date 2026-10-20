@@ -60,7 +60,7 @@ final class FoldView: UIView {
         ])
         inner.addArrangedSubview(header)
         header.translatesAutoresizingMaskIntoConstraints = false
-        header.heightAnchor.constraint(equalToConstant: 40).isActive = true
+        header.heightAnchor.constraint(equalToConstant: 42).isActive = true
         header.addSubview(iconView)
         header.addSubview(titleLabel)
         header.addSubview(subtitleLabel)
@@ -530,8 +530,8 @@ final class SettingsViewController: UIViewController {
         well.title = title
         well.supportsAlpha = false
         well.translatesAutoresizingMaskIntoConstraints = false
-        well.widthAnchor.constraint(equalToConstant: 34).isActive = true
-        well.heightAnchor.constraint(equalToConstant: 34).isActive = true
+        well.widthAnchor.constraint(equalToConstant: 30).isActive = true
+        well.heightAnchor.constraint(equalToConstant: 30).isActive = true
         return well
     }
 
@@ -586,7 +586,7 @@ final class SettingsViewController: UIViewController {
         bottomSearchSeg.widthAnchor.constraint(equalToConstant: 150).isActive = true
         inner.addArrangedSubview(themeRow(title: "底栏搜索按钮", subtitle: "关闭后使用顶部搜索框", control: bottomSearchSeg, divider: true))
 
-        minimizeSwitch = UISwitch()
+        minimizeSwitch = UISwitch.luiyoSmall()
         minimizeSwitch.isOn = model.minimizeBottomBar
         minimizeSwitch.addTarget(self, action: #selector(minimizeChanged(_:)), for: .valueChanged)
         inner.addArrangedSubview(themeRow(title: "滚动时缩小底栏", subtitle: "向下滚动缩小，向上滚动恢复", control: minimizeSwitch, divider: true))
@@ -770,7 +770,7 @@ final class SettingsViewController: UIViewController {
             tap.trailingAnchor.constraint(equalTo: updateCard.content.trailingAnchor),
             tap.topAnchor.constraint(equalTo: updateCard.content.topAnchor),
             tap.bottomAnchor.constraint(equalTo: updateCard.content.bottomAnchor),
-            tap.heightAnchor.constraint(equalToConstant: 38),
+            tap.heightAnchor.constraint(equalToConstant: 42),
         ])
         let icon = UIImageView(image: luiyoBundledIcon("update"))
         icon.tintColor = UIAppColors.inkDynamic
@@ -814,7 +814,7 @@ final class SettingsViewController: UIViewController {
             tap.trailingAnchor.constraint(equalTo: appSettingsCard.content.trailingAnchor),
             tap.topAnchor.constraint(equalTo: appSettingsCard.content.topAnchor),
             tap.bottomAnchor.constraint(equalTo: appSettingsCard.content.bottomAnchor),
-            tap.heightAnchor.constraint(equalToConstant: 38),
+            tap.heightAnchor.constraint(equalToConstant: 42),
         ])
         let icon = UIImageView(image: UIImage(named: "tab-settings")?.withRenderingMode(.alwaysTemplate))
         icon.tintColor = UIAppColors.inkDynamic

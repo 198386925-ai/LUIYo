@@ -1,35 +1,92 @@
-import AudioToolbox
+import AVFoundation
 import UIKit
 
-/// Global tap feedback (haptics + click sound) with its two switches living
-/// in the settings page reached from the settings list's 设置 entry.
-/// Feedback is installed once by swapping `UIControl.sendAction`, so every
-/// control activated by a real touch across the app ticks — no per-screen
-/// wiring. Programmatic actions (nil event) stay silent.
+/// Global tap feedback (haptics + click sound), each with a four-step level
+/// （关闭 / 弱 / 中 / 强） chosen in the settings page behind the settings
+/// list's 设置 entry. Feedback is installed once by swapping
+/// `UIControl.sendAction`, so every control activated by a real touch across
+/// the app ticks — no per-screen wiring. Programmatic actions (nil event)
+/// stay silent.
 enum AppFeedback {
-    private static let hapticsKey = "feedback.hapticsEnabled"
-    private static let soundsKey = "feedback.soundsEnabled"
+    private static let hapticsLevelKey = "feedback.hapticsLevel"
+    private static let soundLevelKey = "feedback.soundLevel"
 
-    static var hapticsEnabled: Bool {
-        get { UserDefaults.standard.object(forKey: hapticsKey) as? Bool ?? true }
-        set { UserDefaults.standard.set(newValue, forKey: hapticsKey) }
+    /// 0 = off, 1 = lightest … 3 = strongest. Defaults to 1.
+    static var hapticsLevel: Int {
+        get { UserDefaults.standard.object(forKey: hapticsLevelKey) as? Int ?? 1 }
+        set { UserDefaults.standard.set(newValue, forKey: hapticsLevelKey) }
     }
 
-    static var soundsEnabled: Bool {
-        get { UserDefaults.standard.object(forKey: soundsKey) as? Bool ?? true }
-        set { UserDefaults.standard.set(newValue, forKey: soundsKey) }
+    static var soundLevel: Int {
+        get { UserDefaults.standard.object(forKey: soundLevelKey) as? Int ?? 1 }
+        set { UserDefaults.standard.set(newValue, forKey: soundLevelKey) }
     }
 
-    private static let impact = UIImpactFeedbackGenerator(style: .light)
+    private static let generators: [UIImpactFeedbackGenerator] = [
+        UIImpactFeedbackGenerator(style: .light),
+        UIImpactFeedbackGenerator(style: .medium),
+        UIImpactFeedbackGenerator(style: .heavy),
+    ]
 
     static func install() {
         _ = UIControl.feedbackSwizzleOnce
-        impact.prepare()
+        generators.forEach { $0.prepare() }
+        // One-time migration from the old on/off switches (Builds 4–5).
+        let defaults = UserDefaults.standard
+        if defaults.object(forKey: hapticsLevelKey) == nil,
+           let old = defaults.object(forKey: "feedback.hapticsEnabled") as? Bool {
+            hapticsLevel = old ? 1 : 0
+        }
+        if defaults.object(forKey: soundLevelKey) == nil,
+           let old = defaults.object(forKey: "feedback.soundsEnabled") as? Bool {
+            soundLevel = old ? 1 : 0
+        }
     }
 
     static func tap() {
-        if hapticsEnabled { impact.impactOccurred() }
-        if soundsEnabled { AudioServicesPlaySystemSound(1104) }
+        let haptics = hapticsLevel
+        if (1...3).contains(haptics) { generators[haptics - 1].impactOccurred() }
+        let sound = soundLevel
+        if (1...3).contains(sound) { ClickSound.play(level: sound) }
+    }
+}
+
+/// A short synthesized click played through AVAudioPlayer so its loudness
+/// can follow the user's sound level (system sound IDs have a fixed volume).
+private enum ClickSound {
+    private static var player: AVAudioPlayer?
+
+    static func play(level: Int) {
+        if player == nil {
+            player = try? AVAudioPlayer(data: clickData(), fileTypeHint: AVFileType.wav.rawValue)
+        }
+        guard let player else { return }
+        player.volume = [0.35, 0.7, 1.0][level - 1]
+        player.currentTime = 0
+        player.play()
+    }
+
+    private static func clickData() -> Data {
+        let sampleRate = 44100
+        let frames = 1323 // 30 ms
+        var pcm = Data()
+        pcm.reserveCapacity(frames * 2)
+        for index in 0..<frames {
+            let t = Double(index) / Double(sampleRate)
+            let envelope = exp(-t * 160)
+            let value = Int16(12000 * envelope * sin(2 * Double.pi * 1900 * t))
+            var little = value.littleEndian
+            pcm.append(Data(bytes: &little, count: 2))
+        }
+        var data = Data()
+        func appendString(_ string: String) { data.append(string.data(using: .ascii)!) }
+        func appendUInt32(_ value: UInt32) { var v = value.littleEndian; data.append(Data(bytes: &v, count: 4)) }
+        func appendUInt16(_ value: UInt16) { var v = value.littleEndian; data.append(Data(bytes: &v, count: 2)) }
+        appendString("RIFF"); appendUInt32(UInt32(36 + pcm.count)); appendString("WAVE")
+        appendString("fmt "); appendUInt32(16); appendUInt16(1); appendUInt16(1)
+        appendUInt32(UInt32(sampleRate)); appendUInt32(UInt32(sampleRate * 2)); appendUInt16(2); appendUInt16(16)
+        appendString("data"); appendUInt32(UInt32(pcm.count)); data.append(pcm)
+        return data
     }
 }
 
@@ -65,8 +122,8 @@ extension UIViewController {
     }
 }
 
-/// The 设置 page behind the settings list's 设置 entry: currently the two
-/// feedback switches （触控反馈 / 声音）.
+/// The 设置 page behind the settings list's 设置 entry: the two feedback
+/// level pickers （触控反馈 / 声音）, each a four-step segmented control.
 final class AppSettingsViewController: UIViewController {
     private let homeModel: NativeHomeModel
 
@@ -114,14 +171,15 @@ final class AppSettingsViewController: UIViewController {
         NSLayoutConstraint.activate([
             rows.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 16),
             rows.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -16),
-            rows.topAnchor.constraint(equalTo: card.topAnchor, constant: 6),
-            rows.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -6),
+            rows.topAnchor.constraint(equalTo: card.topAnchor, constant: 4),
+            rows.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -4),
         ])
 
-        let haptics = UISwitch()
-        haptics.isOn = AppFeedback.hapticsEnabled
-        haptics.addTarget(self, action: #selector(hapticsChanged(_:)), for: .valueChanged)
-        rows.addArrangedSubview(switchRow(title: "触控反馈", subtitle: "点按按钮和开关时轻微振动", control: haptics))
+        let hapticsSeg = PillSegmentedControl()
+        hapticsSeg.options = [("0", "关闭"), ("1", "轻微"), ("2", "中度"), ("3", "高度")]
+        hapticsSeg.setSelectedValue(String(AppFeedback.hapticsLevel))
+        hapticsSeg.onChange = { value in AppFeedback.hapticsLevel = Int(value) ?? 1 }
+        rows.addArrangedSubview(levelRow(title: "触控反馈", subtitle: "点按时的振动强度", control: hapticsSeg))
 
         let line = UIView()
         line.backgroundColor = UIAppColors.divider
@@ -129,13 +187,14 @@ final class AppSettingsViewController: UIViewController {
         line.heightAnchor.constraint(equalToConstant: 1 / UIScreen.main.scale).isActive = true
         rows.addArrangedSubview(line)
 
-        let sounds = UISwitch()
-        sounds.isOn = AppFeedback.soundsEnabled
-        sounds.addTarget(self, action: #selector(soundsChanged(_:)), for: .valueChanged)
-        rows.addArrangedSubview(switchRow(title: "声音", subtitle: "点按时播放轻响", control: sounds))
+        let soundSeg = PillSegmentedControl()
+        soundSeg.options = [("0", "关闭"), ("1", "柔和"), ("2", "适中"), ("3", "响亮")]
+        soundSeg.setSelectedValue(String(AppFeedback.soundLevel))
+        soundSeg.onChange = { value in AppFeedback.soundLevel = Int(value) ?? 1 }
+        rows.addArrangedSubview(levelRow(title: "声音", subtitle: "点按时的提示音量", control: soundSeg))
     }
 
-    private func switchRow(title: String, subtitle: String, control: UIView) -> UIView {
+    private func levelRow(title: String, subtitle: String, control: UIView) -> UIView {
         let row = UIView()
         let titleLabel = UILabel()
         titleLabel.text = title
@@ -157,13 +216,12 @@ final class AppSettingsViewController: UIViewController {
             texts.centerYAnchor.constraint(equalTo: row.centerYAnchor),
             control.trailingAnchor.constraint(equalTo: row.trailingAnchor),
             control.centerYAnchor.constraint(equalTo: row.centerYAnchor),
-            row.heightAnchor.constraint(equalToConstant: 56),
+            control.widthAnchor.constraint(equalToConstant: 212),
+            row.heightAnchor.constraint(equalToConstant: 48),
         ])
         return row
     }
 
-    @objc private func hapticsChanged(_ sender: UISwitch) { AppFeedback.hapticsEnabled = sender.isOn }
-    @objc private func soundsChanged(_ sender: UISwitch) { AppFeedback.soundsEnabled = sender.isOn }
     @objc private func backTapped() { dismiss(animated: true) }
 }
 

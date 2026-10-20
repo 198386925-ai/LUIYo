@@ -75,6 +75,16 @@ final class GlassCardView: UIView {
     func configure(useBlur: Bool, tint: UIColor) { surface.configure(useBlur: useBlur, tint: tint) }
 }
 
+extension UISwitch {
+    /// The app's switches run one size down from the system default (the
+    /// control itself stays the true native switch, just scaled).
+    static func luiyoSmall() -> UISwitch {
+        let control = UISwitch()
+        control.transform = CGAffineTransform(scaleX: 0.8, y: 0.8)
+        return control
+    }
+}
+
 /// Pill segmented control in the settings design language (capsule track,
 /// white selected thumb). Values are stable string keys.
 final class PillSegmentedControl: UIView {
@@ -166,22 +176,29 @@ final class PillSegmentedControl: UIView {
 
     private func positionThumb(animated: Bool) {
         guard let index = options.firstIndex(where: { $0.value == selectedValue }),
-              buttons.indices.contains(index) else {
+              !options.isEmpty else {
+            thumbView.isHidden = true
+            return
+        }
+        let width = trackView.bounds.width
+        let height = trackView.bounds.height
+        guard width > 0, height > 0 else {
+            // No real geometry yet: stay hidden; the layoutSubviews pass
+            // with final bounds places the thumb.
             thumbView.isHidden = true
             return
         }
         thumbView.isHidden = false
-        let target = buttons[index]
-        // The buttons' frames are only final after the stack has laid out;
-        // without this the thumb lands at a zero frame on first display and
-        // only shows up after a tap forces a fresh pass.
-        stack?.layoutIfNeeded()
+        // The buttons are laid out fill-equally across the track with a 2pt
+        // inset, so the selected slot is fully determined by the track's own
+        // bounds. Deriving the frame from the buttons' frames was the
+        // long-standing bug: on first display those frames are read one
+        // layout pass too early, the thumb landed at a zero frame, and
+        // nothing re-ran the placement until a tap forced it.
+        let slot = (width - 4) / CGFloat(options.count)
+        let frame = CGRect(x: 2 + slot * CGFloat(index), y: 2, width: slot, height: height - 4)
         let work = {
-            if let stack = self.stack {
-                self.thumbView.frame = self.trackView.convert(target.frame, from: stack)
-            } else {
-                self.thumbView.frame = target.frame
-            }
+            self.thumbView.frame = frame
             self.trackView.sendSubviewToBack(self.thumbView)
         }
         if animated {

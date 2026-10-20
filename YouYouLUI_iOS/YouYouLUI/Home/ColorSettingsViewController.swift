@@ -120,7 +120,7 @@ final class ColorSettingsViewController: UIViewController {
             rows.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -3),
         ])
 
-        let toggle = UISwitch()
+        let toggle = UISwitch.luiyoSmall()
         toggle.isOn = isOn
         toggle.addTarget(self, action: #selector(toggleChanged(_:)), for: .valueChanged)
         switches[target] = toggle
@@ -139,8 +139,8 @@ final class ColorSettingsViewController: UIViewController {
         well.supportsAlpha = false
         well.selectedColor = color
         well.translatesAutoresizingMaskIntoConstraints = false
-        well.widthAnchor.constraint(equalToConstant: 34).isActive = true
-        well.heightAnchor.constraint(equalToConstant: 34).isActive = true
+        well.widthAnchor.constraint(equalToConstant: 30).isActive = true
+        well.heightAnchor.constraint(equalToConstant: 30).isActive = true
         well.addTarget(self, action: #selector(wellChanged(_:)), for: .valueChanged)
         wells[target] = well
         rows.addArrangedSubview(switchRow(title: colorTitle, control: well))
