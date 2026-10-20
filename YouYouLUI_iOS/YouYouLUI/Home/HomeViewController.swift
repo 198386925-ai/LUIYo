@@ -87,7 +87,13 @@ final class HomeViewController: UIViewController {
             collectionView.topAnchor.constraint(equalTo: view.topAnchor),
             collectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
         ])
-        model.onScrollView?(collectionView)
+        // Report the scroll view AFTER this load finishes: the shell's
+        // handler re-enters attachNativeHome, which must not happen while
+        // viewDidLoad is still on the stack (infinite recursion, Build 1 crash).
+        let scrollView = collectionView!
+        DispatchQueue.main.async { [weak self] in
+            self?.model.onScrollView?(scrollView)
+        }
         model.objectWillChange
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in self?.refresh() }
