@@ -1,25 +1,57 @@
 import Combine
 import UIKit
 
-/// Glass pill button for the home tools area (UIKit material surface behind
-/// a plain-configuration button), mirroring the previous home's action style.
-final class GlassPillButton: UIButton {
-    let surface = StaticGlassView()
+/// Pill action for the home tools area: the glass surface sits at the
+/// bottom and the icon + title render ABOVE it (the previous version put
+/// the surface inside a UIButton, whose content ended up under the glass).
+final class PillActionView: UIControl {
+    private let surface = StaticGlassView()
+    private let iconView = UIImageView()
+    private let titleLabel = UILabel()
+
     override init(frame: CGRect) {
         super.init(frame: frame)
         surface.glassRadius = 999
         surface.isUserInteractionEnabled = false
-        insertSubview(surface, at: 0)
+        addSubview(surface)
         surface.translatesAutoresizingMaskIntoConstraints = false
+        iconView.contentMode = .scaleAspectFit
+        iconView.isUserInteractionEnabled = false
+        titleLabel.isUserInteractionEnabled = false
+        let row = UIStackView(arrangedSubviews: [iconView, titleLabel])
+        row.axis = .horizontal
+        row.spacing = 7
+        row.alignment = .center
+        row.isUserInteractionEnabled = false
+        addSubview(row)
+        row.translatesAutoresizingMaskIntoConstraints = false
+        iconView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             surface.leadingAnchor.constraint(equalTo: leadingAnchor),
             surface.trailingAnchor.constraint(equalTo: trailingAnchor),
             surface.topAnchor.constraint(equalTo: topAnchor),
             surface.bottomAnchor.constraint(equalTo: bottomAnchor),
+            row.centerXAnchor.constraint(equalTo: centerXAnchor),
+            row.centerYAnchor.constraint(equalTo: centerYAnchor),
+            row.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor, constant: 8),
+            iconView.widthAnchor.constraint(equalToConstant: 18),
+            iconView.heightAnchor.constraint(equalToConstant: 18),
         ])
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-    func configureGlass(useBlur: Bool, tint: UIColor) { surface.configure(useBlur: useBlur, tint: tint) }
+
+    override var isHighlighted: Bool {
+        didSet { alpha = isHighlighted ? 0.6 : 1 }
+    }
+
+    func configure(icon: UIImage?, title: String, color: UIColor, font: UIFont, useBlur: Bool, glassTint: UIColor) {
+        iconView.image = icon
+        iconView.tintColor = color
+        titleLabel.text = title
+        titleLabel.textColor = color
+        titleLabel.font = font
+        surface.configure(useBlur: useBlur, tint: glassTint)
+    }
 }
 
 /// Color settings row (UIKit): palette icon, two-line text and a chevron
@@ -29,7 +61,7 @@ final class ColorRowView: UIControl {
     private let iconView = UIImageView(image: UIImage(systemName: "paintpalette", withConfiguration: UIImage.SymbolConfiguration(pointSize: 18)))
     private let titleLabel = UILabel()
     private let subtitleLabel = UILabel()
-    private let chevron = UIImageView(image: UIImage(systemName: "chevron.right", withConfiguration: UIImage.SymbolConfiguration(pointSize: 12, weight: .semibold)))
+    private let chevron = UIImageView(image: UIImage(systemName: "chevron.right", withConfiguration: UIImage.SymbolConfiguration(pointSize: 13, weight: .semibold)))
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -64,8 +96,8 @@ final class ColorRowView: UIControl {
             subtitleLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 1),
             chevron.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -14),
             chevron.centerYAnchor.constraint(equalTo: centerYAnchor),
-            chevron.widthAnchor.constraint(equalToConstant: 12),
-            chevron.heightAnchor.constraint(equalToConstant: 12),
+            chevron.widthAnchor.constraint(equalToConstant: 16),
+            chevron.heightAnchor.constraint(equalToConstant: 16),
         ])
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -211,13 +243,9 @@ final class HomeViewController: UIViewController {
     // MARK: Actions
 
     func openColorSettings() {
-        if model.authorized {
-            let editor = ColorSettingsViewController(model: model)
-            let nav = UINavigationController(rootViewController: editor)
-            present(nav, animated: true)
-        } else {
-            model.send("authorize", [:])
-        }
+        let editor = ColorSettingsViewController(model: model)
+        let nav = UINavigationController(rootViewController: editor)
+        present(nav, animated: true)
     }
 }
 
@@ -458,9 +486,156 @@ final class HomeSearchCell: UICollectionViewCell, UITextFieldDelegate {
 }
 
 final class HomeToolsCell: UICollectionViewCell {
-    private let batchButton = GlassPillButton(type: .system)
-    private let fillImageButton = GlassPillButton(type: .system)
-    private let fillButton = GlassPillButton(type: .system)
+    private let batchButton = PillActionView()
+    private let fillImageButton = PillActionView()
+    private let fillButton = PillActionView()
+    private let colorRow = ColorRowView()
+    private let clearButton = UIButton(type: .system)
+    private let exportButton = UIButton(type: .system)
+    var onAction: ((String) -> Void)?
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        let row1 = UIStackView(arrangedSubviews: [batchButton, fillImageButton])
+        row1.axis = .horizontal
+        row1.spacing = 8
+        row1.distribution = .fillEqually
+        let row4 = UIStackView(arrangedSubviews: [clearButton, exportButton])
+        row4.axis = .horizontal
+        row4.spacing = 8
+        row4.distribution = .fillEqually
+        let stack = UIStackView(arrangedSubviews: [row1, fillButton, colorRow, row4])
+        stack.axis = .vertical
+        stack.spacing = 8
+        contentView.addSubview(stack)
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            stack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
+            stack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
+            stack.topAnchor.constraint(equalTo: contentView.topAnchor),
+            stack.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
+        ])
+        for button in [batchButton, fillImageButton, fillButton] {
+            button.translatesAutoresizingMaskIntoConstraints = false
+            button.heightAnchor.constraint(equalToConstant: 44).isActive = true
+        }
+        colorRow.translatesAutoresizingMaskIntoConstraints = false
+        colorRow.heightAnchor.constraint(equalToConstant: 44).isActive = true
+        clearButton.translatesAutoresizingMaskIntoConstraints = false
+        clearButton.heightAnchor.constraint(equalToConstant: 44).isActive = true
+        exportButton.translatesAutoresizingMaskIntoConstraints = false
+        exportButton.heightAnchor.constraint(equalToConstant: 44).isActive = true
+        batchButton.addTarget(self, action: #selector(batchTapped), for: .touchUpInside)
+        fillImageButton.addTarget(self, action: #selector(fillImageTapped), for: .touchUpInside)
+        fillButton.addTarget(self, action: #selector(fillTapped), for: .touchUpInside)
+        colorRow.addTarget(self, action: #selector(colorsTapped), for: .touchUpInside)
+        clearButton.addTarget(self, action: #selector(clearTapped), for: .touchUpInside)
+        exportButton.addTarget(self, action: #selector(exportTapped), for: .touchUpInside)
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    @objc private func batchTapped() { onAction?("batch") }
+    @objc private func fillImageTapped() { onAction?("fillImage") }
+    @objc private func fillTapped() { onAction?("fill") }
+    @objc private func colorsTapped() { onAction?("colors") }
+    @objc private func clearTapped() { onAction?("clear") }
+    @objc private func exportTapped() { onAction?("export") }
+
+    func configure(model: NativeHomeModel, hfont: (CGFloat, UIFont.Weight) -> UIFont) {
+        title.font = hfont(25, .bold)
+        subtitle.font = hfont(13, .regular)
+        authIcon.image = UIImage(systemName: model.authorized ? "checkmark.seal.fill" : "lock.fill")
+        authIcon.tintColor = model.authorized ? .systemGreen : UIAppColors.secondary
+        authLabel.text = model.authorized ? "已授权" : "未授权"
+        authLabel.textColor = model.authorized ? .systemGreen : UIAppColors.secondary
+        authLabel.font = hfont(12, .medium)
+        countLabel.text = "已上传项目：\(model.uploadedCount) 项"
+        countLabel.font = hfont(12, .regular)
+        if let icon = ToolbarAssetImages.template(named: "ToolbarSupport") {
+            let scaled = UIGraphicsImageRenderer(size: CGSize(width: 14, height: 14)).image { _ in
+                icon.draw(in: CGRect(x: 0, y: 0, width: 14, height: 14))
+            }.withRenderingMode(.alwaysTemplate)
+            feedback.setImage(scaled, for: .normal)
+            feedback.tintColor = .systemBlue
+        }
+        feedback.titleLabel?.font = hfont(12, .medium)
+    }
+}
+
+final class HomeSearchCell: UICollectionViewCell, UITextFieldDelegate {
+    private let surface = StaticGlassView()
+    private let field = UITextField()
+    private let clearButton = UIButton(type: .system)
+    var onQueryChange: ((String) -> Void)?
+    var onEditingChange: ((Bool) -> Void)?
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        surface.glassRadius = 999
+        surface.isUserInteractionEnabled = false
+        contentView.addSubview(surface)
+        surface.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            surface.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
+            surface.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
+            surface.topAnchor.constraint(equalTo: contentView.topAnchor),
+            surface.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
+        ])
+        let icon = UIImageView(image: UIImage(systemName: "magnifyingglass"))
+        icon.tintColor = UIAppColors.secondary
+        icon.contentMode = .scaleAspectFit
+        field.placeholder = "搜索图标"
+        field.returnKeyType = .search
+        field.delegate = self
+        field.addTarget(self, action: #selector(textChanged), for: .editingChanged)
+        clearButton.setImage(UIImage(systemName: "xmark.circle.fill"), for: .normal)
+        clearButton.tintColor = UIAppColors.secondary
+        clearButton.isHidden = true
+        clearButton.addTarget(self, action: #selector(clearTapped), for: .touchUpInside)
+        let row = UIStackView(arrangedSubviews: [icon, field, clearButton])
+        row.axis = .horizontal
+        row.spacing = 10
+        row.alignment = .center
+        contentView.addSubview(row)
+        icon.translatesAutoresizingMaskIntoConstraints = false
+        icon.widthAnchor.constraint(equalToConstant: 16).isActive = true
+        icon.heightAnchor.constraint(equalToConstant: 16).isActive = true
+        row.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            row.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 14),
+            row.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -14),
+            row.topAnchor.constraint(equalTo: contentView.topAnchor),
+            row.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
+        ])
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    @objc private func textChanged() { onQueryChange?(field.text ?? "") }
+    @objc private func clearTapped() {
+        field.text = ""
+        onQueryChange?("")
+    }
+    func textFieldDidBeginEditing(_ textField: UITextField) { onEditingChange?(true) }
+    func textFieldDidEndEditing(_ textField: UITextField) { onEditingChange?(false) }
+    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        textField.resignFirstResponder()
+        return true
+    }
+
+    func configure(model: NativeHomeModel, hfont: (CGFloat, UIFont.Weight) -> UIFont) {
+        surface.configure(useBlur: model.useBlur, tint: UIColor(nativeHex: model.theme.card))
+        field.font = hfont(15, .regular)
+        if field.text != model.query, !field.isFirstResponder {
+            field.text = model.query
+        }
+        clearButton.isHidden = model.query.isEmpty
+    }
+}
+
+final class HomeToolsCell: UICollectionViewCell {
+    private let batchButton = PillActionView()
+    private let fillImageButton = PillActionView()
+    private let fillButton = PillActionView()
     private let colorRow = ColorRowView()
     private let clearButton = UIButton(type: .system)
     private let exportButton = UIButton(type: .system)
@@ -536,11 +711,20 @@ final class HomeToolsCell: UICollectionViewCell {
             (batchButton, "关键词批量导入", "ToolbarImport", nil),
             (fillImageButton, "补全图片", "ToolbarFill", nil),
             (fillButton, "双分类补全", nil, "square.3.layers.3d"),
-        ] as [(GlassPillButton, String, String?, String?)] {
-            button.configuration = pillConfig(title: title, asset: asset, symbol: symbol, color: textColor)
-            button.tintColor = textColor
-            button.titleLabel?.font = hfont(13, button === fillButton ? .semibold : .medium)
-            button.configureGlass(useBlur: model.useBlur, tint: tint)
+        ] as [(PillActionView, String, String?, String?)] {
+            let icon: UIImage?
+            if let asset, let image = ToolbarAssetImages.template(named: asset) {
+                icon = UIGraphicsImageRenderer(size: CGSize(width: 18, height: 18)).image { _ in
+                    image.draw(in: CGRect(x: 0, y: 0, width: 18, height: 18))
+                }.withRenderingMode(.alwaysTemplate)
+            } else if let symbol {
+                icon = UIImage(systemName: symbol, withConfiguration: UIImage.SymbolConfiguration(pointSize: 15, weight: .medium))
+            } else {
+                icon = nil
+            }
+            button.configure(icon: icon, title: title, color: textColor,
+                             font: hfont(13, button === fillButton ? .semibold : .medium),
+                             useBlur: model.useBlur, glassTint: tint)
         }
         // Color row: palette icon + two-line text + chevron (matches the old home).
         colorRow.configure(useBlur: model.useBlur, tint: tint,

@@ -38,7 +38,7 @@ final class FoldView: UIView {
         subtitleLabel.text = subtitle
         subtitleLabel.font = UIFont.systemFont(ofSize: 11)
         subtitleLabel.textColor = UIAppColors.secondary
-        chevron.image = UIImage(systemName: "chevron.down")
+        chevron.image = UIImage(systemName: "chevron.down", withConfiguration: UIImage.SymbolConfiguration(pointSize: 13, weight: .semibold))
         chevron.tintColor = UIColor(red: 0xC7 / 255, green: 0xC7 / 255, blue: 0xCC / 255, alpha: 1)
         chevron.contentMode = .scaleAspectFit
 
@@ -75,8 +75,8 @@ final class FoldView: UIView {
             subtitleLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 2),
             chevron.trailingAnchor.constraint(equalTo: header.trailingAnchor, constant: -16),
             chevron.centerYAnchor.constraint(equalTo: header.centerYAnchor),
-            chevron.widthAnchor.constraint(equalToConstant: 12),
-            chevron.heightAnchor.constraint(equalToConstant: 12),
+            chevron.widthAnchor.constraint(equalToConstant: 16),
+            chevron.heightAnchor.constraint(equalToConstant: 16),
         ])
         contentView.isHidden = true
         inner.addArrangedSubview(contentView)
@@ -756,7 +756,7 @@ final class SettingsViewController: UIViewController {
         title.textColor = UIAppColors.ink(for: traitCollection)
         updateStatus.font = UIFont.systemFont(ofSize: 11)
         updateStatus.textColor = UIAppColors.secondary
-        let chevron = UIImageView(image: UIImage(systemName: "chevron.right"))
+        let chevron = UIImageView(image: UIImage(systemName: "chevron.right", withConfiguration: UIImage.SymbolConfiguration(pointSize: 13, weight: .semibold)))
         chevron.tintColor = UIColor(red: 0xC7 / 255, green: 0xC7 / 255, blue: 0xCC / 255, alpha: 1)
         tap.addSubview(icon)
         tap.addSubview(title)
@@ -777,8 +777,8 @@ final class SettingsViewController: UIViewController {
             updateStatus.topAnchor.constraint(equalTo: title.bottomAnchor, constant: 2),
             chevron.trailingAnchor.constraint(equalTo: tap.trailingAnchor, constant: -16),
             chevron.centerYAnchor.constraint(equalTo: tap.centerYAnchor),
-            chevron.widthAnchor.constraint(equalToConstant: 12),
-            chevron.heightAnchor.constraint(equalToConstant: 12),
+            chevron.widthAnchor.constraint(equalToConstant: 16),
+            chevron.heightAnchor.constraint(equalToConstant: 16),
         ])
     }
 

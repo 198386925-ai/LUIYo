@@ -41,7 +41,7 @@
   new MutationObserver(scheduleState).observe(document.body, {attributes:true,attributeFilter:['class']});
   function authorized() { return document.documentElement.dataset.luiyoAuthorized === 'yes'; }
   window.__nativeHomeCommand = async (action, payload = {}) => {
-    if (!['state','category','search'].includes(action) && !authorized()) throw new Error('未授权用户，请授权后使用');
+    if (action === 'export' && !authorized()) throw new Error('未授权用户，请授权后使用');
     if (action === 'state') return state();
     if (action === 'category') { switchCategory(payload.category); return state(); }
     if (action === 'search') {

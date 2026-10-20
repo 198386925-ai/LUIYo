@@ -47,7 +47,7 @@ extension MainShellViewController: WKScriptMessageHandler {
             handleThemeFont(message.body as? [String: Any])
         case .appearanceMode:
             let payload = message.body as? [String: Any]
-            applyAppearance(payload?["mode"] as? String ?? "system")
+            applyAppearance(payload?["mode"] as? String ?? "system", notifyEngine: false)
         case .nativeToggleRects:
             guard let rows = message.body as? [[String: Any]] else { return }
             materialLayer.updateToggles(rows)
@@ -133,6 +133,6 @@ extension MainShellViewController: WKScriptMessageHandler {
         default: kind = .heroCardColor
         }
         preferences.setColorHex(hex, kind: kind, appearance: appearance)
-        applyStoredPalette()
+        schedulePaletteApplication()
     }
 }

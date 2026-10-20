@@ -2230,6 +2230,7 @@ function closeInfoPage(kind){
    send('appearanceMode',{mode});applyColors();
  }
  buttons.forEach(b=>b.addEventListener('click',()=>applyMode(b.dataset.appearanceMode)));
+ window.__luiyoApplyAppearanceMode=applyMode;
  media.addEventListener('change',()=>{if(mode==='system')applyColors()});
  bg.addEventListener('input',()=>{const a=effective();colors[a].bg=bg.value;save('youyou.theme.background.custom.'+a,'1');save('youyou.theme.background.'+a,bg.value);applyColors()});
  card.addEventListener('input',()=>{const a=effective();colors[a].card=card.value;save('youyou.theme.heroCardColor.'+a,card.value);applyColors()});

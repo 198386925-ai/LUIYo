@@ -3,6 +3,12 @@ import UIKit
 extension MainShellViewController {
     /// Applies light / dark / system and persists the choice.
     func applyAppearance(_ rawMode: String) {
+        applyAppearance(rawMode, notifyEngine: true)
+    }
+
+    /// When the change comes FROM the engine (its own picker), the engine
+    /// already knows — skip the notification to avoid an echo loop.
+    func applyAppearance(_ rawMode: String, notifyEngine: Bool) {
         let mode = ["light", "dark"].contains(rawMode) ? rawMode : "system"
         preferences.appearanceMode = mode
         let style = Self.savedAppearanceStyle
@@ -11,6 +17,24 @@ extension MainShellViewController {
         webView.overrideUserInterfaceStyle = style
         applyStoredPalette()
         setNeedsStatusBarAppearanceUpdate()
+        // Keep the hidden work layer on the same appearance: without this it
+        // keeps computing colours from its stored mode and the native pages
+        // stay in the previous mode (or a mix of both).
+        if notifyEngine {
+            evaluate("window.__luiyoApplyAppearanceMode?.('\(mode)')")
+        }
+    }
+
+    /// The engine reports background / card / button colours as three
+    /// separate messages per appearance change; coalesce them into a single
+    /// palette application so a switch doesn't re-render everything 3x.
+    @objc func applyStoredPaletteDeferred() { applyStoredPalette() }
+
+    func schedulePaletteApplication() {
+        NSObject.cancelPreviousPerformRequests(withTarget: self,
+                                               selector: #selector(applyStoredPaletteDeferred),
+                                               object: nil)
+        perform(#selector(applyStoredPaletteDeferred), with: nil, afterDelay: 0.05, inModes: [.common])
     }
 
     static var savedAppearanceStyle: UIUserInterfaceStyle {
