@@ -70,9 +70,9 @@ final class FoldView: UIView {
             iconView.widthAnchor.constraint(equalToConstant: 21),
             iconView.heightAnchor.constraint(equalToConstant: 21),
             titleLabel.leadingAnchor.constraint(equalTo: iconView.trailingAnchor, constant: 10),
-            titleLabel.topAnchor.constraint(equalTo: header.topAnchor, constant: 7),
+            titleLabel.bottomAnchor.constraint(equalTo: header.centerYAnchor, constant: -1),
             subtitleLabel.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),
-            subtitleLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 2),
+            subtitleLabel.topAnchor.constraint(equalTo: header.centerYAnchor, constant: 1),
             chevron.trailingAnchor.constraint(equalTo: header.trailingAnchor, constant: -16),
             chevron.centerYAnchor.constraint(equalTo: header.centerYAnchor),
             chevron.widthAnchor.constraint(equalToConstant: 16),
@@ -810,9 +810,9 @@ final class SettingsViewController: UIViewController {
         icon.contentMode = .scaleAspectFit
         let title = UILabel()
         title.text = "检查更新"
-        title.font = UIFont.systemFont(ofSize: 12)
+        title.font = UIFont.systemFont(ofSize: 12, weight: .semibold)
         title.textColor = UIAppColors.inkDynamic
-        updateStatus.font = UIFont.systemFont(ofSize: 10)
+        updateStatus.font = UIFont.systemFont(ofSize: 8)
         updateStatus.textColor = UIAppColors.secondary
         let chevron = UIImageView(image: UIImage(systemName: "chevron.right", withConfiguration: UIImage.SymbolConfiguration(pointSize: 13, weight: .semibold)))
         chevron.tintColor = UIColor(red: 0xC7 / 255, green: 0xC7 / 255, blue: 0xCC / 255, alpha: 1)
@@ -830,9 +830,9 @@ final class SettingsViewController: UIViewController {
             icon.widthAnchor.constraint(equalToConstant: 21),
             icon.heightAnchor.constraint(equalToConstant: 21),
             title.leadingAnchor.constraint(equalTo: icon.trailingAnchor, constant: 10),
-            title.topAnchor.constraint(equalTo: tap.topAnchor, constant: 7),
+            title.bottomAnchor.constraint(equalTo: tap.centerYAnchor, constant: -1),
             updateStatus.leadingAnchor.constraint(equalTo: title.leadingAnchor),
-            updateStatus.topAnchor.constraint(equalTo: title.bottomAnchor, constant: 2),
+            updateStatus.topAnchor.constraint(equalTo: tap.centerYAnchor, constant: 1),
             chevron.trailingAnchor.constraint(equalTo: tap.trailingAnchor, constant: -16),
             chevron.centerYAnchor.constraint(equalTo: tap.centerYAnchor),
             chevron.widthAnchor.constraint(equalToConstant: 16),

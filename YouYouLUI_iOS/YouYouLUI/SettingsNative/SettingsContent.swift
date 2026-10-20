@@ -61,6 +61,7 @@ enum SettingsContent {
             ChangelogEntry(tag: "修复", text: "修复设置里切换底栏搜索按钮不立即生效、要重进 APP 的问题。"),
             ChangelogEntry(tag: "修复", text: "修复首页顶部搜索框被压扁、显示不全的问题。"),
             ChangelogEntry(tag: "修复", text: "修复首页隐藏顶部搜索框、状态行时仍留空白的问题。"),
+            ChangelogEntry(tag: "修复", text: "修复设置页卡片标题、副标题靠上不居中的问题，并把检查更新的字体与折叠卡统一。"),
         ]),
         ChangelogVersion(title: "Version 1.0.7", isCurrent: false, entries: [
             ChangelogEntry(tag: "优化", text: "启动授权秒进：已登录时直接进入界面，后台静默验证，不再等待转圈。"),
