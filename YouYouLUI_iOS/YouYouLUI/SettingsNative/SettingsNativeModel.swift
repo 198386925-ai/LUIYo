@@ -57,7 +57,7 @@ final class SettingsNativeModel: ObservableObject {
     @Published var hasCustomFont: Bool = false
 
     // MARK: - Section expansion
-    @Published var themeExpanded: Bool = true
+    @Published var themeExpanded: Bool = false
     @Published var guideExpanded: Bool = false
     @Published var changelogExpanded: Bool = false
 

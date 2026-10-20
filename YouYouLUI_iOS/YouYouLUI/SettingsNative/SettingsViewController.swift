@@ -281,6 +281,9 @@ final class SettingsViewController: UIViewController {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in self?.refreshHero() }
             .store(in: &cancellables)
+        model.$themeExpanded.sink { [weak self] value in self?.themeFold?.setExpanded(value, animated: true) }.store(in: &cancellables)
+        model.$guideExpanded.sink { [weak self] value in self?.guideFold?.setExpanded(value, animated: true) }.store(in: &cancellables)
+        model.$changelogExpanded.sink { [weak self] value in self?.changelogFold?.setExpanded(value, animated: true) }.store(in: &cancellables)
         model.$pendingScroll
             .receive(on: DispatchQueue.main)
             .sink { [weak self] target in
@@ -838,9 +841,6 @@ final class SettingsViewController: UIViewController {
         appearanceSeg?.setSelectedValue(model.appearanceMode)
         materialSeg?.setSelectedValue(model.cardMaterial)
         bottomSearchSeg?.setSelectedValue(model.bottomSearchLayout)
-        themeFold?.setExpanded(model.themeExpanded, animated: true)
-        guideFold?.setExpanded(model.guideExpanded, animated: true)
-        changelogFold?.setExpanded(model.changelogExpanded, animated: true)
         fontSubtitleLabel?.text = model.customFontName
         refreshHero()
     }

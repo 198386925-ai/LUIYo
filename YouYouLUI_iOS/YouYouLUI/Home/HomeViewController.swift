@@ -96,7 +96,11 @@ final class HomeViewController: UIViewController {
         }
         model.objectWillChange
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in self?.refresh() }
+            .sink { [weak self] _ in
+                // objectWillChange fires before the change lands; reload on
+                // the next tick so the grid reads the new values.
+                DispatchQueue.main.async { self?.refresh() }
+            }
             .store(in: &cancellables)
         refreshTheme()
     }
@@ -308,7 +312,10 @@ final class HomeHeaderCell: UICollectionViewCell {
         countLabel.text = "已上传项目：\(model.uploadedCount) 项"
         countLabel.font = hfont(12, .regular)
         if let icon = ToolbarAssetImages.template(named: "ToolbarSupport") {
-            feedback.setImage(icon, for: .normal)
+            let scaled = UIGraphicsImageRenderer(size: CGSize(width: 14, height: 14)).image { _ in
+                icon.draw(in: CGRect(x: 0, y: 0, width: 14, height: 14))
+            }.withRenderingMode(.alwaysTemplate)
+            feedback.setImage(scaled, for: .normal)
             feedback.tintColor = .systemBlue
         }
         feedback.titleLabel?.font = hfont(12, .medium)
@@ -441,15 +448,18 @@ final class HomeToolsCell: UICollectionViewCell {
     @objc private func clearTapped() { onAction?("clear") }
     @objc private func exportTapped() { onAction?("export") }
 
-    private func pillConfig(title: String, asset: String?, symbol: String?) -> UIButton.Configuration {
+    private func pillConfig(title: String, asset: String?, symbol: String?, color: UIColor) -> UIButton.Configuration {
         var config = UIButton.Configuration.plain()
         config.title = title
+        config.baseForegroundColor = color
         config.imagePadding = 7
         config.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 10, bottom: 0, trailing: 10)
         if let asset, let image = ToolbarAssetImages.template(named: asset) {
-            config.image = image
+            config.image = UIGraphicsImageRenderer(size: CGSize(width: 18, height: 18)).image { _ in
+                image.draw(in: CGRect(x: 0, y: 0, width: 18, height: 18))
+            }.withRenderingMode(.alwaysTemplate)
         } else if let symbol {
-            config.image = UIImage(systemName: symbol)
+            config.image = UIImage(systemName: symbol, withConfiguration: UIImage.SymbolConfiguration(pointSize: 15, weight: .medium))
         }
         return config
     }
@@ -462,20 +472,19 @@ final class HomeToolsCell: UICollectionViewCell {
             (fillImageButton, "补全图片", "ToolbarFill", nil),
             (fillButton, "双分类补全", nil, "square.3.layers.3d"),
         ] as [(GlassPillButton, String, String?, String?)] {
-            button.configuration = pillConfig(title: title, asset: asset, symbol: symbol)
-            button.setTitleColor(textColor, for: .normal)
+            button.configuration = pillConfig(title: title, asset: asset, symbol: symbol, color: textColor)
             button.tintColor = textColor
             button.titleLabel?.font = hfont(13, .medium)
             button.configureGlass(useBlur: model.useBlur, tint: tint)
         }
         // Color row: icon + two-line text + chevron, left aligned.
         var colorConfig = UIButton.Configuration.plain()
-        colorConfig.image = UIImage(systemName: "paintpalette")
+        colorConfig.image = UIImage(systemName: "paintpalette", withConfiguration: UIImage.SymbolConfiguration(pointSize: 17, weight: .regular))?
+            .withTintColor(UIAppColors.secondary, renderingMode: .alwaysOriginal)
         colorConfig.imagePadding = 10
         colorConfig.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 14, bottom: 0, trailing: 14)
+        colorConfig.baseForegroundColor = .label
         colorButton.configuration = colorConfig
-        colorButton.tintColor = UIAppColors.secondary
-        colorButton.setTitleColor(.label, for: .normal)
         colorButton.configureGlass(useBlur: model.useBlur, tint: tint)
         colorButton.setTitle("自定义修改颜色", for: .normal)
         colorButton.titleLabel?.font = hfont(13, .medium)
