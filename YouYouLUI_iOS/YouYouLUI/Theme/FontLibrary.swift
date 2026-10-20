@@ -169,7 +169,7 @@ final class FontLibrary {
         let size = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int) ?? 0
         return descriptors(for: url).enumerated().map { index, descriptor in
             let psName = (CTFontDescriptorCopyAttribute(descriptor, kCTFontNameAttribute) as? String) ?? fileKey
-            let fullName = (CTFontDescriptorCopyAttribute(descriptor, kCTFontFullNameAttribute) as? String) ?? psName
+            let fullName = (CTFontDescriptorCopyAttribute(descriptor, kCTFontDisplayNameAttribute) as? String) ?? psName
             let ct = CTFontCreateWithFontDescriptor(descriptor, 10, nil)
             let charset = CTFontCopyCharacterSet(ct) as CharacterSet
             let latin = charset.contains(UnicodeScalar(0x41)!) && charset.contains(UnicodeScalar(0x61)!)
@@ -244,8 +244,8 @@ final class FontLibrary {
         var total = 0
         for family in Self.latinFamilies + Self.chineseFamilies {
             for base in Set(family.files.values) {
-                if let url = bundleURL(forBase: base),
-                   let size = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int) ?? 0 {
+                if let url = bundleURL(forBase: base) {
+                    let size = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int) ?? 0
                     total += size
                 }
             }
