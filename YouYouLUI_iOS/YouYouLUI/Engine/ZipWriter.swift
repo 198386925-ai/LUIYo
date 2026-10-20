@@ -148,8 +148,16 @@ enum ZipWriter {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone.current
         let parts = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second], from: Date())
-        let time = UInt16(((parts.hour ?? 0) << 11) | ((parts.minute ?? 0) << 5) | ((parts.second ?? 0) / 2))
-        let date = UInt16((((parts.year ?? 1980) - 1980) << 9) | ((parts.month ?? 1) << 5) | (parts.day ?? 1))
+        let hour = parts.hour ?? 0
+        let minute = parts.minute ?? 0
+        let second = parts.second ?? 0
+        let timeValue = (hour << 11) | (minute << 5) | (second / 2)
+        let time = UInt16(timeValue)
+        let year = parts.year ?? 1980
+        let month = parts.month ?? 1
+        let day = parts.day ?? 1
+        let dateValue = ((year - 1980) << 9) | (month << 5) | day
+        let date = UInt16(dateValue)
         return (time, date)
     }
 }
