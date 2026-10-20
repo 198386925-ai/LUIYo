@@ -715,13 +715,17 @@ final class SettingsViewController: UIViewController {
                 row.spacing = 8
                 row.alignment = .top
                 let chip = UILabel()
-                chip.text = " \(entry.tag) "
-                chip.font = UIFont.systemFont(ofSize: 10.5, weight: .bold)
-                chip.textColor = tagColor(entry.tag)
-                chip.backgroundColor = tagColor(entry.tag).withAlphaComponent(0.13)
-                chip.layer.cornerRadius = 6
-                chip.clipsToBounds = true
-                chip.setContentCompressionResistancePriority(.required, for: .horizontal)
+                if let tag = entry.tag, !tag.isEmpty {
+                    chip.text = " \(tag) "
+                    chip.font = UIFont.systemFont(ofSize: 10.5, weight: .bold)
+                    chip.textColor = tagColor(tag)
+                    chip.backgroundColor = tagColor(tag).withAlphaComponent(0.13)
+                    chip.layer.cornerRadius = 6
+                    chip.clipsToBounds = true
+                    chip.setContentCompressionResistancePriority(.required, for: .horizontal)
+                } else {
+                    chip.isHidden = true
+                }
                 let text = UILabel()
                 text.text = entry.text
                 text.font = UIFont.systemFont(ofSize: 13)
