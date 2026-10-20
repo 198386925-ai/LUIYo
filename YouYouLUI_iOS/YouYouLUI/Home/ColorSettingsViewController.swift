@@ -64,7 +64,7 @@ final class ColorSettingsViewController: UIViewController {
         ])
         let stack = UIStackView()
         stack.axis = .vertical
-        stack.spacing = 22
+        stack.spacing = 16
         scroll.addSubview(stack)
         stack.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
@@ -116,8 +116,8 @@ final class ColorSettingsViewController: UIViewController {
         NSLayoutConstraint.activate([
             rows.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 16),
             rows.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -16),
-            rows.topAnchor.constraint(equalTo: card.topAnchor, constant: 6),
-            rows.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -6),
+            rows.topAnchor.constraint(equalTo: card.topAnchor, constant: 3),
+            rows.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -3),
         ])
 
         let toggle = UISwitch()
@@ -169,7 +169,7 @@ final class ColorSettingsViewController: UIViewController {
             label.centerYAnchor.constraint(equalTo: row.centerYAnchor),
             control.trailingAnchor.constraint(equalTo: row.trailingAnchor),
             control.centerYAnchor.constraint(equalTo: row.centerYAnchor),
-            row.heightAnchor.constraint(equalToConstant: 48),
+            row.heightAnchor.constraint(equalToConstant: 42),
         ])
         return row
     }

@@ -60,7 +60,7 @@ final class FoldView: UIView {
         ])
         inner.addArrangedSubview(header)
         header.translatesAutoresizingMaskIntoConstraints = false
-        header.heightAnchor.constraint(equalToConstant: 48).isActive = true
+        header.heightAnchor.constraint(equalToConstant: 40).isActive = true
         header.addSubview(iconView)
         header.addSubview(titleLabel)
         header.addSubview(subtitleLabel)
@@ -770,7 +770,7 @@ final class SettingsViewController: UIViewController {
             tap.trailingAnchor.constraint(equalTo: updateCard.content.trailingAnchor),
             tap.topAnchor.constraint(equalTo: updateCard.content.topAnchor),
             tap.bottomAnchor.constraint(equalTo: updateCard.content.bottomAnchor),
-            tap.heightAnchor.constraint(equalToConstant: 46),
+            tap.heightAnchor.constraint(equalToConstant: 38),
         ])
         let icon = UIImageView(image: luiyoBundledIcon("update"))
         icon.tintColor = UIAppColors.inkDynamic
@@ -814,7 +814,7 @@ final class SettingsViewController: UIViewController {
             tap.trailingAnchor.constraint(equalTo: appSettingsCard.content.trailingAnchor),
             tap.topAnchor.constraint(equalTo: appSettingsCard.content.topAnchor),
             tap.bottomAnchor.constraint(equalTo: appSettingsCard.content.bottomAnchor),
-            tap.heightAnchor.constraint(equalToConstant: 46),
+            tap.heightAnchor.constraint(equalToConstant: 38),
         ])
         let icon = UIImageView(image: UIImage(named: "tab-settings")?.withRenderingMode(.alwaysTemplate))
         icon.tintColor = UIAppColors.inkDynamic
@@ -896,6 +896,7 @@ final class SettingsViewController: UIViewController {
         let tint = UIColor(nativeHex: homeModel.theme.card)
         activationCard.configure(useBlur: homeModel.useBlur, tint: tint)
         updateCard.configure(useBlur: homeModel.useBlur, tint: tint)
+        appSettingsCard.configure(useBlur: homeModel.useBlur, tint: tint)
         themeFold?.configureGlass(useBlur: homeModel.useBlur, tint: tint)
         guideFold?.configureGlass(useBlur: homeModel.useBlur, tint: tint)
         changelogFold?.configureGlass(useBlur: homeModel.useBlur, tint: tint)

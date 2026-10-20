@@ -375,15 +375,11 @@ final class HomeHeaderCell: UICollectionViewCell {
         authLabel.font = UIFont.systemFont(ofSize: 12, weight: .medium)
         countLabel.textColor = UIAppColors.secondary
         countLabel.font = UIFont.systemFont(ofSize: 12)
-        var config = UIButton.Configuration.plain()
-        config.imagePadding = 6
-        config.contentInsets = .zero
-        config.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attributes in
-            var attributes = attributes
-            attributes.font = UIFont.systemFont(ofSize: 12, weight: .medium)
-            return attributes
-        }
-        feedback.configuration = config
+        // No UIButton.Configuration here: a configuration button renders
+        // its title at the configuration's own size, which is why the blue
+        // link kept coming out bigger than the grey status labels. As a
+        // classic button it honours titleLabel.font (hfont 12) exactly.
+        feedback.titleEdgeInsets = UIEdgeInsets(top: 0, left: 6, bottom: 0, right: -6)
         feedback.setTitle("反馈问题 · 联系客服", for: .normal)
         feedback.setTitleColor(.systemBlue, for: .normal)
         feedback.titleLabel?.font = UIFont.systemFont(ofSize: 12, weight: .medium)
@@ -393,8 +389,8 @@ final class HomeHeaderCell: UICollectionViewCell {
         statusRow.spacing = 6
         statusRow.alignment = .center
         authIcon.translatesAutoresizingMaskIntoConstraints = false
-        authIcon.widthAnchor.constraint(equalToConstant: 14).isActive = true
-        authIcon.heightAnchor.constraint(equalToConstant: 14).isActive = true
+        authIcon.widthAnchor.constraint(equalToConstant: 15).isActive = true
+        authIcon.heightAnchor.constraint(equalToConstant: 15).isActive = true
         let stack = UIStackView(arrangedSubviews: [title, subtitle, statusRow])
         stack.axis = .vertical
         stack.spacing = 5
@@ -419,7 +415,8 @@ final class HomeHeaderCell: UICollectionViewCell {
     func configure(model: NativeHomeModel, hfont: (CGFloat, UIFont.Weight) -> UIFont) {
         title.font = hfont(25, .bold)
         subtitle.font = hfont(12, .regular)
-        authIcon.image = UIImage(systemName: model.authorized ? "checkmark.seal.fill" : "lock.fill")
+        authIcon.image = UIImage(systemName: model.authorized ? "checkmark.seal.fill" : "lock.fill",
+                                 withConfiguration: UIImage.SymbolConfiguration(pointSize: 14, weight: .medium))
         authIcon.tintColor = model.authorized ? .systemGreen : UIAppColors.secondary
         authLabel.text = model.authorized ? "已授权" : "未授权"
         authLabel.textColor = model.authorized ? .systemGreen : UIAppColors.secondary
@@ -427,8 +424,8 @@ final class HomeHeaderCell: UICollectionViewCell {
         countLabel.text = "已上传项目：\(model.uploadedCount) 项"
         countLabel.font = hfont(12, .regular)
         if let icon = ToolbarAssetImages.template(named: "ToolbarSupport") {
-            let scaled = UIGraphicsImageRenderer(size: CGSize(width: 14, height: 14)).image { _ in
-                icon.draw(in: CGRect(x: 0, y: 0, width: 14, height: 14))
+            let scaled = UIGraphicsImageRenderer(size: CGSize(width: 15, height: 15)).image { _ in
+                icon.draw(in: CGRect(x: 0, y: 0, width: 15, height: 15))
             }.withRenderingMode(.alwaysTemplate)
             feedback.setImage(scaled, for: .normal)
             feedback.tintColor = .systemBlue

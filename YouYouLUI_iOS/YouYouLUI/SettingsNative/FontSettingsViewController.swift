@@ -180,12 +180,11 @@ final class FontSettingsViewController: UIViewController {
         scriptSeg.options = [("chinese", "中文字体"), ("latin", "英文字体")]
         scriptSeg.onChange = { [weak self] value in
             self?.chineseTab = (value == "chinese")
-            UserDefaults.standard.set(value, forKey: "fontui.scriptTab")
             self?.rebuildList()
         }
-        // Reopen on the tab the user last used, so their side is already
-        // showing instead of always starting on the Latin tab.
-        chineseTab = (UserDefaults.standard.string(forKey: "fontui.scriptTab") ?? "chinese") == "chinese"
+        // No memory of the last-used tab: the page always opens on the
+        // Chinese tab.
+        chineseTab = true
         scriptSeg.setSelectedValue(chineseTab ? "chinese" : "latin", animated: false)
         stack.addArrangedSubview(scriptSeg)
         // 4) Search card.
@@ -226,13 +225,6 @@ final class FontSettingsViewController: UIViewController {
     }
 
     // MARK: - Preview
-
-    override func viewDidAppear(_ animated: Bool) {
-        super.viewDidAppear(animated)
-        // Re-assert the segmented selection once the page is fully on
-        // screen, so the current tab shows as selected without a tap.
-        scriptSeg?.setSelectedValue(chineseTab ? "chinese" : "latin", animated: false)
-    }
 
     private func previewCard() -> UIView {
         let card = configuredCard(radius: 26)
@@ -305,7 +297,7 @@ final class FontSettingsViewController: UIViewController {
             checkboxImages[area] = box
             let label = UILabel()
             label.text = area.title
-            label.font = UIFont.systemFont(ofSize: 14)
+            label.font = UIFont.systemFont(ofSize: 13)
             label.textColor = UIAppColors.inkDynamic
             let group = UIStackView(arrangedSubviews: [box, label])
             group.axis = .horizontal
@@ -316,9 +308,9 @@ final class FontSettingsViewController: UIViewController {
             group.translatesAutoresizingMaskIntoConstraints = false
             box.translatesAutoresizingMaskIntoConstraints = false
             NSLayoutConstraint.activate([
-                row.heightAnchor.constraint(equalToConstant: 44),
-                box.widthAnchor.constraint(equalToConstant: 20),
-                box.heightAnchor.constraint(equalToConstant: 20),
+                row.heightAnchor.constraint(equalToConstant: 38),
+                box.widthAnchor.constraint(equalToConstant: 18),
+                box.heightAnchor.constraint(equalToConstant: 18),
                 group.centerXAnchor.constraint(equalTo: row.centerXAnchor),
                 group.centerYAnchor.constraint(equalTo: row.centerYAnchor),
             ])
@@ -332,7 +324,7 @@ final class FontSettingsViewController: UIViewController {
         for (area, box) in checkboxImages {
             let on = library.isEnabled(area)
             box.image = UIImage(systemName: on ? "checkmark.square.fill" : "square",
-                                withConfiguration: UIImage.SymbolConfiguration(pointSize: 18, weight: .regular))
+                                withConfiguration: UIImage.SymbolConfiguration(pointSize: 16, weight: .regular))
             box.tintColor = on ? UIAppColors.inkDynamic : UIAppColors.secondary
         }
     }
