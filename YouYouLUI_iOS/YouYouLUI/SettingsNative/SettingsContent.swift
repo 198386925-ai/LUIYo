@@ -43,6 +43,7 @@ enum SettingsContent {
             ChangelogEntry(tag: "修复", text: "规则与设置页卡片改用与旧版一致的静态原生液态玻璃，去掉多余高光。"),
             ChangelogEntry(tag: "修复", text: "修复 UIKit 版首页加载时相互调用导致的启动闪退。"),
             ChangelogEntry(tag: "修复", text: "修复首页按钮图标过大、设置页主题默认展开和折叠卡点击不灵的问题。"),
+            ChangelogEntry(tag: "修复", text: "首页工具区高度对齐原版、改色行补回小字与箭头；设置页卡片按原版尺寸收紧。"),
         ]),
         ChangelogVersion(title: "Version 1.0.7", isCurrent: false, entries: [
             ChangelogEntry(tag: "优化", text: "启动授权秒进：已登录时直接进入界面，后台静默验证，不再等待转圈。"),

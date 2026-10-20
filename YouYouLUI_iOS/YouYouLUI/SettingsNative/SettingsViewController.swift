@@ -6,9 +6,8 @@ import UniformTypeIdentifiers
 /// title, subtitle, chevron) and a collapsible content area. Collapsed it is
 /// capsule-shaped like the reference design; expanded it opens to radius 22.
 final class FoldView: UIView {
-    let card = GlassCardView(radius: 28)
+    let card = GlassCardView(radius: 23)
     let contentView = UIView()
-    private let iconCircle = UIView()
     private let iconView = UIImageView()
     private let titleLabel = UILabel()
     private let subtitleLabel = UILabel()
@@ -31,14 +30,13 @@ final class FoldView: UIView {
 
         let header = UIControl()
         header.addTarget(self, action: #selector(headerTapped), for: .touchUpInside)
-        iconCircle.layer.cornerRadius = 20
-        iconView.image = UIImage(systemName: icon)
+        iconView.image = UIImage(systemName: icon, withConfiguration: UIImage.SymbolConfiguration(pointSize: 19, weight: .medium))
         iconView.contentMode = .scaleAspectFit
         iconView.tintColor = UIAppColors.ink
         titleLabel.text = title
-        titleLabel.font = UIFont.systemFont(ofSize: 16, weight: .semibold)
+        titleLabel.font = UIFont.systemFont(ofSize: 14.5, weight: .semibold)
         subtitleLabel.text = subtitle
-        subtitleLabel.font = UIFont.systemFont(ofSize: 12.5)
+        subtitleLabel.font = UIFont.systemFont(ofSize: 11)
         subtitleLabel.textColor = UIAppColors.secondary
         chevron.image = UIImage(systemName: "chevron.down")
         chevron.tintColor = UIColor(red: 0xC7 / 255, green: 0xC7 / 255, blue: 0xCC / 255, alpha: 1)
@@ -57,34 +55,28 @@ final class FoldView: UIView {
         ])
         inner.addArrangedSubview(header)
         header.translatesAutoresizingMaskIntoConstraints = false
-        header.heightAnchor.constraint(equalToConstant: 64).isActive = true
-        header.addSubview(iconCircle)
+        header.heightAnchor.constraint(equalToConstant: 46).isActive = true
+        header.addSubview(iconView)
         header.addSubview(titleLabel)
         header.addSubview(subtitleLabel)
         header.addSubview(chevron)
-        iconCircle.translatesAutoresizingMaskIntoConstraints = false
+        iconView.translatesAutoresizingMaskIntoConstraints = false
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         subtitleLabel.translatesAutoresizingMaskIntoConstraints = false
         chevron.translatesAutoresizingMaskIntoConstraints = false
-        iconCircle.addSubview(iconView)
-        iconView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            iconCircle.leadingAnchor.constraint(equalTo: header.leadingAnchor, constant: 14),
-            iconCircle.centerYAnchor.constraint(equalTo: header.centerYAnchor),
-            iconCircle.widthAnchor.constraint(equalToConstant: 40),
-            iconCircle.heightAnchor.constraint(equalToConstant: 40),
-            iconView.centerXAnchor.constraint(equalTo: iconCircle.centerXAnchor),
-            iconView.centerYAnchor.constraint(equalTo: iconCircle.centerYAnchor),
-            iconView.widthAnchor.constraint(equalToConstant: 19),
-            iconView.heightAnchor.constraint(equalToConstant: 19),
-            titleLabel.leadingAnchor.constraint(equalTo: iconCircle.trailingAnchor, constant: 12),
-            titleLabel.topAnchor.constraint(equalTo: header.topAnchor, constant: 13),
+            iconView.leadingAnchor.constraint(equalTo: header.leadingAnchor, constant: 16),
+            iconView.centerYAnchor.constraint(equalTo: header.centerYAnchor),
+            iconView.widthAnchor.constraint(equalToConstant: 21),
+            iconView.heightAnchor.constraint(equalToConstant: 21),
+            titleLabel.leadingAnchor.constraint(equalTo: iconView.trailingAnchor, constant: 10),
+            titleLabel.topAnchor.constraint(equalTo: header.topAnchor, constant: 7),
             subtitleLabel.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),
             subtitleLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 2),
             chevron.trailingAnchor.constraint(equalTo: header.trailingAnchor, constant: -16),
             chevron.centerYAnchor.constraint(equalTo: header.centerYAnchor),
-            chevron.widthAnchor.constraint(equalToConstant: 14),
-            chevron.heightAnchor.constraint(equalToConstant: 14),
+            chevron.widthAnchor.constraint(equalToConstant: 12),
+            chevron.heightAnchor.constraint(equalToConstant: 12),
         ])
         contentView.isHidden = true
         inner.addArrangedSubview(contentView)
@@ -102,7 +94,7 @@ final class FoldView: UIView {
         let work = {
             self.contentView.isHidden = !value
             self.chevron.transform = value ? CGAffineTransform(rotationAngle: .pi) : .identity
-            self.card.surface.glassRadius = value ? 22 : 28
+            self.card.surface.glassRadius = value ? 20 : 23
             self.card.configure(useBlur: self.lastUseBlur, tint: self.lastTint)
             self.superview?.layoutIfNeeded()
         }
@@ -120,8 +112,6 @@ final class FoldView: UIView {
     }
 
     func refreshAppearance() {
-        let dark = traitCollection.userInterfaceStyle == .dark
-        iconCircle.backgroundColor = dark ? UIColor(red: 0x2C / 255, green: 0x2C / 255, blue: 0x2E / 255, alpha: 1) : .white
         iconView.tintColor = UIAppColors.ink(for: traitCollection)
         titleLabel.textColor = UIAppColors.ink(for: traitCollection)
     }
@@ -152,7 +142,7 @@ final class SettingsViewController: UIViewController {
     private var themeFold: FoldView!
     private var guideFold: FoldView!
     private var changelogFold: FoldView!
-    private let updateCard = GlassCardView(radius: 22)
+    private let updateCard = GlassCardView(radius: 23)
     private let updateStatus = UILabel()
     private var backgroundWell: UIButton!
     private var cardWell: UIButton!
@@ -409,7 +399,7 @@ final class SettingsViewController: UIViewController {
         codeField.autocorrectionType = .no
         codeField.returnKeyType = .go
         codeField.backgroundColor = UIColor(red: 120 / 255, green: 120 / 255, blue: 128 / 255, alpha: 0.08)
-        codeField.layer.cornerRadius = 24
+        codeField.layer.cornerRadius = 22
         codeField.layer.borderWidth = 1 / UIScreen.main.scale
         codeField.layer.borderColor = UIAppColors.dividerStrong.cgColor
         codeField.leftView = UIView(frame: CGRect(x: 0, y: 0, width: 16, height: 1))
@@ -418,18 +408,18 @@ final class SettingsViewController: UIViewController {
         codeField.rightViewMode = .always
         codeField.delegate = self
         codeField.translatesAutoresizingMaskIntoConstraints = false
-        codeField.heightAnchor.constraint(equalToConstant: 48).isActive = true
+        codeField.heightAnchor.constraint(equalToConstant: 44).isActive = true
         fieldRow.addArrangedSubview(codeField)
 
         activateButton.setTitle("激活", for: .normal)
         activateButton.setTitleColor(.white, for: .normal)
-        activateButton.titleLabel?.font = UIFont.systemFont(ofSize: 15, weight: .semibold)
+        activateButton.titleLabel?.font = UIFont.systemFont(ofSize: 14.5, weight: .semibold)
         activateButton.backgroundColor = UIAppColors.accentPurple
-        activateButton.layer.cornerRadius = 28
+        activateButton.layer.cornerRadius = 24
         activateButton.addTarget(self, action: #selector(submitLicense), for: .touchUpInside)
         activateButton.translatesAutoresizingMaskIntoConstraints = false
-        activateButton.widthAnchor.constraint(equalToConstant: 56).isActive = true
-        activateButton.heightAnchor.constraint(equalToConstant: 56).isActive = true
+        activateButton.widthAnchor.constraint(equalToConstant: 48).isActive = true
+        activateButton.heightAnchor.constraint(equalToConstant: 48).isActive = true
         fieldRow.addArrangedSubview(activateButton)
         inner.addArrangedSubview(fieldRow)
 
@@ -755,45 +745,34 @@ final class SettingsViewController: UIViewController {
             tap.trailingAnchor.constraint(equalTo: updateCard.content.trailingAnchor),
             tap.topAnchor.constraint(equalTo: updateCard.content.topAnchor),
             tap.bottomAnchor.constraint(equalTo: updateCard.content.bottomAnchor),
-            tap.heightAnchor.constraint(equalToConstant: 64),
+            tap.heightAnchor.constraint(equalToConstant: 46),
         ])
-        let circle = UIView()
-        circle.layer.cornerRadius = 20
-        circle.backgroundColor = .white
-        let icon = UIImageView(image: UIImage(systemName: "arrow.down.circle"))
+        let icon = UIImageView(image: UIImage(systemName: "arrow.down.circle", withConfiguration: UIImage.SymbolConfiguration(pointSize: 19, weight: .medium)))
         icon.tintColor = UIAppColors.ink(for: traitCollection)
         icon.contentMode = .scaleAspectFit
-        circle.addSubview(icon)
-        icon.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            icon.centerXAnchor.constraint(equalTo: circle.centerXAnchor),
-            icon.centerYAnchor.constraint(equalTo: circle.centerYAnchor),
-            icon.widthAnchor.constraint(equalToConstant: 19),
-            icon.heightAnchor.constraint(equalToConstant: 19),
-        ])
         let title = UILabel()
         title.text = "检查更新"
-        title.font = UIFont.systemFont(ofSize: 16, weight: .semibold)
+        title.font = UIFont.systemFont(ofSize: 14.5, weight: .semibold)
         title.textColor = UIAppColors.ink(for: traitCollection)
-        updateStatus.font = UIFont.systemFont(ofSize: 12.5)
+        updateStatus.font = UIFont.systemFont(ofSize: 11)
         updateStatus.textColor = UIAppColors.secondary
         let chevron = UIImageView(image: UIImage(systemName: "chevron.right"))
         chevron.tintColor = UIColor(red: 0xC7 / 255, green: 0xC7 / 255, blue: 0xCC / 255, alpha: 1)
-        tap.addSubview(circle)
+        tap.addSubview(icon)
         tap.addSubview(title)
         tap.addSubview(updateStatus)
         tap.addSubview(chevron)
-        circle.translatesAutoresizingMaskIntoConstraints = false
+        icon.translatesAutoresizingMaskIntoConstraints = false
         title.translatesAutoresizingMaskIntoConstraints = false
         updateStatus.translatesAutoresizingMaskIntoConstraints = false
         chevron.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            circle.leadingAnchor.constraint(equalTo: tap.leadingAnchor, constant: 14),
-            circle.centerYAnchor.constraint(equalTo: tap.centerYAnchor),
-            circle.widthAnchor.constraint(equalToConstant: 40),
-            circle.heightAnchor.constraint(equalToConstant: 40),
-            title.leadingAnchor.constraint(equalTo: circle.trailingAnchor, constant: 12),
-            title.topAnchor.constraint(equalTo: tap.topAnchor, constant: 13),
+            icon.leadingAnchor.constraint(equalTo: tap.leadingAnchor, constant: 16),
+            icon.centerYAnchor.constraint(equalTo: tap.centerYAnchor),
+            icon.widthAnchor.constraint(equalToConstant: 21),
+            icon.heightAnchor.constraint(equalToConstant: 21),
+            title.leadingAnchor.constraint(equalTo: icon.trailingAnchor, constant: 10),
+            title.topAnchor.constraint(equalTo: tap.topAnchor, constant: 7),
             updateStatus.leadingAnchor.constraint(equalTo: title.leadingAnchor),
             updateStatus.topAnchor.constraint(equalTo: title.bottomAnchor, constant: 2),
             chevron.trailingAnchor.constraint(equalTo: tap.trailingAnchor, constant: -16),

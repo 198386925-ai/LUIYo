@@ -22,6 +22,61 @@ final class GlassPillButton: UIButton {
     func configureGlass(useBlur: Bool, tint: UIColor) { surface.configure(useBlur: useBlur, tint: tint) }
 }
 
+/// Color settings row (UIKit): palette icon, two-line text and a chevron
+/// over the glass pill surface — a control so the whole row is tappable.
+final class ColorRowView: UIControl {
+    private let surface = StaticGlassView()
+    private let iconView = UIImageView(image: UIImage(systemName: "paintpalette", withConfiguration: UIImage.SymbolConfiguration(pointSize: 18)))
+    private let titleLabel = UILabel()
+    private let subtitleLabel = UILabel()
+    private let chevron = UIImageView(image: UIImage(systemName: "chevron.right", withConfiguration: UIImage.SymbolConfiguration(pointSize: 12, weight: .semibold)))
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        surface.glassRadius = 999
+        surface.isUserInteractionEnabled = false
+        addSubview(surface)
+        surface.translatesAutoresizingMaskIntoConstraints = false
+        iconView.tintColor = .secondaryLabel
+        iconView.contentMode = .scaleAspectFit
+        titleLabel.text = "自定义修改颜色"
+        titleLabel.textColor = .label
+        subtitleLabel.text = "浅色 / 深色 / 全部图标"
+        subtitleLabel.textColor = .secondaryLabel
+        chevron.tintColor = .secondaryLabel
+        chevron.contentMode = .scaleAspectFit
+        for v in [iconView, titleLabel, subtitleLabel, chevron] {
+            addSubview(v)
+            v.translatesAutoresizingMaskIntoConstraints = false
+        }
+        NSLayoutConstraint.activate([
+            surface.leadingAnchor.constraint(equalTo: leadingAnchor),
+            surface.trailingAnchor.constraint(equalTo: trailingAnchor),
+            surface.topAnchor.constraint(equalTo: topAnchor),
+            surface.bottomAnchor.constraint(equalTo: bottomAnchor),
+            iconView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 14),
+            iconView.centerYAnchor.constraint(equalTo: centerYAnchor),
+            iconView.widthAnchor.constraint(equalToConstant: 20),
+            iconView.heightAnchor.constraint(equalToConstant: 20),
+            titleLabel.leadingAnchor.constraint(equalTo: iconView.trailingAnchor, constant: 10),
+            titleLabel.topAnchor.constraint(equalTo: topAnchor, constant: 7),
+            subtitleLabel.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),
+            subtitleLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 1),
+            chevron.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -14),
+            chevron.centerYAnchor.constraint(equalTo: centerYAnchor),
+            chevron.widthAnchor.constraint(equalToConstant: 12),
+            chevron.heightAnchor.constraint(equalToConstant: 12),
+        ])
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    func configure(useBlur: Bool, tint: UIColor, titleFont: UIFont, subtitleFont: UIFont) {
+        surface.configure(useBlur: useBlur, tint: tint)
+        titleLabel.font = titleFont
+        subtitleLabel.font = subtitleFont
+    }
+}
+
 /// Homepage (UIKit): header, tools, category picker and the icon grid,
 /// driven by the same NativeHomeModel / engine commands as before.
 final class HomeViewController: UIViewController {
@@ -119,7 +174,17 @@ final class HomeViewController: UIViewController {
             result.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 20, bottom: 24, trailing: 20)
             return result
         }
-        let heights: [Section: CGFloat] = [.header: 76, .search: 44, .tools: 240, .picker: 34, .status: 18, .heading: 24]
+        if section == .tools {
+            let item = NSCollectionLayoutItem(layoutSize: NSCollectionLayoutSize(
+                widthDimension: .fractionalWidth(1), heightDimension: .absolute(200)))
+            let group = NSCollectionLayoutGroup.vertical(
+                layoutSize: NSCollectionLayoutSize(widthDimension: .fractionalWidth(1), heightDimension: .absolute(200)),
+                subitems: [item])
+            let result = NSCollectionLayoutSection(group: group)
+            result.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20)
+            return result
+        }
+        let heights: [Section: CGFloat] = [.header: 76, .search: 44, .picker: 34, .status: 18, .heading: 24]
         let item = NSCollectionLayoutItem(layoutSize: NSCollectionLayoutSize(
             widthDimension: .fractionalWidth(1), heightDimension: .estimated(heights[section] ?? 60)))
         let group = NSCollectionLayoutGroup.vertical(
@@ -396,7 +461,7 @@ final class HomeToolsCell: UICollectionViewCell {
     private let batchButton = GlassPillButton(type: .system)
     private let fillImageButton = GlassPillButton(type: .system)
     private let fillButton = GlassPillButton(type: .system)
-    private let colorButton = GlassPillButton(type: .system)
+    private let colorRow = ColorRowView()
     private let clearButton = UIButton(type: .system)
     private let exportButton = UIButton(type: .system)
     var onAction: ((String) -> Void)?
@@ -411,7 +476,7 @@ final class HomeToolsCell: UICollectionViewCell {
         row4.axis = .horizontal
         row4.spacing = 8
         row4.distribution = .fillEqually
-        let stack = UIStackView(arrangedSubviews: [row1, fillButton, colorButton, row4])
+        let stack = UIStackView(arrangedSubviews: [row1, fillButton, colorRow, row4])
         stack.axis = .vertical
         stack.spacing = 8
         contentView.addSubview(stack)
@@ -426,8 +491,8 @@ final class HomeToolsCell: UICollectionViewCell {
             button.translatesAutoresizingMaskIntoConstraints = false
             button.heightAnchor.constraint(equalToConstant: 44).isActive = true
         }
-        colorButton.translatesAutoresizingMaskIntoConstraints = false
-        colorButton.heightAnchor.constraint(equalToConstant: 52).isActive = true
+        colorRow.translatesAutoresizingMaskIntoConstraints = false
+        colorRow.heightAnchor.constraint(equalToConstant: 44).isActive = true
         clearButton.translatesAutoresizingMaskIntoConstraints = false
         clearButton.heightAnchor.constraint(equalToConstant: 44).isActive = true
         exportButton.translatesAutoresizingMaskIntoConstraints = false
@@ -435,7 +500,7 @@ final class HomeToolsCell: UICollectionViewCell {
         batchButton.addTarget(self, action: #selector(batchTapped), for: .touchUpInside)
         fillImageButton.addTarget(self, action: #selector(fillImageTapped), for: .touchUpInside)
         fillButton.addTarget(self, action: #selector(fillTapped), for: .touchUpInside)
-        colorButton.addTarget(self, action: #selector(colorsTapped), for: .touchUpInside)
+        colorRow.addTarget(self, action: #selector(colorsTapped), for: .touchUpInside)
         clearButton.addTarget(self, action: #selector(clearTapped), for: .touchUpInside)
         exportButton.addTarget(self, action: #selector(exportTapped), for: .touchUpInside)
     }
@@ -474,21 +539,12 @@ final class HomeToolsCell: UICollectionViewCell {
         ] as [(GlassPillButton, String, String?, String?)] {
             button.configuration = pillConfig(title: title, asset: asset, symbol: symbol, color: textColor)
             button.tintColor = textColor
-            button.titleLabel?.font = hfont(13, .medium)
+            button.titleLabel?.font = hfont(13, button === fillButton ? .semibold : .medium)
             button.configureGlass(useBlur: model.useBlur, tint: tint)
         }
-        // Color row: icon + two-line text + chevron, left aligned.
-        var colorConfig = UIButton.Configuration.plain()
-        colorConfig.image = UIImage(systemName: "paintpalette", withConfiguration: UIImage.SymbolConfiguration(pointSize: 17, weight: .regular))?
-            .withTintColor(UIAppColors.secondary, renderingMode: .alwaysOriginal)
-        colorConfig.imagePadding = 10
-        colorConfig.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 14, bottom: 0, trailing: 14)
-        colorConfig.baseForegroundColor = .label
-        colorButton.configuration = colorConfig
-        colorButton.configureGlass(useBlur: model.useBlur, tint: tint)
-        colorButton.setTitle("自定义修改颜色", for: .normal)
-        colorButton.titleLabel?.font = hfont(13, .medium)
-        colorButton.contentHorizontalAlignment = .leading
+        // Color row: palette icon + two-line text + chevron (matches the old home).
+        colorRow.configure(useBlur: model.useBlur, tint: tint,
+                           titleFont: hfont(13, .medium), subtitleFont: hfont(10, .regular))
 
         for (button, title, asset, hex) in [
             (clearButton, "清空", "ToolbarClear", "#007AFE"),
