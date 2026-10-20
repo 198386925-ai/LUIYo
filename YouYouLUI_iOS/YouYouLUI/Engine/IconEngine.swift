@@ -26,15 +26,15 @@ case title, file, files, selectedFiles, section, sections, aliases, category, al
 
 init(from decoder: Decoder) throws {
 let box = try decoder.container(keyedBy: CodingKeys.self)
-title = try box.decodeIfPresent(String.self, forKey:.title)?? ""
-file = try box.decodeIfPresent(String.self, forKey:.file)?? ""
-files = try box.decodeIfPresent([String].self, forKey:.files)?? []
-selectedFiles = try box.decodeIfPresent([String].self, forKey:.selectedFiles)?? []
-section = try box.decodeIfPresent(String.self, forKey:.section)?? ""
-sections = try box.decodeIfPresent([String].self, forKey:.sections)?? []
-aliases = try box.decodeIfPresent([String].self, forKey:.aliases)?? []
-category = try box.decodeIfPresent(String.self, forKey:.category)?? ""
-alsoLiquidUI = try box.decodeIfPresent(Bool.self, forKey:.alsoLiquidUI)?? false
+title = try box.decodeIfPresent(String.self, forKey:.title) ?? ""
+file = try box.decodeIfPresent(String.self, forKey:.file) ?? ""
+files = try box.decodeIfPresent([String].self, forKey:.files) ?? []
+selectedFiles = try box.decodeIfPresent([String].self, forKey:.selectedFiles) ?? []
+section = try box.decodeIfPresent(String.self, forKey:.section) ?? ""
+sections = try box.decodeIfPresent([String].self, forKey:.sections) ?? []
+aliases = try box.decodeIfPresent([String].self, forKey:.aliases) ?? []
+category = try box.decodeIfPresent(String.self, forKey:.category) ?? ""
+alsoLiquidUI = try box.decodeIfPresent(Bool.self, forKey:.alsoLiquidUI) ?? false
 }
 }
 
@@ -48,10 +48,10 @@ enum CodingKeys: String, CodingKey { case file, targetFile, mode, titles}
 
 init(from decoder: Decoder) throws {
 let box = try decoder.container(keyedBy: CodingKeys.self)
-file = try box.decodeIfPresent(String.self, forKey:.file)?? ""
+file = try box.decodeIfPresent(String.self, forKey:.file) ?? ""
 targetFile = try box.decodeIfPresent(String.self, forKey:.targetFile)
-mode = try box.decodeIfPresent(String.self, forKey:.mode)?? "normal"
-titles = try box.decodeIfPresent([String].self, forKey:.titles)?? []
+mode = try box.decodeIfPresent(String.self, forKey:.mode) ?? "normal"
+titles = try box.decodeIfPresent([String].self, forKey:.titles) ?? []
 }
 }
 
@@ -70,7 +70,7 @@ var darkModeInvertEnabled = false
 var darkModeColor = "#ffffff"
 
 init(_ values: [String: Any]) {
-func bool(_ key: String) -> Bool { values[key] as? Bool?? false}
+func bool(_ key: String) -> Bool { values[key] as? Bool ?? false}
 func color(_ key: String, _ fallback: String) -> String {
 if let text = values[key] as? String,!text.isEmpty { return text}
 return fallback
@@ -251,8 +251,8 @@ extraFillApplied = true
 let needle = query.trimmingCharacters(in:.whitespaces).lowercased()
 var filled = 0
 for (index, item) in items.enumerated() {
-if!needle.isEmpty &&!item.title.lowercased().contains(needle) { continue}
-if chosen[index] == nil &&!excluded.contains(index) {
+if !needle.isEmpty && !item.title.lowercased().contains(needle) { continue}
+if chosen[index] == nil && !excluded.contains(index) {
 setChosen(index, fill)
 filled += 1
 }
@@ -260,7 +260,7 @@ filled += 1
 statusOverride = nil
 publish()
 var message = "已同时补全 LiquidUI + 原版微信，共 \(filled) 个空缺图标；没有网页关键词对应的命名规则也会使用这张补全图片"
-if!excluded.isEmpty { message += "；已排除的图标保持不补全"}
+if !excluded.isEmpty { message += "；已排除的图标保持不补全"}
 onNotice?(message)
 }
 
@@ -285,18 +285,18 @@ statusOverride = nil
 publish()
 if matched > 0 {
 var message = "已按网页标题模糊关键词自动匹配 \(matched) 张图片"
-if!unmatched.isEmpty {
+if !unmatched.isEmpty {
 message += "\n\n未匹配 \(unmatched.count) 张：\n" + unmatched.prefix(8).joined(separator: "\n")
 if unmatched.count > 8 { message += "\n…还有 \(unmatched.count - 8) 张"}
 message += "\n\n可使用网页标题中的模糊关键词，例如：底栏微信.png、扫一扫.png、转账.png、scan_filled.png；模糊关键词至少 3 个字，两个字请使用完整标题。"
 }
-if!tooShort.isEmpty {
+if !tooShort.isEmpty {
 message += "\n\n关键词少于 2 个字，已跳过 \(tooShort.count) 张：\n" + tooShort.prefix(8).joined(separator: "\n")
 }
 onNotice?(message)
 } else {
 var message = "没有匹配到网页标题关键词。\n\n模糊关键词至少 3 个字，例如：\n底栏微信.png\n扫一扫.png\nscan_filled.png\n两个字请使用完整标题，如：转账.png"
-if!tooShort.isEmpty {
+if !tooShort.isEmpty {
 message += "\n\n其中 \(tooShort.count) 张图片的关键词少于 2 个字，已跳过。"
 }
 onNotice?(message)
@@ -311,7 +311,7 @@ var tooShort = false
 
 private func findItemByKeyword(_ filename: String) -> MatchResult {
 let rawStem = Self.importFileStem(filename)
-if!rawStem.isEmpty && rawStem.unicodeScalars.allSatisfy({ $0.value < 128}) {
+if !rawStem.isEmpty && rawStem.unicodeScalars.allSatisfy({ $0.value < 128}) {
 if rawStem.count < 2 { return MatchResult(index: -1, ambiguous: false, tooShort: true)}
 var hits: [Int] = []
 for (index, item) in items.enumerated() {
@@ -341,13 +341,13 @@ score = 12000 + stem.count
 let fuzzy = Self.longestCommonSubstringLength(stem, keyword)
 if fuzzy >= 3 { score = 5000 + fuzzy * 100 - abs(stem.count - keyword.count)}
 }
-if score!= 0 { scored.append(Scored(index: index, score: score, keyword: keyword, own: keyword == titleKey))}
+if score != 0 { scored.append(Scored(index: index, score: score, keyword: keyword, own: keyword == titleKey))}
 }
 }
 if scored.isEmpty { return MatchResult(index: -1, ambiguous: false, tooShort: false)}
 scored.sort {
-if $0.score!= $1.score { return $0.score > $1.score}
-if $0.keyword.count!= $1.keyword.count { return $0.keyword.count > $1.keyword.count}
+if $0.score != $1.score { return $0.score > $1.score}
+if $0.keyword.count != $1.keyword.count { return $0.keyword.count > $1.keyword.count}
 return $0.index < $1.index
 }
 let best = scored[0]
@@ -401,7 +401,7 @@ var seen: Set<String> = []
 var out: [String] = []
 for title in [item.title] + item.aliases {
 let keyword = importKeywordNormalize(stripLiquidPrefix(title))
-if!keyword.isEmpty && seen.insert(keyword).inserted { out.append(keyword)}
+if !keyword.isEmpty && seen.insert(keyword).inserted { out.append(keyword)}
 }
 return out
 }
