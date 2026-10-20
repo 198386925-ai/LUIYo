@@ -12,7 +12,7 @@ extension MainShellViewController {
         let model = SettingsNativeModel()
         model.fontController = self.fontController
         model.hasCustomFont = self.fontController.library.hasAnyCustomSelection
-        model.customFontName = self.fontController.library.summary(area: .settings)
+        model.customFontName = self.fontController.library.summary()
         model.isAuthorized = isAuthorized
         model.authMessage = authorizationMessage
         model.authBusy = authorizationBusy
@@ -42,7 +42,7 @@ extension MainShellViewController {
         model.onFontChanged = { [weak self] in
             guard let self else { return }
             self.distributeFonts()
-            model.customFontName = self.fontController.library.summary(area: .settings)
+            model.customFontName = self.fontController.library.summary()
             model.hasCustomFont = self.fontController.library.hasAnyCustomSelection
         }
         objc_setAssociatedObject(self, &AssociatedKeys.settingsModel, model, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)

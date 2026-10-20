@@ -155,6 +155,7 @@ final class FontLibrary {
     }
 
     func loadImported() {
+        migrateLegacySelectionsIfNeeded()
         imported = []
         let dir = importedDirectory
         guard let files = try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil) else { return }
@@ -211,14 +212,12 @@ final class FontLibrary {
         imported.removeAll { $0.fileKey == fileKey }
         for url in urls { try? FileManager.default.removeItem(at: url) }
         // Drop selections that pointed at the removed faces.
-        for area in FontArea.allCases {
-            for chinese in [false, true] {
-                let value = selection(area: area, chinese: chinese)
-                if value.hasPrefix("imp:") {
-                    let id = String(value.dropFirst(4))
-                    if !imported.contains(where: { $0.id == id }) {
-                        setSelection(area: area, chinese: chinese, value: "system", notify: false)
-                    }
+        for chinese in [false, true] {
+            let value = selection(chinese: chinese)
+            if value.hasPrefix("imp:") {
+                let id = String(value.dropFirst(4))
+                if !imported.contains(where: { $0.id == id }) {
+                    setSelection(chinese: chinese, value: "system", notify: false)
                 }
             }
         }
@@ -253,39 +252,80 @@ final class FontLibrary {
         return total
     }
 
-    // MARK: - Selections (per area, Latin and Chinese independent)
+    // MARK: - Selections (one Latin + one Chinese choice, gated per page)
 
-    private func defaultsKey(area: FontArea, chinese: Bool) -> String {
-        "fontlib.sel." + area.rawValue + (chinese ? ".chinese" : ".latin")
+    private func selectionKey(chinese: Bool) -> String {
+        chinese ? "fontlib.sel.chinese" : "fontlib.sel.latin"
     }
 
-    func selection(area: FontArea, chinese: Bool) -> String {
-        UserDefaults.standard.string(forKey: defaultsKey(area: area, chinese: chinese)) ?? "system"
+    private func offKey(_ area: FontArea) -> String { "fontlib.off." + area.rawValue }
+
+    /// One-time migration from the first release's per-area selections: the
+    /// global choice takes the first custom pick found, and a page keeps the
+    /// font only if it had a custom pick of its own.
+    func migrateLegacySelectionsIfNeeded() {
+        let defaults = UserDefaults.standard
+        guard defaults.string(forKey: "fontlib.sel.latin") == nil else { return }
+        var latin = "system"
+        var chinese = "system"
+        var anyCustom = false
+        var customAreas: [FontArea: Bool] = [:]
+        for area in FontArea.allCases {
+            let oldLatin = defaults.string(forKey: "fontlib.sel." + area.rawValue + ".latin") ?? "system"
+            let oldChinese = defaults.string(forKey: "fontlib.sel." + area.rawValue + ".chinese") ?? "system"
+            if latin == "system" { latin = oldLatin }
+            if chinese == "system" { chinese = oldChinese }
+            let custom = oldLatin != "system" || oldChinese != "system"
+            customAreas[area] = custom
+            if custom { anyCustom = true }
+        }
+        defaults.set(latin, forKey: "fontlib.sel.latin")
+        defaults.set(chinese, forKey: "fontlib.sel.chinese")
+        if anyCustom {
+            for area in FontArea.allCases where customAreas[area] != true {
+                defaults.set(true, forKey: offKey(area))
+            }
+        }
     }
 
-    func setSelection(area: FontArea, chinese: Bool, value: String, notify: Bool = true) {
-        UserDefaults.standard.set(value, forKey: defaultsKey(area: area, chinese: chinese))
+    func selection(chinese: Bool) -> String {
+        UserDefaults.standard.string(forKey: selectionKey(chinese: chinese)) ?? "system"
+    }
+
+    func setSelection(chinese: Bool, value: String, notify: Bool = true) {
+        UserDefaults.standard.set(value, forKey: selectionKey(chinese: chinese))
         if notify { onSelectionsChanged?() }
     }
 
-    func resetAllSelections() {
-        for area in FontArea.allCases {
-            setSelection(area: area, chinese: false, value: "system", notify: false)
-            setSelection(area: area, chinese: true, value: "system", notify: false)
+    /// Whether the chosen font applies to a page (the page's checkbox).
+    func isEnabled(_ area: FontArea) -> Bool {
+        !UserDefaults.standard.bool(forKey: offKey(area))
+    }
+
+    func setEnabled(_ area: FontArea, _ enabled: Bool) {
+        if enabled {
+            UserDefaults.standard.removeObject(forKey: offKey(area))
+        } else {
+            UserDefaults.standard.set(true, forKey: offKey(area))
         }
         onSelectionsChanged?()
     }
 
-    var hasAnyCustomSelection: Bool {
-        FontArea.allCases.contains { area in
-            selection(area: area, chinese: false) != "system" || selection(area: area, chinese: true) != "system"
-        }
+    func resetAllSelections() {
+        setSelection(chinese: false, value: "system", notify: false)
+        setSelection(chinese: true, value: "system", notify: false)
+        onSelectionsChanged?()
     }
 
-    /// Human-readable summary of one area's selections, e.g. "Inter · IBM Plex Sans SC".
-    func summary(area: FontArea) -> String {
-        let latin = displayName(forSelection: selection(area: area, chinese: false))
-        let chinese = displayName(forSelection: selection(area: area, chinese: true))
+    var hasAnyCustomSelection: Bool {
+        (selection(chinese: false) != "system" || selection(chinese: true) != "system")
+            && FontArea.allCases.contains { isEnabled($0) }
+    }
+
+    /// Human-readable summary of the current choices, e.g. "Inter · IBM Plex Sans SC".
+    func summary() -> String {
+        let latin = displayName(forSelection: selection(chinese: false))
+        let chinese = displayName(forSelection: selection(chinese: true))
         if latin == nil && chinese == nil { return "使用默认字体" }
         return [latin, chinese].compactMap { $0 }.joined(separator: " · ")
     }
@@ -319,10 +359,17 @@ final class FontLibrary {
         return nil
     }
 
-    /// The effective font for an area, or nil when both scripts use the system font.
+    /// The effective font for an area: nil when the page's switch is off or
+    /// both scripts use the system font.
     func uiFont(area: FontArea, size: CGFloat, weight: UIFont.Weight = .regular, italic: Bool = false) -> UIFont? {
-        let latin = face(forSelection: selection(area: area, chinese: false), chinese: false, size: size, weight: weight, italic: italic)
-        let chinese = face(forSelection: selection(area: area, chinese: true), chinese: true, size: size, weight: weight, italic: italic)
+        guard isEnabled(area) else { return nil }
+        return currentFont(size: size, weight: weight, italic: italic)
+    }
+
+    /// The chosen font itself, ignoring the per-page switches (previews).
+    func currentFont(size: CGFloat, weight: UIFont.Weight = .regular, italic: Bool = false) -> UIFont? {
+        let latin = face(forSelection: selection(chinese: false), chinese: false, size: size, weight: weight, italic: italic)
+        let chinese = face(forSelection: selection(chinese: true), chinese: true, size: size, weight: weight, italic: italic)
         if latin == nil && chinese == nil { return nil }
         if let latin, chinese == nil { return latin as UIFont }
         if let chinese, latin == nil {

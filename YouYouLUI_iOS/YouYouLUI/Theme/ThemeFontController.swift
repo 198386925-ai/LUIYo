@@ -39,13 +39,11 @@ final class ThemeFontController {
         library.loadImported()
         if let data = try? Data(contentsOf: legacyStorageURL), !data.isEmpty {
             if let faces = library.importFont(data: data, filename: "旧版导入字体.ttf"), let first = faces.first {
-                for area in FontArea.allCases {
-                    if first.coversLatin {
-                        library.setSelection(area: area, chinese: false, value: "imp:" + first.id, notify: false)
-                    }
-                    if first.coversChinese {
-                        library.setSelection(area: area, chinese: true, value: "imp:" + first.id, notify: false)
-                    }
+                if first.coversLatin {
+                    library.setSelection(chinese: false, value: "imp:" + first.id, notify: false)
+                }
+                if first.coversChinese {
+                    library.setSelection(chinese: true, value: "imp:" + first.id, notify: false)
                 }
             }
             try? FileManager.default.removeItem(at: legacyStorageURL)
@@ -60,10 +58,10 @@ final class ThemeFontController {
     func apply(_ data: Data) -> Bool {
         guard let faces = library.importFont(data: data, filename: "导入字体.ttf"), let first = faces.first else { return false }
         if first.coversLatin {
-            library.setSelection(area: .settings, chinese: false, value: "imp:" + first.id, notify: false)
+            library.setSelection(chinese: false, value: "imp:" + first.id, notify: false)
         }
         if first.coversChinese {
-            library.setSelection(area: .settings, chinese: true, value: "imp:" + first.id, notify: false)
+            library.setSelection(chinese: true, value: "imp:" + first.id, notify: false)
         }
         library.onSelectionsChanged?()
         return true

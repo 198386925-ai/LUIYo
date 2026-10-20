@@ -42,8 +42,9 @@ final class FoldView: UIView {
         subtitleLabel.text = subtitle
         subtitleLabel.font = UIFont.systemFont(ofSize: 8)
         subtitleLabel.textColor = UIAppColors.secondary
-        chevron.image = UIImage(systemName: "chevron.down", withConfiguration: UIImage.SymbolConfiguration(pointSize: 13, weight: .semibold))
-        chevron.tintColor = UIColor(red: 0xC7 / 255, green: 0xC7 / 255, blue: 0xCC / 255, alpha: 1)
+        subtitleLabel.isHidden = true
+        chevron.image = UIImage(systemName: "chevron.down", withConfiguration: UIImage.SymbolConfiguration(pointSize: 17, weight: .bold))
+        chevron.tintColor = UIAppColors.ink
         chevron.contentMode = .scaleAspectFit
 
         let inner = UIStackView()
@@ -79,8 +80,8 @@ final class FoldView: UIView {
             subtitleLabel.centerYAnchor.constraint(equalTo: header.centerYAnchor),
             chevron.trailingAnchor.constraint(equalTo: header.trailingAnchor, constant: -16),
             chevron.centerYAnchor.constraint(equalTo: header.centerYAnchor),
-            chevron.widthAnchor.constraint(equalToConstant: 16),
-            chevron.heightAnchor.constraint(equalToConstant: 16),
+            chevron.widthAnchor.constraint(equalToConstant: 21),
+            chevron.heightAnchor.constraint(equalToConstant: 21),
         ])
         contentView.isHidden = true
         contentView.clipsToBounds = true
@@ -104,6 +105,7 @@ final class FoldView: UIView {
         // on device). The layout switches instantly instead; only the
         // chevron turns and the content fades in, which stays clean.
         contentView.isHidden = !value
+        subtitleLabel.isHidden = !value
         card.surface.glassRadius = value ? 26 : 24
         card.content.layer.cornerRadius = value ? 26 : 24
         card.configure(useBlur: lastUseBlur, tint: lastTint)
@@ -160,7 +162,6 @@ final class SettingsViewController: UIViewController {
     private var changelogFold: FoldView!
     private let updateCard = GlassCardView(radius: 26)
     private var changelogCards: [GlassCardView] = []
-    private let updateStatus = UILabel()
     private var backgroundWell: UIButton!
     private var cardWell: UIButton!
     private var minimizeSwitch: UISwitch!
@@ -256,7 +257,7 @@ final class SettingsViewController: UIViewController {
         ])
         stack.addArrangedSubview(guideFold)
 
-        changelogFold = FoldView(icon: "clock.arrow.circlepath", iconImage: luiyoBundledIcon("changelog"), title: "更新日志", subtitle: "Version 1.0.7-1 · 当前版本")
+        changelogFold = FoldView(icon: "clock.arrow.circlepath", iconImage: luiyoBundledIcon("changelog"), title: "更新日志", subtitle: "Version 1.0.8 · 当前版本")
         changelogFold.onToggle = { [weak self] in self?.model.changelogExpanded.toggle() }
         let changelogContent = buildChangelogContent()
         changelogFold.contentView.addSubview(changelogContent)
@@ -308,14 +309,11 @@ final class SettingsViewController: UIViewController {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in self?.refreshTheme() }
             .store(in: &cancellables)
-        updater.objectWillChange
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in self?.refreshUpdateUI() }
-            .store(in: &cancellables)
         updater.$showUpdateAlert
             .receive(on: DispatchQueue.main)
             .sink { [weak self] show in
                 guard let self, show else { return }
+                guard self.presentedViewController == nil else { return }
                 self.updater.showUpdateAlert = false
                 let alert = UIAlertController(
                     title: "发现新版本",
@@ -329,7 +327,6 @@ final class SettingsViewController: UIViewController {
 
         refreshTheme()
         refreshFromModel()
-        refreshUpdateUI()
         themeFold.setExpanded(model.themeExpanded, animated: false)
         guideFold.setExpanded(model.guideExpanded, animated: false)
         changelogFold.setExpanded(model.changelogExpanded, animated: false)
@@ -472,32 +469,43 @@ final class SettingsViewController: UIViewController {
         return button
     }
 
-    private func themeRow(title: String, subtitle: String, control: UIView, divider: Bool) -> UIView {
+    private func themeRow(title: String, subtitle: String?, control: UIView, divider: Bool) -> UIView {
         let row = UIView()
         let titleLabel = UILabel()
         titleLabel.text = title
         titleLabel.font = UIFont.systemFont(ofSize: 12)
         titleLabel.textColor = UIAppColors.inkDynamic
-        let subtitleLabel = UILabel()
-        subtitleLabel.text = subtitle
-        subtitleLabel.font = UIFont.systemFont(ofSize: 10)
-        subtitleLabel.textColor = UIAppColors.secondary
-        subtitleLabel.tag = 77
         row.addSubview(titleLabel)
-        row.addSubview(subtitleLabel)
         row.addSubview(control)
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
-        subtitleLabel.translatesAutoresizingMaskIntoConstraints = false
         control.translatesAutoresizingMaskIntoConstraints = false
+        if let subtitle {
+            let subtitleLabel = UILabel()
+            subtitleLabel.text = subtitle
+            subtitleLabel.font = UIFont.systemFont(ofSize: 10)
+            subtitleLabel.textColor = UIAppColors.secondary
+            subtitleLabel.tag = 77
+            row.addSubview(subtitleLabel)
+            subtitleLabel.translatesAutoresizingMaskIntoConstraints = false
+            NSLayoutConstraint.activate([
+                titleLabel.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: 15),
+                titleLabel.topAnchor.constraint(equalTo: row.topAnchor, constant: 10),
+                subtitleLabel.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),
+                subtitleLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 1),
+                subtitleLabel.bottomAnchor.constraint(equalTo: row.bottomAnchor, constant: -10),
+                control.leadingAnchor.constraint(greaterThanOrEqualTo: subtitleLabel.trailingAnchor, constant: 10),
+            ])
+        } else {
+            NSLayoutConstraint.activate([
+                titleLabel.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: 15),
+                titleLabel.topAnchor.constraint(equalTo: row.topAnchor, constant: 12),
+                titleLabel.bottomAnchor.constraint(equalTo: row.bottomAnchor, constant: -12),
+                control.leadingAnchor.constraint(greaterThanOrEqualTo: titleLabel.trailingAnchor, constant: 10),
+            ])
+        }
         NSLayoutConstraint.activate([
-            titleLabel.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: 15),
-            titleLabel.topAnchor.constraint(equalTo: row.topAnchor, constant: 10),
-            subtitleLabel.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),
-            subtitleLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 1),
-            subtitleLabel.bottomAnchor.constraint(equalTo: row.bottomAnchor, constant: -10),
             control.trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -15),
             control.centerYAnchor.constraint(equalTo: row.centerYAnchor),
-            control.leadingAnchor.constraint(greaterThanOrEqualTo: subtitleLabel.trailingAnchor, constant: 10),
         ])
         if divider {
             let line = UIView()
@@ -592,13 +600,13 @@ final class SettingsViewController: UIViewController {
 
         // Custom font is an entry row now: one tap opens the choices
         // (import / restore) instead of crowding the row with buttons.
-        let fontChevron = UIImageView(image: UIImage(systemName: "chevron.right", withConfiguration: UIImage.SymbolConfiguration(pointSize: 13, weight: .semibold)))
-        fontChevron.tintColor = UIColor(red: 0xC7 / 255, green: 0xC7 / 255, blue: 0xCC / 255, alpha: 1)
+        let fontChevron = UIImageView(image: UIImage(systemName: "chevron.right", withConfiguration: UIImage.SymbolConfiguration(pointSize: 17, weight: .bold)))
+        fontChevron.tintColor = UIAppColors.inkDynamic
         fontChevron.contentMode = .scaleAspectFit
         fontChevron.translatesAutoresizingMaskIntoConstraints = false
         fontChevron.widthAnchor.constraint(equalToConstant: 16).isActive = true
         fontChevron.heightAnchor.constraint(equalToConstant: 16).isActive = true
-        let fontRow = themeRow(title: "自定义字体", subtitle: model.customFontName, control: fontChevron, divider: false)
+        let fontRow = themeRow(title: "自定义字体", subtitle: nil, control: fontChevron, divider: false)
         fontSubtitleLabel = fontRow.viewWithTag(77) as? UILabel
         fontRow.isUserInteractionEnabled = true
         fontRow.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(fontEntryTapped)))
@@ -626,11 +634,11 @@ final class SettingsViewController: UIViewController {
     }
     @objc private func fontEntryTapped() {
         guard let controller = model.fontController else { return }
-        let page = FontSettingsViewController(fontController: controller)
+        let page = FontSettingsViewController(fontController: controller, homeModel: homeModel)
         page.modalPresentationStyle = .fullScreen
         page.onChanged = { [weak self] in
             guard let self else { return }
-            self.model.customFontName = controller.library.summary(area: .settings)
+            self.model.customFontName = controller.library.summary()
             self.model.hasCustomFont = controller.library.hasAnyCustomSelection
             self.fontSubtitleLabel?.text = self.model.customFontName
         }
@@ -804,17 +812,13 @@ final class SettingsViewController: UIViewController {
         title.text = "检查更新"
         title.font = UIFont.systemFont(ofSize: 12, weight: .semibold)
         title.textColor = UIAppColors.inkDynamic
-        updateStatus.font = UIFont.systemFont(ofSize: 8)
-        updateStatus.textColor = UIAppColors.secondary
-        let chevron = UIImageView(image: UIImage(systemName: "chevron.right", withConfiguration: UIImage.SymbolConfiguration(pointSize: 13, weight: .semibold)))
-        chevron.tintColor = UIColor(red: 0xC7 / 255, green: 0xC7 / 255, blue: 0xCC / 255, alpha: 1)
+        let chevron = UIImageView(image: UIImage(systemName: "chevron.right", withConfiguration: UIImage.SymbolConfiguration(pointSize: 17, weight: .bold)))
+        chevron.tintColor = UIAppColors.inkDynamic
         tap.addSubview(icon)
         tap.addSubview(title)
-        tap.addSubview(updateStatus)
         tap.addSubview(chevron)
         icon.translatesAutoresizingMaskIntoConstraints = false
         title.translatesAutoresizingMaskIntoConstraints = false
-        updateStatus.translatesAutoresizingMaskIntoConstraints = false
         chevron.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             icon.leadingAnchor.constraint(equalTo: tap.leadingAnchor, constant: 16),
@@ -823,33 +827,18 @@ final class SettingsViewController: UIViewController {
             icon.heightAnchor.constraint(equalToConstant: 21),
             title.leadingAnchor.constraint(equalTo: icon.trailingAnchor, constant: 10),
             title.centerYAnchor.constraint(equalTo: tap.centerYAnchor),
-            updateStatus.leadingAnchor.constraint(equalTo: title.trailingAnchor, constant: 6),
-            updateStatus.centerYAnchor.constraint(equalTo: tap.centerYAnchor),
-            updateStatus.trailingAnchor.constraint(lessThanOrEqualTo: chevron.leadingAnchor, constant: -8),
             chevron.trailingAnchor.constraint(equalTo: tap.trailingAnchor, constant: -16),
             chevron.centerYAnchor.constraint(equalTo: tap.centerYAnchor),
-            chevron.widthAnchor.constraint(equalToConstant: 16),
-            chevron.heightAnchor.constraint(equalToConstant: 16),
+            chevron.widthAnchor.constraint(equalToConstant: 21),
+            chevron.heightAnchor.constraint(equalToConstant: 21),
         ])
     }
 
     @objc private func updateTapped() {
-        if case .downloading = updater.state {
-            updater.cancelDownload()
-        } else {
-            updater.checkForUpdate()
-        }
+        let page = UpdateCheckViewController(updater: updater, homeModel: homeModel)
+        present(page, animated: true)
     }
 
-    private func refreshUpdateUI() {
-        switch updater.state {
-        case .idle: updateStatus.text = "点按检查新版本"
-        case .checking: updateStatus.text = "检查中…"
-        case .downloading(let progress): updateStatus.text = "下载中 \(Int(progress * 100))%"
-        case .readyToShare: updateStatus.text = "已下载，点按重新检查"
-        case .error(let message): updateStatus.text = message
-        }
-    }
 
 
     // MARK: - Page font

@@ -29,7 +29,14 @@ enum SettingsContent {
     ].map { SettingsGuideSection(title: $0.0, body: $0.1) }
 
     static let changelog: [ChangelogVersion] = [
-        ChangelogVersion(title: "Version 1.0.7-1", isCurrent: true, entries: [
+        ChangelogVersion(title: "Version 1.0.8", isCurrent: true, entries: [
+            ChangelogEntry(tag: "优化", text: "更改字体页改版：应用位置改为勾选（首页、规则页、设置页可多选），选好的字体立即应用到勾选的页面；页面改为从右侧淡入，标题居中，预览与字体列表改为卡片式排版。"),
+            ChangelogEntry(tag: "优化", text: "检查更新改为独立页面：当前版本、检查状态、新版本内容与下载都在页面内完成。"),
+            ChangelogEntry(tag: "优化", text: "主题、使用说明、更新日志的副标题只在展开时显示；自定义字体入口去掉副标题，只显示名称。"),
+            ChangelogEntry(tag: "优化", text: "设置页卡片图标线条改细，箭头统一为与图标相同的颜色和大小。"),
+            ChangelogEntry(tag: "修复", text: "修复更改字体页返回按钮点按不灵敏的问题。"),
+        ]),
+        ChangelogVersion(title: "Version 1.0.7-1", isCurrent: false, entries: [
             ChangelogEntry(tag: "新增", text: "自定义颜色新增「深色模式」分组：可单独开关深色图标反转，并自定义深色颜色。"),
             ChangelogEntry(tag: "优化", text: "界面与干活部分全面改为原生实现（UIKit 界面 + Swift 干活层），不再依赖内置网页，滑动与切换更流畅。"),
             ChangelogEntry(tag: "优化", text: "授权逻辑调整：未授权时除导出 ZIP 外，上传、补全、改色等功能都可正常使用，未授权不显示 SVIP。"),
