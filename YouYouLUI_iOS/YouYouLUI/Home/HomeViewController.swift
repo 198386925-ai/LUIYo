@@ -396,7 +396,7 @@ final class HomeHeaderCell: UICollectionViewCell {
 
     func configure(model: NativeHomeModel, hfont: (CGFloat, UIFont.Weight) -> UIFont) {
         title.font = hfont(25, .bold)
-        subtitle.font = hfont(13, .regular)
+        subtitle.font = hfont(12, .regular)
         authIcon.image = UIImage(systemName: model.authorized ? "checkmark.seal.fill" : "lock.fill")
         authIcon.tintColor = model.authorized ? .systemGreen : UIAppColors.secondary
         authLabel.text = model.authorized ? "已授权" : "未授权"
@@ -477,7 +477,7 @@ final class HomeSearchCell: UICollectionViewCell, UITextFieldDelegate {
 
     func configure(model: NativeHomeModel, hfont: (CGFloat, UIFont.Weight) -> UIFont) {
         surface.configure(useBlur: model.useBlur, tint: UIColor(nativeHex: model.theme.card))
-        field.font = hfont(15, .regular)
+        field.font = hfont(12, .regular)
         if field.text != model.query, !field.isFirstResponder {
             field.text = model.query
         }
@@ -560,12 +560,12 @@ final class HomeToolsCell: UICollectionViewCell {
                 icon = nil
             }
             button.configure(icon: icon, title: title, color: textColor,
-                             font: hfont(13, button === fillButton ? .semibold : .medium),
+                             font: hfont(13, .semibold),
                              useBlur: model.useBlur, glassTint: tint)
         }
         // Color row: palette icon + two-line text + chevron (matches the old home).
         colorRow.configure(useBlur: model.useBlur, tint: tint,
-                           titleFont: hfont(13, .medium), subtitleFont: hfont(10, .regular))
+                           titleFont: hfont(13, .semibold), subtitleFont: hfont(8, .regular))
 
         for (button, title, asset, hex) in [
             (clearButton, "清空", "ToolbarClear", "#007AFE"),
@@ -668,7 +668,7 @@ final class HomeHeadingCell: UICollectionViewCell {
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
     func configure(title text: String, count value: Int, hfont: (CGFloat, UIFont.Weight) -> UIFont) {
         title.text = text
-        title.font = hfont(17, .semibold)
+        title.font = hfont(17, .regular)
         count.text = "\(value) 项"
         count.font = hfont(12, .regular)
     }
@@ -747,10 +747,10 @@ final class HomeIconCell: UICollectionViewCell {
     func configure(item: NativeIconEntry, image: UIImage?, model: NativeHomeModel, hfont: (CGFloat, UIFont.Weight) -> UIFont) {
         card.configure(useBlur: model.useBlur, tint: UIColor(nativeHex: model.theme.card))
         title.text = item.title
-        title.font = hfont(12, .semibold)
+        title.font = hfont(12, .regular)
         title.textColor = .label
         state.text = image == nil ? "点击上传" : "已上传 · 点击替换"
-        state.font = hfont(11, .regular)
+        state.font = hfont(8, .regular)
         state.textColor = UIAppColors.secondary
         trash.isHidden = image == nil
         if let image {

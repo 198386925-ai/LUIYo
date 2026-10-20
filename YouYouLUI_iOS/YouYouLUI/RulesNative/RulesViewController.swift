@@ -49,12 +49,12 @@ final class RulesViewController: UIViewController {
 
         let title = UILabel()
         title.text = "规则"
-        title.font = UIFont.systemFont(ofSize: 25, weight: .heavy)
+        title.font = UIFont.systemFont(ofSize: 25, weight: .bold)
         title.textColor = UIAppColors.ink(for: traitCollection)
         stack.addArrangedSubview(title)
         let subtitle = UILabel()
         subtitle.text = "LiquidUI 全局换图标命名规则"
-        subtitle.font = UIFont.systemFont(ofSize: 13.5)
+        subtitle.font = UIFont.systemFont(ofSize: 12)
         subtitle.textColor = UIAppColors.secondary
         stack.addArrangedSubview(subtitle)
         stack.setCustomSpacing(4, after: title)
@@ -95,7 +95,7 @@ final class RulesViewController: UIViewController {
         let head = UIView()
         let name = UILabel()
         name.text = section
-        name.font = UIFont.systemFont(ofSize: 15, weight: .bold)
+        name.font = UIFont.systemFont(ofSize: 15, weight: .semibold)
         name.textColor = UIAppColors.ink(for: traitCollection)
         let count = UILabel()
         count.text = "\(rules.count) 项"
@@ -119,12 +119,12 @@ final class RulesViewController: UIViewController {
             let row = UIView()
             let title = UILabel()
             title.text = rule.title
-            title.font = UIFont.systemFont(ofSize: 13.5, weight: .semibold)
+            title.font = UIFont.systemFont(ofSize: 12.5, weight: .semibold)
             title.textColor = UIAppColors.ink(for: traitCollection)
             title.numberOfLines = 0
             let file = UILabel()
             file.text = rule.file
-            file.font = UIFont.systemFont(ofSize: 11)
+            file.font = UIFont.systemFont(ofSize: 10)
             file.textColor = UIAppColors.secondary
             file.numberOfLines = 0
             row.addSubview(title)

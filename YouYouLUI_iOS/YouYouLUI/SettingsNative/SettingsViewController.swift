@@ -34,7 +34,7 @@ final class FoldView: UIView {
         iconView.contentMode = .scaleAspectFit
         iconView.tintColor = UIAppColors.ink
         titleLabel.text = title
-        titleLabel.font = UIFont.systemFont(ofSize: 14.5, weight: .semibold)
+        titleLabel.font = UIFont.systemFont(ofSize: 13, weight: .semibold)
         subtitleLabel.text = subtitle
         subtitleLabel.font = UIFont.systemFont(ofSize: 10)
         subtitleLabel.textColor = UIAppColors.secondary
@@ -79,6 +79,9 @@ final class FoldView: UIView {
             chevron.heightAnchor.constraint(equalToConstant: 16),
         ])
         contentView.isHidden = true
+        contentView.clipsToBounds = true
+        card.content.clipsToBounds = true
+        card.content.layer.cornerRadius = 23
         inner.addArrangedSubview(contentView)
         refreshAppearance()
     }
@@ -91,17 +94,20 @@ final class FoldView: UIView {
 
     func setExpanded(_ value: Bool, animated: Bool) {
         expanded = value
-        let work = {
-            self.contentView.isHidden = !value
+        // Hide/show FIRST, then animate the layout: with the content clipped
+        // to the card, a collapsing fold cannot leave residue behind.
+        contentView.isHidden = !value
+        card.surface.glassRadius = value ? 20 : 23
+        card.content.layer.cornerRadius = value ? 20 : 23
+        card.configure(useBlur: lastUseBlur, tint: lastTint)
+        let animations = {
             self.chevron.transform = value ? CGAffineTransform(rotationAngle: .pi) : .identity
-            self.card.surface.glassRadius = value ? 20 : 23
-            self.card.configure(useBlur: self.lastUseBlur, tint: self.lastTint)
             self.superview?.layoutIfNeeded()
         }
         if animated {
-            UIView.animate(withDuration: 0.28, delay: 0, options: [.curveEaseInOut], animations: work)
+            UIView.animate(withDuration: 0.28, delay: 0, options: [.curveEaseInOut, .beginFromCurrentState], animations: animations)
         } else {
-            work()
+            animations()
         }
     }
 
@@ -143,6 +149,7 @@ final class SettingsViewController: UIViewController {
     private var guideFold: FoldView!
     private var changelogFold: FoldView!
     private let updateCard = GlassCardView(radius: 23)
+    private var changelogCards: [GlassCardView] = []
     private let updateStatus = UILabel()
     private var backgroundWell: UIButton!
     private var cardWell: UIButton!
@@ -190,12 +197,12 @@ final class SettingsViewController: UIViewController {
 
         let title = UILabel()
         title.text = "设置"
-        title.font = UIFont.systemFont(ofSize: 25, weight: .heavy)
+        title.font = UIFont.systemFont(ofSize: 25, weight: .bold)
         title.textColor = UIAppColors.ink(for: traitCollection)
         stack.addArrangedSubview(title)
         let subtitle = UILabel()
         subtitle.text = "主题、使用说明与更新日志"
-        subtitle.font = UIFont.systemFont(ofSize: 13.5)
+        subtitle.font = UIFont.systemFont(ofSize: 12)
         subtitle.textColor = UIAppColors.secondary
         stack.addArrangedSubview(subtitle)
         stack.setCustomSpacing(4, after: title)
@@ -379,13 +386,13 @@ final class SettingsViewController: UIViewController {
         shield.heightAnchor.constraint(equalToConstant: 19).isActive = true
         let title = UILabel()
         title.text = "激活授权"
-        title.font = UIFont.systemFont(ofSize: 16, weight: .semibold)
+        title.font = UIFont.systemFont(ofSize: 13, weight: .semibold)
         title.textColor = UIAppColors.ink(for: traitCollection)
         titleRow.addArrangedSubview(shield)
         titleRow.addArrangedSubview(title)
         inner.addArrangedSubview(titleRow)
 
-        authStatus.font = UIFont.systemFont(ofSize: 12)
+        authStatus.font = UIFont.systemFont(ofSize: 10)
         authStatus.numberOfLines = 0
         inner.addArrangedSubview(authStatus)
 
@@ -394,7 +401,7 @@ final class SettingsViewController: UIViewController {
         fieldRow.spacing = 10
         fieldRow.alignment = .center
         codeField.placeholder = "输入卡密"
-        codeField.font = UIFont.systemFont(ofSize: 14.5)
+        codeField.font = UIFont.systemFont(ofSize: 10)
         codeField.autocapitalizationType = .allCharacters
         codeField.autocorrectionType = .no
         codeField.returnKeyType = .go
@@ -413,7 +420,7 @@ final class SettingsViewController: UIViewController {
 
         activateButton.setTitle("激活", for: .normal)
         activateButton.setTitleColor(.white, for: .normal)
-        activateButton.titleLabel?.font = UIFont.systemFont(ofSize: 14.5, weight: .semibold)
+        activateButton.titleLabel?.font = UIFont.systemFont(ofSize: 10)
         activateButton.backgroundColor = UIAppColors.accentPurple
         activateButton.layer.cornerRadius = 24
         activateButton.addTarget(self, action: #selector(submitLicense), for: .touchUpInside)
@@ -445,7 +452,7 @@ final class SettingsViewController: UIViewController {
         let button = UIButton(type: .system)
         button.setTitle(title, for: .normal)
         button.setTitleColor(UIAppColors.ink(for: traitCollection), for: .normal)
-        button.titleLabel?.font = UIFont.systemFont(ofSize: 12.5, weight: .medium)
+        button.titleLabel?.font = UIFont.systemFont(ofSize: 12.5)
         button.backgroundColor = UIColor(red: 120 / 255, green: 120 / 255, blue: 128 / 255, alpha: 0.10)
         button.layer.cornerRadius = 14
         button.contentEdgeInsets = UIEdgeInsets(top: 6, left: 12, bottom: 6, right: 12)
@@ -457,7 +464,7 @@ final class SettingsViewController: UIViewController {
         let row = UIView()
         let titleLabel = UILabel()
         titleLabel.text = title
-        titleLabel.font = UIFont.systemFont(ofSize: 14, weight: .medium)
+        titleLabel.font = UIFont.systemFont(ofSize: 12)
         titleLabel.textColor = UIAppColors.ink(for: traitCollection)
         let subtitleLabel = UILabel()
         subtitleLabel.text = subtitle
@@ -650,7 +657,7 @@ final class SettingsViewController: UIViewController {
             if index == 0 {
                 let text = NSMutableAttributedString()
                 text.append(NSAttributedString(string: section.title + "\n", attributes: [
-                    .font: UIFont.systemFont(ofSize: 16.5, weight: .bold),
+                    .font: UIFont.systemFont(ofSize: 13.5, weight: .semibold),
                     .foregroundColor: UIColor.label,
                 ]))
                 let para = NSMutableParagraphStyle()
@@ -703,25 +710,19 @@ final class SettingsViewController: UIViewController {
         inner.axis = .vertical
         inner.spacing = 12
         for version in SettingsContent.changelog {
-            let cardView = UIView()
-            cardView.backgroundColor = UIColor { traits in
-                traits.userInterfaceStyle == .dark
-                    ? UIColor(red: 0x2C / 255, green: 0x2C / 255, blue: 0x2E / 255, alpha: 0.55)
-                    : UIColor.white.withAlphaComponent(0.55)
-            }
-            cardView.layer.cornerRadius = 16
-            cardView.layer.borderWidth = 1 / UIScreen.main.scale
-            cardView.layer.borderColor = UIAppColors.divider.cgColor
+            let cardView = GlassCardView(radius: 16)
+            cardView.configure(useBlur: homeModel.useBlur, tint: UIColor(nativeHex: homeModel.theme.card))
+            changelogCards.append(cardView)
             let block = UIStackView()
             block.axis = .vertical
             block.spacing = 10
-            cardView.addSubview(block)
+            cardView.content.addSubview(block)
             block.translatesAutoresizingMaskIntoConstraints = false
             NSLayoutConstraint.activate([
-                block.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 14),
-                block.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -14),
-                block.topAnchor.constraint(equalTo: cardView.topAnchor, constant: 13),
-                block.bottomAnchor.constraint(equalTo: cardView.bottomAnchor, constant: -13),
+                block.leadingAnchor.constraint(equalTo: cardView.content.leadingAnchor, constant: 14),
+                block.trailingAnchor.constraint(equalTo: cardView.content.trailingAnchor, constant: -14),
+                block.topAnchor.constraint(equalTo: cardView.content.topAnchor, constant: 13),
+                block.bottomAnchor.constraint(equalTo: cardView.content.bottomAnchor, constant: -13),
             ])
             let head = UIStackView()
             head.axis = .horizontal
@@ -749,13 +750,13 @@ final class SettingsViewController: UIViewController {
                 para.lineSpacing = 3
                 if let tag = entry.tag, !tag.isEmpty {
                     text.append(NSAttributedString(string: tag + "  ", attributes: [
-                        .font: UIFont.systemFont(ofSize: 13.5, weight: .bold),
+                        .font: UIFont.systemFont(ofSize: 13, weight: .semibold),
                         .foregroundColor: tagColor(tag),
                         .paragraphStyle: para,
                     ]))
                 }
                 text.append(NSAttributedString(string: entry.text, attributes: [
-                    .font: UIFont.systemFont(ofSize: 13.5),
+                    .font: UIFont.systemFont(ofSize: 13),
                     .foregroundColor: UIColor.secondaryLabel,
                     .paragraphStyle: para,
                 ]))
@@ -866,6 +867,7 @@ final class SettingsViewController: UIViewController {
         themeFold?.configureGlass(useBlur: homeModel.useBlur, tint: tint)
         guideFold?.configureGlass(useBlur: homeModel.useBlur, tint: tint)
         changelogFold?.configureGlass(useBlur: homeModel.useBlur, tint: tint)
+        for card in changelogCards { card.configure(useBlur: homeModel.useBlur, tint: tint) }
     }
 }
 

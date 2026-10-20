@@ -122,7 +122,7 @@ final class PillSegmentedControl: UIView {
         for (index, option) in options.enumerated() {
             let button = UIButton(type: .system)
             button.setTitle(option.title, for: .normal)
-            button.titleLabel?.font = UIFont.systemFont(ofSize: 12.5, weight: .medium)
+            button.titleLabel?.font = UIFont.systemFont(ofSize: 12.5)
             button.tag = index
             button.addTarget(self, action: #selector(tapped(_:)), for: .touchUpInside)
             stack.addArrangedSubview(button)
@@ -154,7 +154,7 @@ final class PillSegmentedControl: UIView {
             button.setTitleColor(selected
                 ? (dark ? UIColor(red: 0.95, green: 0.95, blue: 0.97, alpha: 1) : UIColor(red: 0x20 / 255, green: 0x28 / 255, blue: 0x32 / 255, alpha: 1))
                 : UIColor(red: 0x6E / 255, green: 0x6E / 255, blue: 0x73 / 255, alpha: 1), for: .normal)
-            button.titleLabel?.font = UIFont.systemFont(ofSize: 12.5, weight: selected ? .semibold : .medium)
+            button.titleLabel?.font = UIFont.systemFont(ofSize: 12.5)
         }
         thumbView.backgroundColor = dark ? UIColor(red: 0x3A / 255, green: 0x3A / 255, blue: 0x3C / 255, alpha: 1) : .white
         positionThumb(animated: animated)
