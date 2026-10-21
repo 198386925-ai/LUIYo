@@ -1,0 +1,13 @@
+{
+  "images": [
+    {
+      "idiom": "universal",
+      "scale": "3x",
+      "filename": "AccountEyeOpen@3x.png"
+    }
+  ],
+  "info": {
+    "author": "xcode",
+    "version": 1
+  }
+}

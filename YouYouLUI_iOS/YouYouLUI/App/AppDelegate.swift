@@ -28,7 +28,7 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
             return true
         }
         #endif
-        window.rootViewController = AppRoot.makeRootViewController()
+        window.rootViewController = EntryGateViewController()
         window.makeKeyAndVisible()
         self.window = window
         VersionPopup.checkIfNeeded(hostWindow: window)

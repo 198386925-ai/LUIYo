@@ -12,11 +12,13 @@
     <key>CFBundleShortVersionString</key>
 	<string>1.0.8</string>
     <key>CFBundleVersion</key>
-	<string>13</string>
+	<string>14</string>
     <key>LUIYO_AUTH_URL</key><string>https://mistoto.cc.cd/luiyo/api.php</string>
     <key>LSRequiresIPhoneOS</key><true/>
     <key>UIApplicationSupportsIndirectInputEvents</key><true/>
-    <key>UILaunchScreen</key><dict/>
+    <key>UILaunchScreen</key><dict>
+        <key>UIColorName</key><string>LaunchBackground</string>
+    </dict>
     <key>UIStatusBarStyle</key><string>UIStatusBarStyleDefault</string>
     <key>UISupportedInterfaceOrientations</key>
     <array><string>UIInterfaceOrientationPortrait</string></array>

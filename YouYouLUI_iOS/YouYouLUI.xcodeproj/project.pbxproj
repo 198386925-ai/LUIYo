@@ -121,6 +121,14 @@
 		AA4000000000000000040005 /* update.png in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000030005 /* update.png */; };
 		AA5000000000000000002001 /* SettingsNative/UpdateCheckViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA5000000000000000001001 /* SettingsNative/UpdateCheckViewController.swift */; };
 		AA6000000000000000002001 /* VersionPopup/VersionPopup.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA6000000000000000001001 /* VersionPopup/VersionPopup.swift */; };
+		AA7000000000000000002001 /* Entry/AccountAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA7000000000000000001001 /* Entry/AccountAPI.swift */; };
+		AA7000000000000000002002 /* Entry/SplashSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA7000000000000000001002 /* Entry/SplashSupport.swift */; };
+		AA7000000000000000002003 /* Entry/Splash03ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA7000000000000000001003 /* Entry/Splash03ViewController.swift */; };
+		AA7000000000000000002004 /* Entry/Splash04ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA7000000000000000001004 /* Entry/Splash04ViewController.swift */; };
+		AA7000000000000000002005 /* Entry/AccountViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA7000000000000000001005 /* Entry/AccountViewController.swift */; };
+		AA7000000000000000002006 /* Entry/AccountAuxViewControllers.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA7000000000000000001006 /* Entry/AccountAuxViewControllers.swift */; };
+		AA7000000000000000002007 /* Entry/LegalTexts.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA7000000000000000001007 /* Entry/LegalTexts.swift */; };
+		AA7000000000000000002008 /* Entry/EntryGateViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA7000000000000000001008 /* Entry/EntryGateViewController.swift */; };
 		AA5000000000000000002003 /* SettingsNative/AppSettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA5000000000000000001003 /* SettingsNative/AppSettingsViewController.swift */; };
 /* End PBXBuildFile section */
 
@@ -231,6 +239,14 @@
 		AA4000000000000000030005 /* update.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = update.png; sourceTree = "<group>"; };
 		AA5000000000000000001001 /* SettingsNative/UpdateCheckViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "YouYouLUI/SettingsNative/UpdateCheckViewController.swift"; sourceTree = SOURCE_ROOT; };
 		AA6000000000000000001001 /* VersionPopup/VersionPopup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "YouYouLUI/VersionPopup/VersionPopup.swift"; sourceTree = SOURCE_ROOT; };
+		AA7000000000000000001001 /* Entry/AccountAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "YouYouLUI/Entry/AccountAPI.swift"; sourceTree = SOURCE_ROOT; };
+		AA7000000000000000001002 /* Entry/SplashSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "YouYouLUI/Entry/SplashSupport.swift"; sourceTree = SOURCE_ROOT; };
+		AA7000000000000000001003 /* Entry/Splash03ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "YouYouLUI/Entry/Splash03ViewController.swift"; sourceTree = SOURCE_ROOT; };
+		AA7000000000000000001004 /* Entry/Splash04ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "YouYouLUI/Entry/Splash04ViewController.swift"; sourceTree = SOURCE_ROOT; };
+		AA7000000000000000001005 /* Entry/AccountViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "YouYouLUI/Entry/AccountViewController.swift"; sourceTree = SOURCE_ROOT; };
+		AA7000000000000000001006 /* Entry/AccountAuxViewControllers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "YouYouLUI/Entry/AccountAuxViewControllers.swift"; sourceTree = SOURCE_ROOT; };
+		AA7000000000000000001007 /* Entry/LegalTexts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "YouYouLUI/Entry/LegalTexts.swift"; sourceTree = SOURCE_ROOT; };
+		AA7000000000000000001008 /* Entry/EntryGateViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "YouYouLUI/Entry/EntryGateViewController.swift"; sourceTree = SOURCE_ROOT; };
 		AA5000000000000000001003 /* SettingsNative/AppSettingsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "YouYouLUI/SettingsNative/AppSettingsViewController.swift"; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
@@ -596,6 +612,14 @@
 				AA4000000000000000002002 /* SettingsNative/FontSettingsViewController.swift in Sources */,
 				AA5000000000000000002001 /* SettingsNative/UpdateCheckViewController.swift in Sources */,
 				AA6000000000000000002001 /* VersionPopup/VersionPopup.swift in Sources */,
+				AA7000000000000000002001 /* Entry/AccountAPI.swift in Sources */,
+				AA7000000000000000002002 /* Entry/SplashSupport.swift in Sources */,
+				AA7000000000000000002003 /* Entry/Splash03ViewController.swift in Sources */,
+				AA7000000000000000002004 /* Entry/Splash04ViewController.swift in Sources */,
+				AA7000000000000000002005 /* Entry/AccountViewController.swift in Sources */,
+				AA7000000000000000002006 /* Entry/AccountAuxViewControllers.swift in Sources */,
+				AA7000000000000000002007 /* Entry/LegalTexts.swift in Sources */,
+				AA7000000000000000002008 /* Entry/EntryGateViewController.swift in Sources */,
 				AA5000000000000000002003 /* SettingsNative/AppSettingsViewController.swift in Sources */,
 				AA2900000000000000000105 /* SettingsNative/SettingsContent.swift in Sources */,
 				AA2900000000000000000106 /* Home/HomeViewController.swift in Sources */,
