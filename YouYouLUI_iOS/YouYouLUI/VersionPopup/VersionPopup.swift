@@ -458,9 +458,16 @@ private final class IconCard {
     let wrap = UIView()       // riseIn target (opacity / translateY / blur)
     let card = UIView()       // resting tilt + design box-shadow
     let clip = UIView()       // rounded glass clipping
+    let blur = UIVisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterial))
     let tint = UIView()
-    let ring = CAShapeLayer()
+    /// The CSS `inset 0 0 4px` highlight: an edge stroke, clipped to its
+    /// inner half and blurred — NOT a hard outline ring.
+    let glow = CAShapeLayer()
     let glyph = UIImageView()
+    /// Live draw-on mask over the glyph image (the designs' .drw strokes).
+    let glyphMask = CALayer()
+    var strokeLayers: [CAShapeLayer] = []
+    var strokeSpecs: [GlyphStroke] = []
 }
 
 final class VersionPopupViewController: UIViewController {
@@ -472,6 +479,7 @@ final class VersionPopupViewController: UIViewController {
     /// Design px → points, as in the designs' fit(): min(vw/1080, vh/1918).
     private var s: CGFloat = 0.36
 
+    private let scrimView = UIView()
     private let shadowOuter = UIView()
     private let shadowInner = UIView()
     private let cardView = UIView()
@@ -517,6 +525,11 @@ final class VersionPopupViewController: UIViewController {
 
         shadowInner.addSubview(cardView)
         shadowOuter.addSubview(shadowInner)
+        // Backdrop: a plain black scrim at alpha 0.15 (measured against
+        // the user's design videos — the feed behind stays light, mildly
+        // dimmed). No blur, no white layer anywhere behind the card.
+        scrimView.backgroundColor = UIColor.black.withAlphaComponent(0.15)
+        view.addSubview(scrimView)
         view.addSubview(shadowOuter)
         cardView.clipsToBounds = true
         cardView.addSubview(bgImageView)
@@ -524,17 +537,20 @@ final class VersionPopupViewController: UIViewController {
         cardView.addSubview(heroView)
 
         for icon in [cardL, cardR] {
-            let blurView = UIVisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterial))
-            icon.clip.addSubview(blurView)
+            stripEffectTint(icon.blur)
+            icon.clip.addSubview(icon.blur)
             icon.clip.addSubview(icon.tint)
             icon.clip.clipsToBounds = true
-            icon.clip.layer.addSublayer(icon.ring)
-            icon.ring.fillColor = nil
+            icon.clip.layer.addSublayer(icon.glow)
+            icon.glow.fillColor = nil
+            if let glowFilter = makeRiseBlurFilter() {
+                icon.glow.filters = [glowFilter]
+            }
             icon.card.addSubview(icon.clip)
             icon.card.addSubview(icon.glyph)
             icon.wrap.addSubview(icon.card)
             cardView.addSubview(icon.wrap)
-            pinEdges(blurView, to: icon.clip)
+            pinEdges(icon.blur, to: icon.clip)
             pinEdges(icon.tint, to: icon.clip)
             pinEdges(icon.clip, to: icon.card)
             pinEdges(icon.card, to: icon.wrap)
@@ -550,6 +566,8 @@ final class VersionPopupViewController: UIViewController {
         }
         cardL.card.transform = CGAffineTransform(rotationAngle: -8 * .pi / 180)
         cardR.card.transform = CGAffineTransform(rotationAngle: 6 * .pi / 180)
+        setupDrawMask(for: cardL, specs: GlyphDraw.left)
+        setupDrawMask(for: cardR, specs: GlyphDraw.right)
 
         line2.text = payload.l2
         line3.text = payload.l3
@@ -597,10 +615,11 @@ final class VersionPopupViewController: UIViewController {
     }
 
     private func buildConstraints() {
-        for v in [shadowOuter, shadowInner, cardView, bgImageView, heroView,
+        for v in [scrimView, shadowOuter, shadowInner, cardView, bgImageView, heroView,
                   heroImageView, titleView, line2, line3, leftButton, rightButton] {
             v.translatesAutoresizingMaskIntoConstraints = false
         }
+        pinEdges(scrimView, to: view)
         activate(shadowOuter.centerXAnchor.constraint(equalTo: view.centerXAnchor))
         activate(shadowOuter.centerYAnchor.constraint(equalTo: view.centerYAnchor))
         pin(shadowOuter.widthAnchor.constraint(equalToConstant: 0), px: 835)
@@ -660,6 +679,69 @@ final class VersionPopupViewController: UIViewController {
         return filter
     }
 
+    /// UIVisualEffectView's material stacks its own milky tint subview
+    /// over the backdrop blur — that hidden third layer (on top of the
+    /// design's exact rgba(255,255,255,.44/.16) fill) is what made the
+    /// icon cards render as near-opaque white tiles in Build 10. The
+    /// design's glass is blur(14px) + the fill and nothing else, so clear
+    /// the material's tint subview and let `tint` be the only fill.
+    /// (No-op if the effect view's hierarchy ever changes.)
+    private func stripEffectTint(_ effectView: UIVisualEffectView) {
+        for subview in effectView.subviews
+        where NSStringFromClass(type(of: subview)).hasSuffix("EffectSubview") {
+            subview.backgroundColor = .clear
+        }
+    }
+
+    /// Builds the glyph's draw-on mask: one CAShapeLayer per .drw stroke
+    /// from the designs' SVGs — the mask centerlines for the filled parts,
+    /// the elements' own geometry for the stroked circles — each with the
+    /// design's stroke width, butt caps and miter joins (the SVG
+    /// defaults), in 200-unit space. updateLayout scales the layers onto
+    /// the laid-out glyph; beginEntrance sweeps strokeEnd per stroke.
+    /// The artwork itself stays the shipped PNG — the mask is a live
+    /// layer, nothing is baked or composed at runtime.
+    private func setupDrawMask(for icon: IconCard, specs: [GlyphStroke]) {
+        icon.strokeSpecs = specs
+        for spec in specs {
+            let shape = CAShapeLayer()
+            shape.path = drawPath(spec)
+            shape.fillColor = nil
+            shape.strokeColor = UIColor.white.cgColor
+            shape.lineWidth = spec.width
+            shape.lineCap = .butt
+            shape.lineJoin = .miter
+            shape.miterLimit = 4
+            shape.bounds = CGRect(x: 0, y: 0, width: 200, height: 200)
+            shape.anchorPoint = .zero
+            shape.position = .zero
+            icon.glyphMask.addSublayer(shape)
+            icon.strokeLayers.append(shape)
+        }
+        icon.glyph.layer.mask = icon.glyphMask
+    }
+
+    private func drawPath(_ spec: GlyphStroke) -> CGPath {
+        let path = CGMutablePath()
+        if let circle = spec.circle {
+            // SVG circle strokes start at 3 o'clock and sweep clockwise
+            // (y-down); a UIKit arc from angle 0, clockwise, is the same.
+            path.addArc(center: CGPoint(x: circle.cx, y: circle.cy),
+                        radius: circle.r, startAngle: 0,
+                        endAngle: .pi * 2, clockwise: true)
+        } else {
+            let points = spec.points
+            guard points.count >= 4 else { return path }
+            path.move(to: CGPoint(x: points[0], y: points[1]))
+            var i = 2
+            while i + 1 < points.count {
+                path.addLine(to: CGPoint(x: points[i], y: points[i + 1]))
+                i += 2
+            }
+        }
+        return path
+    }
+
     // MARK: Palette application
 
     private func applyPalette() {
@@ -684,7 +766,8 @@ final class VersionPopupViewController: UIViewController {
             icon.card.layer.shadowColor = palette.iconCardShadow.resolvedColor(with: trait).cgColor
             icon.card.layer.shadowOpacity = 1
             icon.tint.backgroundColor = palette.iconCardTint
-            icon.ring.strokeColor = palette.iconCardRing.resolvedColor(with: trait).cgColor
+            icon.glow.strokeColor = palette.iconCardRing.resolvedColor(with: trait).cgColor
+            stripEffectTint(icon.blur)
             icon.glyph.layer.shadowColor = palette.glyphShadow.resolvedColor(with: trait).cgColor
             icon.glyph.layer.shadowOpacity = dark ? 1 : 0
         }
@@ -730,11 +813,27 @@ final class VersionPopupViewController: UIViewController {
             icon.card.layer.shadowPath = UIBezierPath(
                 roundedRect: icon.card.bounds, cornerRadius: 44 * s).cgPath
             icon.clip.layer.cornerRadius = 44 * s
-            let ringRect = icon.clip.bounds.insetBy(dx: 1 * s, dy: 1 * s)
-            icon.ring.path = UIBezierPath(
-                roundedRect: ringRect, cornerRadius: max(43 * s, 0)).cgPath
-            icon.ring.lineWidth = 2 * s
+            // inset 0 0 4px highlight: an 8s-wide stroke centered on the
+            // card's edge — the clip keeps its inner half and the layer's
+            // own gaussian filter (radius = blur/2, the box-shadow
+            // convention used throughout this file) softens it into the
+            // design's inset glow. (Build 10 drew this as a hard 2s-wide
+            // outline ring, which read as a solid tile border.)
+            icon.glow.path = UIBezierPath(
+                roundedRect: icon.clip.bounds, cornerRadius: 44 * s).cgPath
+            icon.glow.lineWidth = 8 * s
+            (icon.glow.filters?.first as? CIFilter)?.setValue(
+                2 * s, forKey: kCIInputRadiusKey)
             icon.glyph.layer.shadowRadius = 2.5 * s
+            // The draw-on mask tracks the glyph's laid-out size.
+            let glyphBounds = icon.glyph.bounds
+            if glyphBounds.width > 0 {
+                icon.glyphMask.frame = glyphBounds
+                let k = glyphBounds.width / 200
+                for shape in icon.strokeLayers {
+                    shape.transform = CATransform3DMakeScale(k, k, 1)
+                }
+            }
         }
         // Design type: texts 27px (line 1 semibold, lines 2-3 regular),
         // buttons 30px (cancel medium, primary semibold).
@@ -798,7 +897,8 @@ final class VersionPopupViewController: UIViewController {
 
     /// The glyphs are pre-rendered PNG assets (the designs' SVGs at their
     /// fully drawn resting state; light/dark variants ship in the catalog
-    /// and resolve automatically). No runtime path/mask composition.
+    /// and resolve automatically). The draw-on reveal is a live layer
+    /// mask over the image — the artwork is never baked at runtime.
     private func updateGlyphImages() {
         let family = payload.banned ? "PopupGlyphBanned" : "PopupGlyphSoft"
         cardL.glyph.image = UIImage(named: family + "Left")
@@ -811,15 +911,22 @@ final class VersionPopupViewController: UIViewController {
     // icon cards (opacity 0→1, translateY 34px→0, blur 10px→0);
     // fadeUp .6s cubic-bezier(.22,.85,.3,1), delays 1.3s / 1.45s / 1.6s, on
     // the text lines (opacity 0→1, translateY 14px→0);
-    // the glyphs are static assets and ride the cards' riseIn.
+    // the glyphs draw on stroke by stroke over their PNGs (the designs'
+    // .drw dashoffset sweep) via a live CAShapeLayer mask.
 
     func beginEntrance() {
         guard !entranceBegan else { return }
         entranceBegan = true
         entranceStart = CACurrentMediaTime()
         if UIAccessibility.isReduceMotionEnabled {
-            // The designs' prefers-reduced-motion block: everything rests.
+            // The designs' prefers-reduced-motion block: everything rests
+            // (scrim at full alpha, glyph masks fully revealed).
             return
+        }
+        scrimView.alpha = 0
+        UIView.animate(withDuration: 0.6, delay: 0,
+                       options: [.curveEaseOut, .beginFromCurrentState]) {
+            self.scrimView.alpha = 1
         }
         let jellyTiming = CAMediaTimingFunction(controlPoints: 0.2, 0.9, 0.25, 1.12)
         let scaleAnim = CAKeyframeAnimation(keyPath: "transform.scale")
@@ -878,6 +985,24 @@ final class VersionPopupViewController: UIViewController {
             group.fillMode = .backwards
             target.layer.add(group, forKey: "fadeUp")
         }
+        // Glyphs draw on stroke by stroke: each mask stroke sweeps
+        // strokeEnd 0→1 with the design's own delay / duration / easing,
+        // revealing the PNG along its centerline in the design's order.
+        // (fillMode .backwards keeps each stroke hidden until its delay;
+        // the model strokeEnd stays 1, so the resting art is exact.)
+        let drawTiming = CAMediaTimingFunction(controlPoints: 0.35, 0.55, 0.35, 1)
+        for icon in [cardL, cardR] {
+            for (shape, spec) in zip(icon.strokeLayers, icon.strokeSpecs) {
+                let draw = CABasicAnimation(keyPath: "strokeEnd")
+                draw.fromValue = 0
+                draw.toValue = 1
+                draw.duration = spec.duration
+                draw.beginTime = entranceStart + spec.delay
+                draw.timingFunction = drawTiming
+                draw.fillMode = .backwards
+                shape.add(draw, forKey: "drawOn")
+            }
+        }
     }
 
     // MARK: Actions
@@ -919,6 +1044,7 @@ final class VersionPopupViewController: UIViewController {
 
     private func dismissPopup() {
         UIView.animate(withDuration: 0.25, animations: {
+            self.scrimView.alpha = 0
             self.shadowOuter.alpha = 0
             self.shadowOuter.transform = CGAffineTransform(scaleX: 0.96, y: 0.96)
         }, completion: { _ in
@@ -926,3 +1052,38 @@ final class VersionPopupViewController: UIViewController {
         })
     }
 }
+
+// MARK: - Glyph draw-on data (extracted verbatim from the designs' SVGs)
+//
+// Every visible glyph element in the two HTML designs is either a .drw
+// element itself (the two gradient-stroked circles) or a filled path
+// revealed by exactly one .drw mask path — there are no plain
+// always-visible parts, so the union of these strokes, swept in the
+// designs' order, reproduces the draw-on exactly and rests on the full
+// artwork. Geometry and timing are byte-identical in fig1 and fig2
+// (only the gradient palettes differ), so one table serves both
+// variants. data-d / data-t are the designs' delay / duration, in
+// seconds; points are the mask centerlines in the SVGs' 200×200 space.
+
+private struct GlyphStroke {
+    /// Flattened [x, y, x, y, …] centerline; empty for a circle stroke.
+    let points: [CGFloat]
+    let circle: (cx: CGFloat, cy: CGFloat, r: CGFloat)?
+    let width: CGFloat
+    let delay: CFTimeInterval
+    let duration: CFTimeInterval
+}
+
+private enum GlyphDraw {
+    static let left: [GlyphStroke] = [
+        .init(points: [], circle: (99.5, 45.34, 28.8), width: 11.93, delay: 0.25, duration: 0.38),
+        .init(points: [94.5, 93.9, 85.8, 98.9, 84.8, 99.4, 83.6, 100.1, 82.3, 101, 80.7, 102, 79.4, 103, 78, 104, 76.6, 105, 75.3, 106, 73.6, 107, 71.2, 108, 68.5, 109, 65.6, 110, 62.6, 111, 59.5, 112, 56.4, 113, 53.4, 114, 51.1, 115, 49.2, 116, 47.4, 117, 45.8, 118, 44.2, 119, 42.8, 120, 41.4, 121, 40.1, 122, 38.9, 123, 37.8, 124, 36.6, 125, 35.6, 126, 34.5, 127, 33.5, 128, 32.6, 129, 31.7, 130, 30.9, 131, 30, 132, 29.2, 133, 28.4, 134, 27.8, 135, 27.1, 136, 26.3, 137, 25.6, 138, 25, 139, 24.4, 140, 23.9, 141, 23.3, 142, 22.8, 143, 22.4, 144, 21.9, 145, 21.4, 146, 20.9, 147, 20.6, 148, 20.1, 149, 19.7, 150, 19.4, 151, 19.1, 152, 18.7, 153, 18.4, 154, 18.1, 155, 17.9, 156, 17.7, 157, 17.5, 158, 17.2, 159, 17.1, 160, 16.9, 161, 16.8, 162, 16.6, 163, 16.6, 164, 16.4, 165, 16.4, 166, 16.4, 167, 16.4, 168, 16.3, 169, 16.3, 170, 16.3, 171, 16.4, 172, 16.4, 173, 16.3, 173.9, 16.2, 174.6, 16.2, 175.1, 16.2, 185.1], circle: nil, width: 28.8, delay: 0.52, duration: 0.48),
+        .init(points: [152.1, 101.7, 153.7, 111.6, 153.8, 112.2, 153.9, 113, 154, 114, 154, 115, 154, 116, 154, 117, 154, 118, 154, 119, 154, 120, 154, 121, 154, 122, 154, 123, 154, 124, 154, 125, 154, 126, 154, 127, 154, 128, 153.9, 129, 153.8, 130, 153.6, 131, 153.3, 132, 152.8, 133, 152.2, 134, 151.4, 135, 150.5, 136, 149.5, 137, 148.5, 138, 147.5, 139, 146.5, 140, 145.5, 141, 144.5, 142, 143.5, 143, 142.5, 144, 141.5, 145, 140.5, 146, 139.5, 147, 138.5, 148, 137.5, 149, 136.5, 150, 135.5, 151, 134.5, 152, 133.5, 153, 132.5, 154, 131.6, 155, 130.7, 156, 129.9, 157, 129.2, 158, 128.6, 159, 128, 160, 127.5, 161, 127, 162, 126.5, 163, 126, 164, 125.5, 165, 125, 166, 124.5, 167, 124, 168, 123.5, 169, 123, 170, 122.5, 171, 122, 172, 121.6, 173, 121.2, 174, 120.8, 175, 120.5, 176, 120.3, 177, 120.2, 178, 120.2, 178.8, 120.3, 179.4, 121.9, 189.3], circle: nil, width: 49.1, delay: 0.88, duration: 0.4),
+    ]
+    static let right: [GlyphStroke] = [
+        .init(points: [], circle: (99.5, 99.5, 82.99), width: 12.05, delay: 0.38, duration: 0.38),
+        .init(points: [55, 93.1, 59.4, 86.4, 59.8, 85.8, 60.2, 85, 60.8, 84, 61.2, 83, 61.8, 82, 62.2, 81, 62.8, 80, 63.4, 79, 64, 78, 64.6, 77, 65.4, 76, 66.2, 75, 66.8, 74, 67.6, 73, 68.4, 72, 69.2, 71, 70, 70, 71, 69.2, 72, 68.4, 73, 67.6, 74, 66.8, 75, 66.2, 76, 65.4, 77, 64.6, 78, 64, 79, 63.4, 80, 62.8, 81, 62.2, 82, 61.8, 83, 61.4, 84, 61, 85, 60.6, 86, 60.4, 87, 60, 88, 59.6, 89, 59.4, 90, 59.2, 91, 59, 92, 59, 93, 59, 94, 58.8, 95, 58.6, 96, 58.4, 97, 58.2, 98, 58, 99, 58, 100, 58, 101, 58, 102, 58.2, 103, 58.4, 104, 58.6, 105, 58.8, 106, 59, 107, 59, 108, 59, 109, 59.2, 110, 59.4, 111, 59.6, 112, 60, 113, 60.4, 114, 60.6, 115, 61, 116, 61.4, 117, 61.8, 118, 62.2, 119, 62.8, 120, 63.2, 121, 63.8, 122, 64.4, 123, 65, 124, 65.6, 125, 66.2, 126, 66.6, 127, 66.8, 128, 67.2, 129, 67.4, 130, 67.6, 131, 68, 132, 68.4, 133, 68.8, 134, 69.2, 135, 69.8, 135.8, 70.4, 136.6, 71.2, 137.2, 72, 137.6, 73, 137.8, 74, 138, 75, 138.2, 76, 138.4, 77, 138.6, 78, 138.8, 79, 139, 80, 139, 81, 139, 81.8, 139, 82.4, 139, 90.4], circle: nil, width: 26, delay: 0.7, duration: 0.48),
+        .init(points: [135.1, 75.7, 137, 70, 140, 61, 141.9, 55.3], circle: nil, width: 13.5, delay: 1.35, duration: 0.2),
+        .init(points: [144, 104.9, 139.6, 111.6, 139.2, 112.2, 138.8, 113, 138.4, 114, 138, 115, 137.6, 116, 137.2, 117, 136.6, 118, 136, 119, 135.6, 120, 135, 121, 134.4, 122, 134, 123, 133.4, 124, 132.6, 125, 131.8, 126, 131, 127, 130, 128, 129, 129, 128, 130, 127, 131, 126, 131.8, 125, 132.6, 124, 133.4, 123, 134, 122, 134.4, 121, 135, 120, 135.6, 119, 136, 118, 136.6, 117, 137.2, 116, 137.6, 115, 138, 114, 138.4, 113, 138.6, 112, 138.8, 111, 139, 110, 139.2, 109, 139.4, 108, 139.6, 107, 139.8, 106, 140, 105, 140, 104, 140, 103, 140, 102, 140, 101, 140, 100, 140, 99, 140, 98, 140, 97, 140, 96, 140, 95, 140, 94, 140, 93, 140, 92, 139.8, 91, 139.6, 90, 139.4, 89, 139.2, 88, 139, 87, 138.8, 86, 138.6, 85, 138.4, 84, 138, 83, 137.6, 82, 137.2, 81, 136.6, 80, 136, 79, 135.4, 78, 134.8, 77, 134.2, 76, 133.6, 75, 133, 74, 132.6, 73, 132, 72, 131.6, 71, 131.4, 70, 131.2, 69, 130.8, 68, 130.6, 67, 130.2, 66, 129.8, 65, 129.4, 64, 129, 63, 128.4, 62.2, 127.8, 61.6, 127, 61, 126, 60.6, 125, 60.4, 124, 60.2, 123, 60, 122, 60, 121, 59.8, 120, 59.6, 119, 59.6, 118, 59.6, 117, 59.6, 116, 59.8, 115, 59.8, 114, 59.6, 113, 59.4, 112.2, 59.2, 111.6, 56.7, 104], circle: nil, width: 25.9, delay: 1.05, duration: 0.48),
+        .init(points: [62.3, 122.1, 61, 128, 59, 137, 57.7, 142.9], circle: nil, width: 13.3, delay: 1.56, duration: 0.2),
+    ]}
