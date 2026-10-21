@@ -12,7 +12,8 @@ import CoreImage
 /// designs' SVGs, pre-rendered offline into PNG assets at their fully
 /// drawn resting state), and the entrance choreography (jellyIn /
 /// riseIn / fadeUp keyframes, with the designs' own delays, durations
-/// and timing functions) — is taken verbatim from the two HTML files and
+/// and timing functions; Build 15 compresses all entrance times
+/// x 0.7 — see beginEntrance) — is taken from the two HTML files and
 /// scaled by s = min(screenW / 1080, screenH / 1918), exactly like the
 /// designs' own fit() function.
 ///
@@ -673,12 +674,16 @@ final class VersionPopupViewController: UIViewController {
         cardR.glyph.image = UIImage(named: family + "Right")
     }
 
-    // MARK: Entrance — the designs' choreography, verbatim:
-    // jellyIn .95s cubic-bezier(.2,.9,.25,1.12) on the modal;
-    // riseIn .95s cubic-bezier(.22,.85,.3,1), delays .14s / .27s, on the
-    // icon cards (opacity 0→1, translateY 34px→0, blur 10px→0);
-    // fadeUp .6s cubic-bezier(.22,.85,.3,1), delays 1.3s / 1.45s / 1.6s, on
-    // the text lines (opacity 0→1, translateY 14px→0);
+    // MARK: Entrance — the designs' choreography, time-compressed:
+    // Build 15 (user: the verbatim timing felt slow; frame measurement
+    // of the design video confirmed the implementation matched the
+    // design, so every delay/duration below is the design value x 0.7,
+    // ratios and timing functions unchanged; full settle 2.2s -> 1.54s):
+    // jellyIn .665s cubic-bezier(.2,.9,.25,1.12) on the modal;
+    // riseIn .665s cubic-bezier(.22,.85,.3,1), delays .098s / .189s, on
+    // the icon cards (opacity 0→1, translateY 34px→0, blur 10px→0);
+    // fadeUp .42s cubic-bezier(.22,.85,.3,1), delays .91s / 1.015s /
+    // 1.12s, on the text lines (opacity 0→1, translateY 14px→0);
     // the glyphs draw on stroke by stroke over their PNGs (the designs'
     // .drw dashoffset sweep) via a live CAShapeLayer mask.
 
@@ -692,7 +697,7 @@ final class VersionPopupViewController: UIViewController {
             return
         }
         scrimView.alpha = 0
-        UIView.animate(withDuration: 0.6, delay: 0,
+        UIView.animate(withDuration: 0.42, delay: 0,
                        options: [.curveEaseOut, .beginFromCurrentState]) {
             self.scrimView.alpha = 1
         }
@@ -701,17 +706,17 @@ final class VersionPopupViewController: UIViewController {
         scaleAnim.values = [0.9, 1.028, 0.992, 1.01, 1.0]
         scaleAnim.keyTimes = [0, 0.55, 0.72, 0.86, 1]
         scaleAnim.timingFunctions = [jellyTiming, jellyTiming, jellyTiming, jellyTiming]
-        scaleAnim.duration = 0.95
+        scaleAnim.duration = 0.665
         let fadeAnim = CAKeyframeAnimation(keyPath: "opacity")
         fadeAnim.values = [0, 1, 1]
         fadeAnim.keyTimes = [0, 0.55, 1]
         fadeAnim.timingFunctions = [jellyTiming, jellyTiming]
-        fadeAnim.duration = 0.95
+        fadeAnim.duration = 0.665
         shadowOuter.layer.add(scaleAnim, forKey: "jellyInScale")
         shadowOuter.layer.add(fadeAnim, forKey: "jellyInOpacity")
 
         let riseTiming = CAMediaTimingFunction(controlPoints: 0.22, 0.85, 0.3, 1)
-        for (icon, delay) in [(cardL, 0.14), (cardR, 0.27)] {
+        for (icon, delay) in [(cardL, 0.098), (cardR, 0.189)] {
             let group = CAAnimationGroup()
             let opacity = CABasicAnimation(keyPath: "opacity")
             opacity.fromValue = 0
@@ -720,7 +725,7 @@ final class VersionPopupViewController: UIViewController {
             move.fromValue = 34 * s
             move.toValue = 0
             group.animations = [opacity, move]
-            group.duration = 0.95
+            group.duration = 0.665
             group.beginTime = entranceStart + delay
             group.timingFunction = riseTiming
             group.fillMode = .backwards
@@ -729,16 +734,16 @@ final class VersionPopupViewController: UIViewController {
                 let blur = CABasicAnimation(keyPath: "filters.gaussianBlur.inputRadius")
                 blur.fromValue = 10 * s
                 blur.toValue = 0
-                blur.duration = 0.95
+                blur.duration = 0.665
                 blur.beginTime = entranceStart + delay
                 blur.timingFunction = riseTiming
                 blur.fillMode = .backwards
                 icon.wrap.layer.add(blur, forKey: "riseInBlur")
             }
         }
-        for (target, delay) in [(titleView as UIView, 1.3),
-                                (line2 as UIView, 1.45),
-                                (line3 as UIView, 1.6)] {
+        for (target, delay) in [(titleView as UIView, 0.91),
+                                (line2 as UIView, 1.015),
+                                (line3 as UIView, 1.12)] {
             let group = CAAnimationGroup()
             let opacity = CABasicAnimation(keyPath: "opacity")
             opacity.fromValue = 0
@@ -747,7 +752,7 @@ final class VersionPopupViewController: UIViewController {
             move.fromValue = 14 * s
             move.toValue = 0
             group.animations = [opacity, move]
-            group.duration = 0.6
+            group.duration = 0.42
             group.beginTime = entranceStart + delay
             group.timingFunction = riseTiming
             group.fillMode = .backwards
@@ -831,7 +836,9 @@ final class VersionPopupViewController: UIViewController {
 // artwork. Geometry and timing are byte-identical in fig1 and fig2
 // (only the gradient palettes differ), so one table serves both
 // variants. data-d / data-t are the designs' delay / duration, in
-// seconds; points are the mask centerlines in the SVGs' 200×200 space.
+// seconds, compressed x 0.7 in Build 15 with the rest of the entrance
+// (see beginEntrance); points are the mask centerlines in the SVGs'
+// 200×200 space.
 
 private struct GlyphStroke {
     /// Flattened [x, y, x, y, …] centerline; empty for a circle stroke.
@@ -844,14 +851,14 @@ private struct GlyphStroke {
 
 private enum GlyphDraw {
     static let left: [GlyphStroke] = [
-        .init(points: [], circle: (99.5, 45.34, 28.8), width: 11.93, delay: 0.25, duration: 0.38),
-        .init(points: [94.5, 93.9, 85.8, 98.9, 84.8, 99.4, 83.6, 100.1, 82.3, 101, 80.7, 102, 79.4, 103, 78, 104, 76.6, 105, 75.3, 106, 73.6, 107, 71.2, 108, 68.5, 109, 65.6, 110, 62.6, 111, 59.5, 112, 56.4, 113, 53.4, 114, 51.1, 115, 49.2, 116, 47.4, 117, 45.8, 118, 44.2, 119, 42.8, 120, 41.4, 121, 40.1, 122, 38.9, 123, 37.8, 124, 36.6, 125, 35.6, 126, 34.5, 127, 33.5, 128, 32.6, 129, 31.7, 130, 30.9, 131, 30, 132, 29.2, 133, 28.4, 134, 27.8, 135, 27.1, 136, 26.3, 137, 25.6, 138, 25, 139, 24.4, 140, 23.9, 141, 23.3, 142, 22.8, 143, 22.4, 144, 21.9, 145, 21.4, 146, 20.9, 147, 20.6, 148, 20.1, 149, 19.7, 150, 19.4, 151, 19.1, 152, 18.7, 153, 18.4, 154, 18.1, 155, 17.9, 156, 17.7, 157, 17.5, 158, 17.2, 159, 17.1, 160, 16.9, 161, 16.8, 162, 16.6, 163, 16.6, 164, 16.4, 165, 16.4, 166, 16.4, 167, 16.4, 168, 16.3, 169, 16.3, 170, 16.3, 171, 16.4, 172, 16.4, 173, 16.3, 173.9, 16.2, 174.6, 16.2, 175.1, 16.2, 185.1], circle: nil, width: 28.8, delay: 0.52, duration: 0.48),
-        .init(points: [152.1, 101.7, 153.7, 111.6, 153.8, 112.2, 153.9, 113, 154, 114, 154, 115, 154, 116, 154, 117, 154, 118, 154, 119, 154, 120, 154, 121, 154, 122, 154, 123, 154, 124, 154, 125, 154, 126, 154, 127, 154, 128, 153.9, 129, 153.8, 130, 153.6, 131, 153.3, 132, 152.8, 133, 152.2, 134, 151.4, 135, 150.5, 136, 149.5, 137, 148.5, 138, 147.5, 139, 146.5, 140, 145.5, 141, 144.5, 142, 143.5, 143, 142.5, 144, 141.5, 145, 140.5, 146, 139.5, 147, 138.5, 148, 137.5, 149, 136.5, 150, 135.5, 151, 134.5, 152, 133.5, 153, 132.5, 154, 131.6, 155, 130.7, 156, 129.9, 157, 129.2, 158, 128.6, 159, 128, 160, 127.5, 161, 127, 162, 126.5, 163, 126, 164, 125.5, 165, 125, 166, 124.5, 167, 124, 168, 123.5, 169, 123, 170, 122.5, 171, 122, 172, 121.6, 173, 121.2, 174, 120.8, 175, 120.5, 176, 120.3, 177, 120.2, 178, 120.2, 178.8, 120.3, 179.4, 121.9, 189.3], circle: nil, width: 49.1, delay: 0.88, duration: 0.4),
+        .init(points: [], circle: (99.5, 45.34, 28.8), width: 11.93, delay: 0.175, duration: 0.266),
+        .init(points: [94.5, 93.9, 85.8, 98.9, 84.8, 99.4, 83.6, 100.1, 82.3, 101, 80.7, 102, 79.4, 103, 78, 104, 76.6, 105, 75.3, 106, 73.6, 107, 71.2, 108, 68.5, 109, 65.6, 110, 62.6, 111, 59.5, 112, 56.4, 113, 53.4, 114, 51.1, 115, 49.2, 116, 47.4, 117, 45.8, 118, 44.2, 119, 42.8, 120, 41.4, 121, 40.1, 122, 38.9, 123, 37.8, 124, 36.6, 125, 35.6, 126, 34.5, 127, 33.5, 128, 32.6, 129, 31.7, 130, 30.9, 131, 30, 132, 29.2, 133, 28.4, 134, 27.8, 135, 27.1, 136, 26.3, 137, 25.6, 138, 25, 139, 24.4, 140, 23.9, 141, 23.3, 142, 22.8, 143, 22.4, 144, 21.9, 145, 21.4, 146, 20.9, 147, 20.6, 148, 20.1, 149, 19.7, 150, 19.4, 151, 19.1, 152, 18.7, 153, 18.4, 154, 18.1, 155, 17.9, 156, 17.7, 157, 17.5, 158, 17.2, 159, 17.1, 160, 16.9, 161, 16.8, 162, 16.6, 163, 16.6, 164, 16.4, 165, 16.4, 166, 16.4, 167, 16.4, 168, 16.3, 169, 16.3, 170, 16.3, 171, 16.4, 172, 16.4, 173, 16.3, 173.9, 16.2, 174.6, 16.2, 175.1, 16.2, 185.1], circle: nil, width: 28.8, delay: 0.364, duration: 0.336),
+        .init(points: [152.1, 101.7, 153.7, 111.6, 153.8, 112.2, 153.9, 113, 154, 114, 154, 115, 154, 116, 154, 117, 154, 118, 154, 119, 154, 120, 154, 121, 154, 122, 154, 123, 154, 124, 154, 125, 154, 126, 154, 127, 154, 128, 153.9, 129, 153.8, 130, 153.6, 131, 153.3, 132, 152.8, 133, 152.2, 134, 151.4, 135, 150.5, 136, 149.5, 137, 148.5, 138, 147.5, 139, 146.5, 140, 145.5, 141, 144.5, 142, 143.5, 143, 142.5, 144, 141.5, 145, 140.5, 146, 139.5, 147, 138.5, 148, 137.5, 149, 136.5, 150, 135.5, 151, 134.5, 152, 133.5, 153, 132.5, 154, 131.6, 155, 130.7, 156, 129.9, 157, 129.2, 158, 128.6, 159, 128, 160, 127.5, 161, 127, 162, 126.5, 163, 126, 164, 125.5, 165, 125, 166, 124.5, 167, 124, 168, 123.5, 169, 123, 170, 122.5, 171, 122, 172, 121.6, 173, 121.2, 174, 120.8, 175, 120.5, 176, 120.3, 177, 120.2, 178, 120.2, 178.8, 120.3, 179.4, 121.9, 189.3], circle: nil, width: 49.1, delay: 0.616, duration: 0.28),
     ]
     static let right: [GlyphStroke] = [
-        .init(points: [], circle: (99.5, 99.5, 82.99), width: 12.05, delay: 0.38, duration: 0.38),
-        .init(points: [55, 93.1, 59.4, 86.4, 59.8, 85.8, 60.2, 85, 60.8, 84, 61.2, 83, 61.8, 82, 62.2, 81, 62.8, 80, 63.4, 79, 64, 78, 64.6, 77, 65.4, 76, 66.2, 75, 66.8, 74, 67.6, 73, 68.4, 72, 69.2, 71, 70, 70, 71, 69.2, 72, 68.4, 73, 67.6, 74, 66.8, 75, 66.2, 76, 65.4, 77, 64.6, 78, 64, 79, 63.4, 80, 62.8, 81, 62.2, 82, 61.8, 83, 61.4, 84, 61, 85, 60.6, 86, 60.4, 87, 60, 88, 59.6, 89, 59.4, 90, 59.2, 91, 59, 92, 59, 93, 59, 94, 58.8, 95, 58.6, 96, 58.4, 97, 58.2, 98, 58, 99, 58, 100, 58, 101, 58, 102, 58.2, 103, 58.4, 104, 58.6, 105, 58.8, 106, 59, 107, 59, 108, 59, 109, 59.2, 110, 59.4, 111, 59.6, 112, 60, 113, 60.4, 114, 60.6, 115, 61, 116, 61.4, 117, 61.8, 118, 62.2, 119, 62.8, 120, 63.2, 121, 63.8, 122, 64.4, 123, 65, 124, 65.6, 125, 66.2, 126, 66.6, 127, 66.8, 128, 67.2, 129, 67.4, 130, 67.6, 131, 68, 132, 68.4, 133, 68.8, 134, 69.2, 135, 69.8, 135.8, 70.4, 136.6, 71.2, 137.2, 72, 137.6, 73, 137.8, 74, 138, 75, 138.2, 76, 138.4, 77, 138.6, 78, 138.8, 79, 139, 80, 139, 81, 139, 81.8, 139, 82.4, 139, 90.4], circle: nil, width: 26, delay: 0.7, duration: 0.48),
-        .init(points: [135.1, 75.7, 137, 70, 140, 61, 141.9, 55.3], circle: nil, width: 13.5, delay: 1.35, duration: 0.2),
-        .init(points: [144, 104.9, 139.6, 111.6, 139.2, 112.2, 138.8, 113, 138.4, 114, 138, 115, 137.6, 116, 137.2, 117, 136.6, 118, 136, 119, 135.6, 120, 135, 121, 134.4, 122, 134, 123, 133.4, 124, 132.6, 125, 131.8, 126, 131, 127, 130, 128, 129, 129, 128, 130, 127, 131, 126, 131.8, 125, 132.6, 124, 133.4, 123, 134, 122, 134.4, 121, 135, 120, 135.6, 119, 136, 118, 136.6, 117, 137.2, 116, 137.6, 115, 138, 114, 138.4, 113, 138.6, 112, 138.8, 111, 139, 110, 139.2, 109, 139.4, 108, 139.6, 107, 139.8, 106, 140, 105, 140, 104, 140, 103, 140, 102, 140, 101, 140, 100, 140, 99, 140, 98, 140, 97, 140, 96, 140, 95, 140, 94, 140, 93, 140, 92, 139.8, 91, 139.6, 90, 139.4, 89, 139.2, 88, 139, 87, 138.8, 86, 138.6, 85, 138.4, 84, 138, 83, 137.6, 82, 137.2, 81, 136.6, 80, 136, 79, 135.4, 78, 134.8, 77, 134.2, 76, 133.6, 75, 133, 74, 132.6, 73, 132, 72, 131.6, 71, 131.4, 70, 131.2, 69, 130.8, 68, 130.6, 67, 130.2, 66, 129.8, 65, 129.4, 64, 129, 63, 128.4, 62.2, 127.8, 61.6, 127, 61, 126, 60.6, 125, 60.4, 124, 60.2, 123, 60, 122, 60, 121, 59.8, 120, 59.6, 119, 59.6, 118, 59.6, 117, 59.6, 116, 59.8, 115, 59.8, 114, 59.6, 113, 59.4, 112.2, 59.2, 111.6, 56.7, 104], circle: nil, width: 25.9, delay: 1.05, duration: 0.48),
-        .init(points: [62.3, 122.1, 61, 128, 59, 137, 57.7, 142.9], circle: nil, width: 13.3, delay: 1.56, duration: 0.2),
+        .init(points: [], circle: (99.5, 99.5, 82.99), width: 12.05, delay: 0.266, duration: 0.266),
+        .init(points: [55, 93.1, 59.4, 86.4, 59.8, 85.8, 60.2, 85, 60.8, 84, 61.2, 83, 61.8, 82, 62.2, 81, 62.8, 80, 63.4, 79, 64, 78, 64.6, 77, 65.4, 76, 66.2, 75, 66.8, 74, 67.6, 73, 68.4, 72, 69.2, 71, 70, 70, 71, 69.2, 72, 68.4, 73, 67.6, 74, 66.8, 75, 66.2, 76, 65.4, 77, 64.6, 78, 64, 79, 63.4, 80, 62.8, 81, 62.2, 82, 61.8, 83, 61.4, 84, 61, 85, 60.6, 86, 60.4, 87, 60, 88, 59.6, 89, 59.4, 90, 59.2, 91, 59, 92, 59, 93, 59, 94, 58.8, 95, 58.6, 96, 58.4, 97, 58.2, 98, 58, 99, 58, 100, 58, 101, 58, 102, 58.2, 103, 58.4, 104, 58.6, 105, 58.8, 106, 59, 107, 59, 108, 59, 109, 59.2, 110, 59.4, 111, 59.6, 112, 60, 113, 60.4, 114, 60.6, 115, 61, 116, 61.4, 117, 61.8, 118, 62.2, 119, 62.8, 120, 63.2, 121, 63.8, 122, 64.4, 123, 65, 124, 65.6, 125, 66.2, 126, 66.6, 127, 66.8, 128, 67.2, 129, 67.4, 130, 67.6, 131, 68, 132, 68.4, 133, 68.8, 134, 69.2, 135, 69.8, 135.8, 70.4, 136.6, 71.2, 137.2, 72, 137.6, 73, 137.8, 74, 138, 75, 138.2, 76, 138.4, 77, 138.6, 78, 138.8, 79, 139, 80, 139, 81, 139, 81.8, 139, 82.4, 139, 90.4], circle: nil, width: 26, delay: 0.49, duration: 0.336),
+        .init(points: [135.1, 75.7, 137, 70, 140, 61, 141.9, 55.3], circle: nil, width: 13.5, delay: 0.945, duration: 0.14),
+        .init(points: [144, 104.9, 139.6, 111.6, 139.2, 112.2, 138.8, 113, 138.4, 114, 138, 115, 137.6, 116, 137.2, 117, 136.6, 118, 136, 119, 135.6, 120, 135, 121, 134.4, 122, 134, 123, 133.4, 124, 132.6, 125, 131.8, 126, 131, 127, 130, 128, 129, 129, 128, 130, 127, 131, 126, 131.8, 125, 132.6, 124, 133.4, 123, 134, 122, 134.4, 121, 135, 120, 135.6, 119, 136, 118, 136.6, 117, 137.2, 116, 137.6, 115, 138, 114, 138.4, 113, 138.6, 112, 138.8, 111, 139, 110, 139.2, 109, 139.4, 108, 139.6, 107, 139.8, 106, 140, 105, 140, 104, 140, 103, 140, 102, 140, 101, 140, 100, 140, 99, 140, 98, 140, 97, 140, 96, 140, 95, 140, 94, 140, 93, 140, 92, 139.8, 91, 139.6, 90, 139.4, 89, 139.2, 88, 139, 87, 138.8, 86, 138.6, 85, 138.4, 84, 138, 83, 137.6, 82, 137.2, 81, 136.6, 80, 136, 79, 135.4, 78, 134.8, 77, 134.2, 76, 133.6, 75, 133, 74, 132.6, 73, 132, 72, 131.6, 71, 131.4, 70, 131.2, 69, 130.8, 68, 130.6, 67, 130.2, 66, 129.8, 65, 129.4, 64, 129, 63, 128.4, 62.2, 127.8, 61.6, 127, 61, 126, 60.6, 125, 60.4, 124, 60.2, 123, 60, 122, 60, 121, 59.8, 120, 59.6, 119, 59.6, 118, 59.6, 117, 59.6, 116, 59.8, 115, 59.8, 114, 59.6, 113, 59.4, 112.2, 59.2, 111.6, 56.7, 104], circle: nil, width: 25.9, delay: 0.735, duration: 0.336),
+        .init(points: [62.3, 122.1, 61, 128, 59, 137, 57.7, 142.9], circle: nil, width: 13.3, delay: 1.092, duration: 0.14),
     ]}
