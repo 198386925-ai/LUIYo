@@ -258,7 +258,7 @@ final class WhitePanelView: UIView {
         imageView.frame = CGRect(x: 0, y: 0, width: W, height: H)
         let key = (Int((W * 2).rounded()), Int((heights[0] * 2).rounded()),
                    Int((heights[1] * 2).rounded()))
-        if cacheKey != key {
+        if cacheKey.map({ $0 != key }) ?? true {
             cache.removeAll()
             cacheKey = key
         }
