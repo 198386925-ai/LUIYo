@@ -181,39 +181,62 @@ final class FormField: NSObject {
     }
 }
 
-/// The white region behind the tabs + form: a folder-tab shape drawn
-/// as two shape layers — the sliding tab bump (with its concave 18px
-/// fillet where it meets the form) and the form body (top corner
-/// rounded on the inactive side only). Mirrors the design's
-/// `.tab-ind` + `.forms` border-radius choreography.
+/// The white region behind the tabs + form: TWO static folder
+/// shapes (one per tab), each a forms body + tab bump pair of shape
+/// layers, crossfaded on a switch — the design's own model.
+///
+/// Build history: Build 14 slid a ShapeView and swapped its path
+/// mid-slide; Build 16 swapped the paths inside a delayed animation
+/// block, which made Core Animation INTERPOLATE the path between the
+/// two folder topologies — the panel bent into a skewed trapezoid
+/// mid-switch, exactly what the user kept screenshotting. Here every
+/// path is assigned once per (tab, width, height) with actions
+/// disabled, frames never move, and the ONLY animated property in a
+/// switch is the two pairs' opacity. At any mid-switch instant the
+/// screen shows at most two axis-aligned folder panels at partial
+/// opacity — there is no path interpolation and no skew/perspective
+/// transform anywhere in the switch path.
 final class WhitePanelView: UIView {
     /// 0 = signup (bump left), 1 = login (bump right).
     private(set) var tabIndex = 0
-    private let formsView = ShapeView()
-    private let bumpView = ShapeView()
-    private var panelHeight: CGFloat = 0
-    private var sliding = false
+    /// [tab][forms, bump] — both pairs are always in the hierarchy;
+    /// the inactive pair rests at alpha 0.
+    private let pairs: [[ShapeView]] = [
+        [ShapeView(), ShapeView()],
+        [ShapeView(), ShapeView()],
+    ]
+    /// Each tab's own panel height: a pair's shapes are built at its
+    /// OWN height and never follow the container's animated height,
+    /// so the height transition can never deform an outline either.
+    private var heights: [CGFloat] = [0, 0]
+    private var fadeAnimator: UIViewPropertyAnimator?
 
     override init(frame: CGRect) {
         super.init(frame: frame)
-        formsView.shape.fillColor = UIColor.white.cgColor
-        bumpView.shape.fillColor = UIColor.white.cgColor
-        addSubview(formsView)
-        addSubview(bumpView)
+        for (tab, pair) in pairs.enumerated() {
+            for piece in pair {
+                piece.shape.fillColor = UIColor.white.cgColor
+                piece.alpha = tab == 0 ? 1 : 0
+                addSubview(piece)
+            }
+        }
+        // A taller outgoing pair is clipped to the panel's current
+        // (animating) height while it fades; both pairs are the same
+        // white, so the clip line itself is invisible.
+        clipsToBounds = true
         isUserInteractionEnabled = false
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
-    func setHeight(_ height: CGFloat) {
-        panelHeight = height
-        rebuildPaths()
+    func setHeights(signup: CGFloat, login: CGFloat) {
+        heights = [signup, login]
+        rebuildPairs()
     }
 
     override func layoutSubviews() {
         super.layoutSubviews()
-        formsView.frame = bounds
-        rebuildPaths()
+        rebuildPairs()
     }
 
     /// The bump in bump-local coordinates: local width is B + 18
@@ -283,54 +306,54 @@ final class WhitePanelView: UIView {
         return path.cgPath
     }
 
-    private func rebuildPaths() {
+    /// (Re)builds both static pairs for the current width and the
+    /// stored per-tab heights. Every frame/path assignment runs with
+    /// actions disabled: a shape layer must NEVER implicitly animate
+    /// a path change (that implicit animation IS path interpolation).
+    private func rebuildPairs() {
         let W = bounds.width
-        guard W > 0, panelHeight > 54 else { return }
-        let signup = tabIndex == 0
+        guard W > 0 else { return }
         let B = W / 2
-        // No path morphing: interpolating between the two path
-        // topologies bent the panel into a trapezoid mid-switch (the
-        // warp seen on device). The design never morphs shapes — its
-        // panel simply transitions HEIGHT (.2s) while the forms body
-        // swaps its top corner at the slide's midpoint; the layout
-        // animation moves the height and this path is rebuilt at the
-        // current height every layout pass, so it follows cleanly.
-        formsView.shape.path = formsPath(signup: signup, width: W, tabs: 54, height: panelHeight)
-        bumpView.shape.path = bumpPath(signup: signup, half: B, tabs: 54)
-        if !sliding {
-            bumpView.frame = CGRect(x: signup ? 0 : B - 18, y: 0,
-                                    width: B + 18, height: 54)
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        for tab in 0 ... 1 {
+            let H = heights[tab]
+            guard H > 54 else { continue }
+            let signup = tab == 0
+            let forms = pairs[tab][0], bump = pairs[tab][1]
+            forms.frame = CGRect(x: 0, y: 0, width: W, height: H)
+            forms.shape.path = formsPath(signup: signup, width: W, tabs: 54, height: H)
+            bump.frame = CGRect(x: signup ? 0 : B - 18, y: 0,
+                                width: B + 18, height: 54)
+            bump.shape.path = bumpPath(signup: signup, half: B, tabs: 54)
         }
+        CATransaction.commit()
     }
 
-    /// Slides the bump across with the design's .52s tab curve,
-    /// swapping its mirrored path and the form body's corner at the
-    /// midpoint (the design crossfades its notches the same way).
-    func slide(to index: Int) {
+    /// The tab switch for the panel: a pure opacity crossfade between
+    /// the two static pairs on the design's .52s tab curve
+    /// (cubic-bezier(.62,.04,.33,1)). The panel's height change is the
+    /// view controller's separate .2s layout transition; the shapes
+    /// themselves never move, morph, or transform.
+    func crossfade(to index: Int) {
         guard index != tabIndex else { return }
+        if let running = fadeAnimator, running.isRunning {
+            running.stopAnimation(false)
+            running.finishAnimation(at: .end)
+        }
+        let outgoing = pairs[tabIndex]
+        let incoming = pairs[index]
         tabIndex = index
-        let W = bounds.width
-        let B = W / 2
-        sliding = true
         let animator = UIViewPropertyAnimator(
             duration: 0.52,
             timingParameters: UICubicTimingParameters(
                 controlPoint1: CGPoint(x: 0.62, y: 0.04),
                 controlPoint2: CGPoint(x: 0.33, y: 1)))
         animator.addAnimations {
-            self.bumpView.frame = CGRect(x: index == 0 ? 0 : B - 18, y: 0,
-                                         width: B + 18, height: 54)
+            for piece in incoming { piece.alpha = 1 }
+            for piece in outgoing { piece.alpha = 0 }
         }
-        animator.addAnimations({ [weak self] in
-            guard let self else { return }
-            self.bumpView.shape.path = self.bumpPath(signup: index == 0, half: B, tabs: 54)
-            self.formsView.shape.path = self.formsPath(
-                signup: index == 0, width: W, tabs: 54, height: self.panelHeight)
-        }, delayFactor: 0.5)
-        animator.addCompletion { [weak self] _ in
-            self?.sliding = false
-            self?.rebuildPaths()
-        }
+        fadeAnimator = animator
         animator.startAnimation()
     }
 }
@@ -1122,15 +1145,18 @@ final class AccountViewController: AccountFormBaseViewController {
         return y + 22
     }
 
-    override func contentHeight(forWidth width: CGFloat) -> CGFloat {
-        let panelW = width - 40
-        let formW = panelW - 32
-        if activeTab == 0 {
+    private func panelHeight(forTab tab: Int, formW: CGFloat) -> CGFloat {
+        if tab == 0 {
             let fields = [suEmail, suCode, suPass, suConfirm, suKey].compactMap { $0 }
             return 54 + formContentHeight(signupForm, fields: fields, width: formW)
         }
         let fields = [liEmail, liPass].compactMap { $0 }
         return 54 + formContentHeight(loginForm, fields: fields, width: formW)
+    }
+
+    override func contentHeight(forWidth width: CGFloat) -> CGFloat {
+        let panelW = width - 40
+        return panelHeight(forTab: activeTab, formW: panelW - 32)
     }
 
     override func layoutContent(originY: CGFloat, width: CGFloat) {
@@ -1139,7 +1165,8 @@ final class AccountViewController: AccountFormBaseViewController {
         let panelH = contentHeight(forWidth: width)
         panelView.frame = CGRect(x: 20, y: originY, width: panelW, height: panelH)
         whitePanel.frame = panelView.bounds
-        whitePanel.setHeight(panelH)
+        whitePanel.setHeights(signup: panelHeight(forTab: 0, formW: formW),
+                              login: panelHeight(forTab: 1, formW: formW))
         signupTabButton.frame = CGRect(x: 0, y: 0, width: panelW / 2, height: 54)
         loginTabButton.frame = CGRect(x: panelW / 2, y: 0, width: panelW / 2, height: 54)
         for form in [signupForm, loginForm] {
@@ -1213,7 +1240,7 @@ final class AccountViewController: AccountFormBaseViewController {
     func setTab(_ index: Int) {
         guard index != activeTab else { return }
         activeTab = index
-        whitePanel.slide(to: index)
+        whitePanel.crossfade(to: index)
         updateTabStyles()
         let incoming = index == 0 ? signupForm : loginForm
         let outgoing = index == 0 ? loginForm : signupForm

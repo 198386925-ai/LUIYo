@@ -31,11 +31,11 @@ final class Splash04ViewController: UIViewController {
     ])
     private let ringWrap = UIView()     // breathe target
     private let ringInner = UIView()    // iconIn target
-    private let halo = RadialGlowView(stops: [
-        (UIColor(red: 234 / 255, green: 201 / 255, blue: 250 / 255, alpha: 0.42), 0),
-        (UIColor(red: 94 / 255, green: 151 / 255, blue: 238 / 255, alpha: 0.24), 0.45),
-        (UIColor(red: 94 / 255, green: 151 / 255, blue: 238 / 255, alpha: 0), 0.70)
-    ])
+    /// Build 17: the halo is a PRE-RENDERED static radial-gradient
+    /// image (the same stops the old live gradient view used) — the
+    /// user wants no blur of any kind on this splash, and a baked
+    /// gradient can never soften the artwork above it.
+    private let halo = UIImageView(image: UIImage(named: "SplashHalo"))
     private let ringImage = UIImageView(image: UIImage(named: "SplashRing"))
     private let iconImage = UIImageView(image: UIImage(named: "SplashIcon"))
     private let dotsView = SplashDotsView()
@@ -66,11 +66,6 @@ final class Splash04ViewController: UIViewController {
         iconImage.layer.shadowOpacity = 1
         iconImage.layer.shadowOffset = CGSize(width: 0, height: 7)
         iconImage.layer.shadowRadius = 9
-        if let filter = CIFilter(name: "CIGaussianBlur") {
-            filter.name = "gaussianBlur"
-            filter.setValue(0, forKey: kCIInputRadiusKey)
-            ringInner.layer.filters = [filter]
-        }
     }
 
     override func viewDidLayoutSubviews() {
@@ -148,7 +143,11 @@ final class Splash04ViewController: UIViewController {
         dotsView.start(at: startTime)
         if UIAccessibility.isReduceMotionEnabled { return }
         // iconIn on the inner container: 6.5t, cubic-bezier(.22,1.45,.36,1),
-        // opacity 0→1, scale .62→1, translateY 22→0, blur 10→0.
+        // opacity 0→1, scale .62→1, translateY 22→0. Build 17: the
+        // design's blur ramp is dropped (user: no blur on 04) — the
+        // entrance is opacity/scale/translation only, and no layer
+        // filter exists at any phase, so breathe scales the source
+        // artwork directly and stays crisp at its peaks.
         let iconIn = CAAnimationGroup()
         let inOpacity = CABasicAnimation(keyPath: "opacity")
         inOpacity.fromValue = 0
@@ -164,27 +163,6 @@ final class Splash04ViewController: UIViewController {
         iconIn.timingFunction = CAMediaTimingFunction(controlPoints: 0.22, 1.45, 0.36, 1)
         iconIn.fillMode = .backwards
         ringInner.layer.add(iconIn, forKey: "iconIn")
-        if ringInner.layer.filters?.isEmpty == false {
-            let blur = CABasicAnimation(keyPath: "filters.gaussianBlur.inputRadius")
-            blur.fromValue = 10 * s
-            blur.toValue = 0
-            blur.duration = 6.5 * 0.24
-            blur.timingFunction = CAMediaTimingFunction(controlPoints: 0.22, 1.45, 0.36, 1)
-            blur.fillMode = .backwards
-            ringInner.layer.add(blur, forKey: "iconInBlur")
-        }
-        // Once iconIn has landed, take the gaussian filter OFF the
-        // inner container for good: a filtered layer renders into a
-        // fixed-resolution offscreen, and the breathe scale on the
-        // wrapper then magnifies that bitmap — the soften/sharpen
-        // pulsing seen on device at the breathe peaks. With the
-        // filter gone, breathe scales the source artwork directly
-        // (icon 512px, ring re-rendered at 1026px — several times
-        // their displayed size), so the peaks stay crisp.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 6.5 * 0.24 + 0.05) { [weak self] in
-            self?.ringInner.layer.removeAnimation(forKey: "iconInBlur")
-            self?.ringInner.layer.filters = nil
-        }
         // breathe on the wrapper: 18t ease-in-out infinite from 6.5t.
         let breathe = CAKeyframeAnimation(keyPath: "transform.scale")
         breathe.values = [1, 1.04, 1]
@@ -226,19 +204,6 @@ final class Splash04ViewController: UIViewController {
         group.timingFunction = CAMediaTimingFunction(controlPoints: 0.6, 0, 0.8, 0.4)
         group.fillMode = .both
         inner.layer.add(group, forKey: "stageOut")
-        if let filter = CIFilter(name: "CIGaussianBlur") {
-            filter.name = "gaussianBlur"
-            filter.setValue(0, forKey: kCIInputRadiusKey)
-            inner.layer.filters = [filter]
-            let blur = CABasicAnimation(keyPath: "filters.gaussianBlur.inputRadius")
-            blur.fromValue = 0
-            blur.toValue = 6 * s
-            blur.duration = 5 * 0.24
-            blur.beginTime = outStart
-            blur.timingFunction = CAMediaTimingFunction(controlPoints: 0.6, 0, 0.8, 0.4)
-            blur.fillMode = .both
-            inner.layer.add(blur, forKey: "stageOutBlur")
-        }
         let wait = outStart + 5 * 0.24 - CACurrentMediaTime()
         DispatchQueue.main.asyncAfter(deadline: .now() + max(0, wait)) {
             self.finishCompletion?()

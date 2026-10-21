@@ -130,6 +130,7 @@ extension UIViewController {
 /// level pickers （触控反馈 / 声音）, each a four-step segmented control.
 final class AppSettingsViewController: UIViewController {
     private let homeModel: NativeHomeModel
+    private let logoutCard = UIView()
 
     init(homeModel: NativeHomeModel) {
         self.homeModel = homeModel
@@ -196,6 +197,73 @@ final class AppSettingsViewController: UIViewController {
         soundSeg.setSelectedValue(String(AppFeedback.soundLevel))
         soundSeg.onChange = { value in AppFeedback.soundLevel = Int(value) ?? 1 }
         rows.addArrangedSubview(levelRow(title: "声音", subtitle: "点按时的提示音量", control: soundSeg))
+
+        // Build 17: the account 退出登录 lives HERE, as a card in
+        // this page's own card style (moved off the 我的 page at the
+        // user's request). Visible only while an account session
+        // exists; the behavior is unchanged — confirmation, clear
+        // the account session, and the entry gate hears the
+        // notification and swaps the app back to splash 03 at once.
+        // (The old device-code activation is a separate system and
+        // is not touched.)
+        logoutCard.backgroundColor = UIColor(nativeHex: homeModel.theme.card)
+        logoutCard.layer.cornerRadius = 26
+        logoutCard.clipsToBounds = true
+        view.addSubview(logoutCard)
+        logoutCard.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            logoutCard.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 14),
+            logoutCard.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -14),
+            logoutCard.topAnchor.constraint(equalTo: card.bottomAnchor, constant: 12),
+            logoutCard.heightAnchor.constraint(equalToConstant: 52),
+        ])
+        let logoutTap = UIControl()
+        logoutTap.addTarget(self, action: #selector(accountLogoutTapped), for: .touchUpInside)
+        logoutCard.addSubview(logoutTap)
+        logoutTap.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            logoutTap.leadingAnchor.constraint(equalTo: logoutCard.leadingAnchor),
+            logoutTap.trailingAnchor.constraint(equalTo: logoutCard.trailingAnchor),
+            logoutTap.topAnchor.constraint(equalTo: logoutCard.topAnchor),
+            logoutTap.bottomAnchor.constraint(equalTo: logoutCard.bottomAnchor),
+        ])
+        let logoutTitle = UILabel()
+        logoutTitle.text = "退出登录"
+        logoutTitle.font = UIFont.systemFont(ofSize: 13, weight: .semibold)
+        logoutTitle.textColor = .systemRed
+        logoutTitle.textAlignment = .center
+        logoutTap.addSubview(logoutTitle)
+        logoutTitle.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            logoutTitle.centerXAnchor.constraint(equalTo: logoutTap.centerXAnchor),
+            logoutTitle.centerYAnchor.constraint(equalTo: logoutTap.centerYAnchor),
+        ])
+        refreshLogoutVisibility()
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        refreshLogoutVisibility()
+    }
+
+    private func refreshLogoutVisibility() {
+        logoutCard.isHidden = !AccountSession.isLoggedIn
+    }
+
+    @objc private func accountLogoutTapped() {
+        let alert = UIAlertController(
+            title: "退出登录",
+            message: "退出后需要重新登录才能进入。",
+            preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "取消", style: .cancel))
+        alert.addAction(UIAlertAction(title: "退出登录", style: .destructive) { [weak self] _ in
+            AccountSession.clear()
+            self?.refreshLogoutVisibility()
+            // The entry gate hears this and immediately swaps the
+            // app back to the splash-03 register gate.
+            NotificationCenter.default.post(name: .accountSessionDidLogout, object: nil)
+        })
+        present(alert, animated: true)
     }
 
     private func levelRow(title: String, subtitle: String, control: UIView) -> UIView {

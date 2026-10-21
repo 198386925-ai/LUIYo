@@ -177,7 +177,7 @@ final class Splash03ViewController: UIViewController {
 
 /// The particle canvas. The JS system, ported line for line:
 /// targets are sampled from "LUiYo" drawn offscreen at 800 weight /
-/// 130px in a 640 × 220 box, step 4, alpha > 128, capped at 1400;
+/// 130px in a 640 × 220 box, step 3, alpha > 128, capped at 1900;
 /// colors run across the wordmark through the design's 5-stop palette;
 /// each particle starts on a ring of radius max(W,H) × 0.62, eases to
 /// its target with easeOutCubic over progress 0 → 0.78 of the 3360 ms
@@ -277,11 +277,10 @@ final class ParticleCanvasView: UIView {
                     space: CGColorSpaceCreateDeviceRGB(),
                     bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
             else { return }
-            // CoreText draws in the context's native y-up space and
-            // the buffer's first row is the BOTTOM row. The design
-            // centres the wordmark at (320, 112) in y-down canvas
-            // space, i.e. (320, 220 − 112) y-up; centre the line's
-            // optical bounds on that point.
+            // CoreText draws in the context's native y-up space.
+            // The design centres the wordmark at (320, 112) in
+            // y-down canvas space, i.e. (320, 220 − 112) y-up; centre
+            // the line's optical bounds on that point.
             let line = CTLineCreateWithAttributedString(NSAttributedString(
                 string: "LUiYo",
                 attributes: [.font: font, .foregroundColor: UIColor.white]))
@@ -301,21 +300,26 @@ final class ParticleCanvasView: UIView {
                 if buffer[row * bytesPerRow + x * 4 + 3] > 128 {
                     let idx = min(colors.count - 1,
                                   Int(CGFloat(x) / CGFloat(boxW) * CGFloat(colors.count - 1)))
-                    // Buffer rows run bottom-up; the design's canvas
-                    // coordinates run top-down.
-                    points.append((CGFloat(x), CGFloat(boxH - row), colors[idx]))
+                    // The bitmap's memory rows run in the SAME
+                    // order as the design's top-down canvas rows
+                    // (row 0 = the top of the drawn wordmark) — the
+                    // target y is the row itself. Build 16 flipped it
+                    // (boxH − row) on the assumption the buffer was
+                    // bottom-up; on device the assembled wordmark
+                    // came out upside down.
+                    points.append((CGFloat(x), CGFloat(row), colors[idx]))
                 }
-                x += 4
+                x += 3
             }
-            row += 4
+            row += 3
         }
-        if points.count > 1400 {
-            let stride = Int(ceil(Double(points.count) / 1400))
+        if points.count > 1900 {
+            let stride = Int(ceil(Double(points.count) / 1900.0))
             points = points.enumerated().filter { $0.offset % stride == 0 }.map { $0.element }
         }
         let W = designSize.width, H = designSize.height
         let boxWf = CGFloat(boxW), boxHf = CGFloat(boxH)
-        let k = min(W * 0.8 / boxWf, 1)
+        let k = min(W * 0.8 / boxWf, 1) * 1.35  // Build 17: wordmark ×1.35 (≈60% of screen width)
         let ox = (W - boxWf * k) / 2
         let oy = (H - boxHf * k) / 2 - 30
         return points.map { (ox + $0.x * k, oy + $0.y * k, $0.color) }
