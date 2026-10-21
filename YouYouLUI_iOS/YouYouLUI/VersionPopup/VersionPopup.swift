@@ -8,9 +8,10 @@ import CoreImage
 /// red-orange 禁用 / banned).
 ///
 /// Every visual value — geometry, gradient stops and angles, colors (light
-/// and dark), type sizes/weights, shadows, the SVG glyph artwork itself, and
-/// the entrance choreography (jellyIn / riseIn / fadeUp keyframes plus the
-/// icons' stroke-draw animation, with the designs' own delays, durations
+/// and dark), type sizes/weights, shadows, the glyph artwork itself (the
+/// designs' SVGs, pre-rendered offline into PNG assets at their fully
+/// drawn resting state), and the entrance choreography (jellyIn /
+/// riseIn / fadeUp keyframes, with the designs' own delays, durations
 /// and timing functions) — is taken verbatim from the two HTML files and
 /// scaled by s = min(screenW / 1080, screenH / 1918), exactly like the
 /// designs' own fit() function.
@@ -219,319 +220,6 @@ private struct PopupPalette {
     }
 }
 
-// MARK: - CSS cubic-bezier easing
-
-private struct CSSBezier {
-    let x1: Double, y1: Double, x2: Double, y2: Double
-
-    func value(atX x: Double) -> Double {
-        if x <= 0 { return 0 }
-        if x >= 1 { return 1 }
-        var t = x
-        for _ in 0 ..< 8 {
-            let err = cubic(t, x1, x2) - x
-            if abs(err) < 1e-6 { break }
-            let slope = cubicSlope(t, x1, x2)
-            if abs(slope) < 1e-6 { break }
-            t -= err / slope
-            t = min(max(t, 0), 1)
-        }
-        return cubic(t, y1, y2)
-    }
-
-    private func cubic(_ t: Double, _ a: Double, _ b: Double) -> Double {
-        let u = 1 - t
-        return 3 * u * u * t * a + 3 * u * t * t * b + t * t * t
-    }
-
-    private func cubicSlope(_ t: Double, _ a: Double, _ b: Double) -> Double {
-        let u = 1 - t
-        return 3 * u * u * a + 6 * u * t * (b - a) + 3 * t * t * (1 - b)
-    }
-}
-
-// MARK: - SVG polyline parsing (the designs' paths use only M / L / Z)
-
-private final class SVGPolyline {
-    let points: [CGPoint]
-    let closed: Bool
-    let totalLength: CGFloat
-    let boundingBox: CGRect
-    private let cumulative: [CGFloat]
-
-    init(_ d: String) {
-        var pts: [CGPoint] = []
-        var isClosed = false
-        var numbers: [Double] = []
-        var buffer = ""
-        func flushNumber() {
-            if !buffer.isEmpty, let v = Double(buffer) { numbers.append(v) }
-            buffer = ""
-        }
-        func flushPoints() {
-            var i = 0
-            while i + 1 < numbers.count {
-                pts.append(CGPoint(x: numbers[i], y: numbers[i + 1]))
-                i += 2
-            }
-            numbers.removeAll()
-        }
-        for ch in d {
-            switch ch {
-            case "M", "L", "m", "l":
-                flushNumber()
-                flushPoints()
-            case "Z", "z":
-                flushNumber()
-                flushPoints()
-                isClosed = true
-            case " ", ",", "\n", "\t":
-                flushNumber()
-            default:
-                buffer.append(ch)
-            }
-        }
-        flushNumber()
-        flushPoints()
-        points = pts
-        closed = isClosed
-        var cum: [CGFloat] = [0]
-        var total: CGFloat = 0
-        for i in 1 ..< pts.count {
-            total += hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y)
-            cum.append(total)
-        }
-        if isClosed, pts.count > 1 {
-            total += hypot(pts[0].x - pts[pts.count - 1].x, pts[0].y - pts[pts.count - 1].y)
-        }
-        cumulative = cum
-        totalLength = total
-        if pts.isEmpty {
-            boundingBox = .zero
-        } else {
-            var minX = pts[0].x, maxX = pts[0].x, minY = pts[0].y, maxY = pts[0].y
-            for p in pts {
-                minX = min(minX, p.x); maxX = max(maxX, p.x)
-                minY = min(minY, p.y); maxY = max(maxY, p.y)
-            }
-            boundingBox = CGRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
-        }
-    }
-
-    var fullPath: CGPath {
-        let path = CGMutablePath()
-        guard let first = points.first else { return path }
-        path.move(to: first)
-        for p in points.dropFirst() { path.addLine(to: p) }
-        if closed { path.closeSubpath() }
-        return path
-    }
-
-    /// The sub-polyline covering the first `length` units of the path —
-    /// the native equivalent of the designs' stroke-dashoffset reveal.
-    func partialPath(upTo length: CGFloat) -> CGPath {
-        let path = CGMutablePath()
-        guard let first = points.first else { return path }
-        path.move(to: first)
-        if length <= 0 { return path }
-        var remaining = length
-        for i in 1 ..< points.count {
-            let seg = cumulative[i] - cumulative[i - 1]
-            if remaining >= seg {
-                path.addLine(to: points[i])
-                remaining -= seg
-            } else {
-                let a = points[i - 1], b = points[i]
-                let t = seg > 0 ? remaining / seg : 0
-                path.addLine(to: CGPoint(x: a.x + (b.x - a.x) * t,
-                                         y: a.y + (b.y - a.y) * t))
-                return path
-            }
-        }
-        if closed, remaining > 0, points.count > 1 {
-            let a = points[points.count - 1], b = points[0]
-            let seg = hypot(b.x - a.x, b.y - a.y)
-            if remaining >= seg {
-                path.closeSubpath()
-            } else {
-                let t = seg > 0 ? remaining / seg : 0
-                path.addLine(to: CGPoint(x: a.x + (b.x - a.x) * t,
-                                         y: a.y + (b.y - a.y) * t))
-            }
-        }
-        return path
-    }
-}
-
-// MARK: - Glyph artwork (the designs' own SVG data, verbatim)
-
-enum GlyphKind { case left, right }
-
-/// One drawable piece of a glyph icon, mirroring one SVG element of the
-/// design: either a stroked circle, or a filled path revealed through a
-/// stroked centerline mask (the designs' draw-on mechanism). delay/duration
-/// are the designs' data-d/data-t values, in seconds.
-struct GlyphElementSpec {
-    enum Body {
-        case strokeCircle(cx: Double, cy: Double, r: Double, width: Double)
-        case fill(path: String, evenOdd: Bool, maskPath: String, maskWidth: Double)
-    }
-    let body: Body
-    let delay: Double
-    let duration: Double
-}
-
-enum GlyphArtwork {
-    /// Last draw-on element finishes at 1.56 + 0.20 (design data-t/data-d).
-    static let totalDuration: Double = 1.76
-
-    static let left: [GlyphElementSpec] = [
-        GlyphElementSpec(body: .strokeCircle(cx: 99.5, cy: 45.34, r: 28.8, width: 11.93), delay: 0.25, duration: 0.38),
-        GlyphElementSpec(body: .fill(path: "M17.0 176.5 L15.0 176.5 L14.0 175.5 L10.5 172.0 L10.5 170.0 L9.5 169.0 L9.5 168.0 L10.5 167.0 L10.5 160.0 L11.5 159.0 L11.5 156.0 L12.5 155.0 L12.5 152.0 L13.5 151.0 L13.5 149.0 L14.5 148.0 L14.5 147.0 L15.5 146.0 L15.5 144.0 L16.5 143.0 L16.5 142.0 L17.5 141.0 L17.5 140.0 L19.5 138.0 L19.5 137.0 L20.5 136.0 L20.5 135.0 L22.5 133.0 L22.5 132.0 L25.5 129.0 L25.5 128.0 L37.0 116.5 L38.0 116.5 L41.0 113.5 L42.0 113.5 L44.0 111.5 L45.0 111.5 L47.0 109.5 L48.0 109.5 L49.0 108.5 L50.0 108.5 L51.0 107.5 L52.0 107.5 L53.0 106.5 L54.0 106.5 L55.0 105.5 L56.0 105.5 L57.0 104.5 L58.0 104.5 L59.0 103.5 L61.0 103.5 L62.0 102.5 L64.0 102.5 L65.0 101.5 L67.0 101.5 L68.0 100.5 L71.0 100.5 L72.0 99.5 L75.0 99.5 L76.0 98.5 L82.0 98.5 L83.0 97.5 L92.0 97.5 L93.0 98.5 L94.0 98.5 L96.5 101.0 L96.5 102.0 L97.5 103.0 L97.5 104.0 L96.5 105.0 L96.5 106.0 L93.0 109.5 L90.0 109.5 L89.0 110.5 L77.0 110.5 L76.0 111.5 L72.0 111.5 L71.0 112.5 L69.0 112.5 L68.0 113.5 L65.0 113.5 L64.0 114.5 L63.0 114.5 L62.0 115.5 L60.0 115.5 L59.0 116.5 L58.0 116.5 L57.0 117.5 L56.0 117.5 L55.0 118.5 L54.0 118.5 L53.0 119.5 L52.0 119.5 L50.0 121.5 L49.0 121.5 L47.0 123.5 L46.0 123.5 L41.0 128.5 L40.0 128.5 L37.5 131.0 L37.5 132.0 L32.5 137.0 L32.5 138.0 L30.5 140.0 L30.5 141.0 L29.5 142.0 L29.5 143.0 L28.5 144.0 L28.5 145.0 L27.5 146.0 L27.5 147.0 L26.5 148.0 L26.5 149.0 L25.5 150.0 L25.5 152.0 L24.5 153.0 L24.5 155.0 L23.5 156.0 L23.5 161.0 L22.5 162.0 L22.5 171.0 L21.5 172.0 L21.5 173.0 L19.0 175.5 L18.0 175.5 L17.0 176.5Z", evenOdd: false, maskPath: "M94.5 93.9 L85.8 98.9 L84.8 99.4 L83.6 100.1 L82.3 101.0 L80.7 102.0 L79.4 103.0 L78.0 104.0 L76.6 105.0 L75.3 106.0 L73.6 107.0 L71.2 108.0 L68.5 109.0 L65.6 110.0 L62.6 111.0 L59.5 112.0 L56.4 113.0 L53.4 114.0 L51.1 115.0 L49.2 116.0 L47.4 117.0 L45.8 118.0 L44.2 119.0 L42.8 120.0 L41.4 121.0 L40.1 122.0 L38.9 123.0 L37.8 124.0 L36.6 125.0 L35.6 126.0 L34.5 127.0 L33.5 128.0 L32.6 129.0 L31.7 130.0 L30.9 131.0 L30.0 132.0 L29.2 133.0 L28.4 134.0 L27.8 135.0 L27.1 136.0 L26.3 137.0 L25.6 138.0 L25.0 139.0 L24.4 140.0 L23.9 141.0 L23.3 142.0 L22.8 143.0 L22.4 144.0 L21.9 145.0 L21.4 146.0 L20.9 147.0 L20.6 148.0 L20.1 149.0 L19.7 150.0 L19.4 151.0 L19.1 152.0 L18.7 153.0 L18.4 154.0 L18.1 155.0 L17.9 156.0 L17.7 157.0 L17.5 158.0 L17.2 159.0 L17.1 160.0 L16.9 161.0 L16.8 162.0 L16.6 163.0 L16.6 164.0 L16.4 165.0 L16.4 166.0 L16.4 167.0 L16.4 168.0 L16.3 169.0 L16.3 170.0 L16.3 171.0 L16.4 172.0 L16.4 173.0 L16.3 173.9 L16.2 174.6 L16.2 175.1 L16.2 185.1", maskWidth: 28.8), delay: 0.52, duration: 0.48),
-        GlyphElementSpec(body: .fill(path: "M130.0 180.5 L111.0 180.5 L110.0 179.5 L109.0 179.5 L106.5 177.0 L106.5 175.0 L105.5 174.0 L105.5 158.0 L106.5 157.0 L106.5 156.0 L152.0 110.5 L155.0 110.5 L156.0 111.5 L157.0 111.5 L175.5 130.0 L175.5 131.0 L176.5 132.0 L176.5 134.0 L130.0 180.5Z M126.5 168.0 L127.0 167.5 L128.0 167.5 L160.5 135.0 L160.5 131.0 L156.0 126.5 L151.0 126.5 L118.5 159.0 L118.5 168.0 L119.0 168.5 L126.0 168.5 L126.5 168.0Z", evenOdd: true, maskPath: "M152.1 101.7 L153.7 111.6 L153.8 112.2 L153.9 113.0 L154.0 114.0 L154.0 115.0 L154.0 116.0 L154.0 117.0 L154.0 118.0 L154.0 119.0 L154.0 120.0 L154.0 121.0 L154.0 122.0 L154.0 123.0 L154.0 124.0 L154.0 125.0 L154.0 126.0 L154.0 127.0 L154.0 128.0 L153.9 129.0 L153.8 130.0 L153.6 131.0 L153.3 132.0 L152.8 133.0 L152.2 134.0 L151.4 135.0 L150.5 136.0 L149.5 137.0 L148.5 138.0 L147.5 139.0 L146.5 140.0 L145.5 141.0 L144.5 142.0 L143.5 143.0 L142.5 144.0 L141.5 145.0 L140.5 146.0 L139.5 147.0 L138.5 148.0 L137.5 149.0 L136.5 150.0 L135.5 151.0 L134.5 152.0 L133.5 153.0 L132.5 154.0 L131.6 155.0 L130.7 156.0 L129.9 157.0 L129.2 158.0 L128.6 159.0 L128.0 160.0 L127.5 161.0 L127.0 162.0 L126.5 163.0 L126.0 164.0 L125.5 165.0 L125.0 166.0 L124.5 167.0 L124.0 168.0 L123.5 169.0 L123.0 170.0 L122.5 171.0 L122.0 172.0 L121.6 173.0 L121.2 174.0 L120.8 175.0 L120.5 176.0 L120.3 177.0 L120.2 178.0 L120.2 178.8 L120.3 179.4 L121.9 189.3", maskWidth: 49.1), delay: 0.88, duration: 0.4),
-    ]
-    static let right: [GlyphElementSpec] = [
-        GlyphElementSpec(body: .strokeCircle(cx: 99.5, cy: 99.5, r: 82.99, width: 12.05), delay: 0.38, duration: 0.38),
-        GlyphElementSpec(body: .fill(path: "M139.0 93.5 L138.0 92.5 L137.0 92.5 L133.5 89.0 L133.5 87.0 L132.5 86.0 L132.5 85.0 L131.5 84.0 L131.5 82.0 L129.5 80.0 L129.5 79.0 L126.5 76.0 L126.5 75.0 L124.0 72.5 L123.0 72.5 L120.0 69.5 L119.0 69.5 L117.0 67.5 L115.0 67.5 L114.0 66.5 L113.0 66.5 L112.0 65.5 L109.0 65.5 L108.0 64.5 L91.0 64.5 L90.0 65.5 L87.0 65.5 L86.0 66.5 L85.0 66.5 L84.0 67.5 L82.0 67.5 L80.0 69.5 L79.0 69.5 L76.0 72.5 L75.0 72.5 L72.5 75.0 L72.5 76.0 L69.5 79.0 L69.5 80.0 L67.5 82.0 L67.5 84.0 L66.5 85.0 L66.5 86.0 L65.5 87.0 L65.5 89.0 L62.0 92.5 L61.0 92.5 L60.0 93.5 L59.0 92.5 L58.0 92.5 L57.0 91.5 L56.0 91.5 L55.5 91.0 L55.5 90.0 L53.5 88.0 L53.5 86.0 L54.5 85.0 L54.5 84.0 L55.5 83.0 L55.5 81.0 L56.5 80.0 L56.5 79.0 L57.5 78.0 L57.5 77.0 L59.5 75.0 L59.5 74.0 L61.5 72.0 L61.5 71.0 L71.0 61.5 L72.0 61.5 L74.0 59.5 L75.0 59.5 L77.0 57.5 L78.0 57.5 L79.0 56.5 L80.0 56.5 L81.0 55.5 L83.0 55.5 L84.0 54.5 L85.0 54.5 L86.0 53.5 L89.0 53.5 L90.0 52.5 L94.0 52.5 L95.0 51.5 L104.0 51.5 L105.0 52.5 L109.0 52.5 L110.0 53.5 L113.0 53.5 L114.0 54.5 L115.0 54.5 L116.0 55.5 L118.0 55.5 L119.0 56.5 L120.0 56.5 L121.0 57.5 L122.0 57.5 L124.0 59.5 L125.0 59.5 L127.0 61.5 L128.0 61.5 L129.0 62.5 L133.0 62.5 L133.5 62.0 L133.5 60.0 L137.0 56.5 L138.0 56.5 L139.0 55.5 L140.0 56.5 L141.0 56.5 L142.0 57.5 L143.0 57.5 L143.5 58.0 L143.5 59.0 L145.5 61.0 L145.5 88.0 L143.5 90.0 L143.5 91.0 L143.0 91.5 L142.0 91.5 L141.0 92.5 L140.0 92.5 L139.0 93.5Z", evenOdd: false, maskPath: "M55.0 93.1 L59.4 86.4 L59.8 85.8 L60.2 85.0 L60.8 84.0 L61.2 83.0 L61.8 82.0 L62.2 81.0 L62.8 80.0 L63.4 79.0 L64.0 78.0 L64.6 77.0 L65.4 76.0 L66.2 75.0 L66.8 74.0 L67.6 73.0 L68.4 72.0 L69.2 71.0 L70.0 70.0 L71.0 69.2 L72.0 68.4 L73.0 67.6 L74.0 66.8 L75.0 66.2 L76.0 65.4 L77.0 64.6 L78.0 64.0 L79.0 63.4 L80.0 62.8 L81.0 62.2 L82.0 61.8 L83.0 61.4 L84.0 61.0 L85.0 60.6 L86.0 60.4 L87.0 60.0 L88.0 59.6 L89.0 59.4 L90.0 59.2 L91.0 59.0 L92.0 59.0 L93.0 59.0 L94.0 58.8 L95.0 58.6 L96.0 58.4 L97.0 58.2 L98.0 58.0 L99.0 58.0 L100.0 58.0 L101.0 58.0 L102.0 58.2 L103.0 58.4 L104.0 58.6 L105.0 58.8 L106.0 59.0 L107.0 59.0 L108.0 59.0 L109.0 59.2 L110.0 59.4 L111.0 59.6 L112.0 60.0 L113.0 60.4 L114.0 60.6 L115.0 61.0 L116.0 61.4 L117.0 61.8 L118.0 62.2 L119.0 62.8 L120.0 63.2 L121.0 63.8 L122.0 64.4 L123.0 65.0 L124.0 65.6 L125.0 66.2 L126.0 66.6 L127.0 66.8 L128.0 67.2 L129.0 67.4 L130.0 67.6 L131.0 68.0 L132.0 68.4 L133.0 68.8 L134.0 69.2 L135.0 69.8 L135.8 70.4 L136.6 71.2 L137.2 72.0 L137.6 73.0 L137.8 74.0 L138.0 75.0 L138.2 76.0 L138.4 77.0 L138.6 78.0 L138.8 79.0 L139.0 80.0 L139.0 81.0 L139.0 81.8 L139.0 82.4 L139.0 90.4", maskWidth: 26), delay: 0.7, duration: 0.48),
-        GlyphElementSpec(body: .fill(path: "M139.0 93.5 L138.0 92.5 L137.0 92.5 L133.5 89.0 L133.5 87.0 L132.5 86.0 L132.5 85.0 L131.5 84.0 L131.5 82.0 L129.5 80.0 L129.5 79.0 L126.5 76.0 L126.5 75.0 L124.0 72.5 L123.0 72.5 L120.0 69.5 L119.0 69.5 L117.0 67.5 L115.0 67.5 L114.0 66.5 L113.0 66.5 L112.0 65.5 L109.0 65.5 L108.0 64.5 L91.0 64.5 L90.0 65.5 L87.0 65.5 L86.0 66.5 L85.0 66.5 L84.0 67.5 L82.0 67.5 L80.0 69.5 L79.0 69.5 L76.0 72.5 L75.0 72.5 L72.5 75.0 L72.5 76.0 L69.5 79.0 L69.5 80.0 L67.5 82.0 L67.5 84.0 L66.5 85.0 L66.5 86.0 L65.5 87.0 L65.5 89.0 L62.0 92.5 L61.0 92.5 L60.0 93.5 L59.0 92.5 L58.0 92.5 L57.0 91.5 L56.0 91.5 L55.5 91.0 L55.5 90.0 L53.5 88.0 L53.5 86.0 L54.5 85.0 L54.5 84.0 L55.5 83.0 L55.5 81.0 L56.5 80.0 L56.5 79.0 L57.5 78.0 L57.5 77.0 L59.5 75.0 L59.5 74.0 L61.5 72.0 L61.5 71.0 L71.0 61.5 L72.0 61.5 L74.0 59.5 L75.0 59.5 L77.0 57.5 L78.0 57.5 L79.0 56.5 L80.0 56.5 L81.0 55.5 L83.0 55.5 L84.0 54.5 L85.0 54.5 L86.0 53.5 L89.0 53.5 L90.0 52.5 L94.0 52.5 L95.0 51.5 L104.0 51.5 L105.0 52.5 L109.0 52.5 L110.0 53.5 L113.0 53.5 L114.0 54.5 L115.0 54.5 L116.0 55.5 L118.0 55.5 L119.0 56.5 L120.0 56.5 L121.0 57.5 L122.0 57.5 L124.0 59.5 L125.0 59.5 L127.0 61.5 L128.0 61.5 L129.0 62.5 L133.0 62.5 L133.5 62.0 L133.5 60.0 L137.0 56.5 L138.0 56.5 L139.0 55.5 L140.0 56.5 L141.0 56.5 L142.0 57.5 L143.0 57.5 L143.5 58.0 L143.5 59.0 L145.5 61.0 L145.5 88.0 L143.5 90.0 L143.5 91.0 L143.0 91.5 L142.0 91.5 L141.0 92.5 L140.0 92.5 L139.0 93.5Z", evenOdd: false, maskPath: "M135.1 75.7 L137.0 70.0 L140.0 61.0 L141.9 55.3", maskWidth: 13.5), delay: 1.35, duration: 0.2),
-        GlyphElementSpec(body: .fill(path: "M104.0 147.5 L95.0 147.5 L94.0 146.5 L90.0 146.5 L89.0 145.5 L86.0 145.5 L85.0 144.5 L84.0 144.5 L83.0 143.5 L81.0 143.5 L80.0 142.5 L79.0 142.5 L78.0 141.5 L77.0 141.5 L75.0 139.5 L74.0 139.5 L72.0 137.5 L71.0 137.5 L70.0 136.5 L66.0 136.5 L65.5 137.0 L65.5 139.0 L62.0 142.5 L61.0 142.5 L60.0 143.5 L59.0 142.5 L58.0 142.5 L57.0 141.5 L56.0 141.5 L55.5 141.0 L55.5 140.0 L53.5 138.0 L53.5 111.0 L55.5 109.0 L55.5 108.0 L56.0 107.5 L57.0 107.5 L58.0 106.5 L59.0 106.5 L60.0 105.5 L61.0 106.5 L62.0 106.5 L65.5 110.0 L65.5 112.0 L66.5 113.0 L66.5 114.0 L67.5 115.0 L67.5 117.0 L69.5 119.0 L69.5 120.0 L72.5 123.0 L72.5 124.0 L75.0 126.5 L76.0 126.5 L79.0 129.5 L80.0 129.5 L82.0 131.5 L84.0 131.5 L85.0 132.5 L86.0 132.5 L87.0 133.5 L90.0 133.5 L91.0 134.5 L108.0 134.5 L109.0 133.5 L112.0 133.5 L113.0 132.5 L114.0 132.5 L115.0 131.5 L117.0 131.5 L119.0 129.5 L120.0 129.5 L123.0 126.5 L124.0 126.5 L126.5 124.0 L126.5 123.0 L129.5 120.0 L129.5 119.0 L131.5 117.0 L131.5 115.0 L132.5 114.0 L132.5 113.0 L133.5 112.0 L133.5 110.0 L137.0 106.5 L138.0 106.5 L139.0 105.5 L140.0 106.5 L141.0 106.5 L142.0 107.5 L143.0 107.5 L143.5 108.0 L143.5 109.0 L145.5 111.0 L145.5 113.0 L144.5 114.0 L144.5 115.0 L143.5 116.0 L143.5 118.0 L142.5 119.0 L142.5 120.0 L141.5 121.0 L141.5 122.0 L139.5 124.0 L139.5 125.0 L137.5 127.0 L137.5 128.0 L128.0 137.5 L127.0 137.5 L125.0 139.5 L124.0 139.5 L122.0 141.5 L121.0 141.5 L120.0 142.5 L119.0 142.5 L118.0 143.5 L116.0 143.5 L115.0 144.5 L114.0 144.5 L113.0 145.5 L110.0 145.5 L109.0 146.5 L105.0 146.5 L104.0 147.5Z", evenOdd: false, maskPath: "M144.0 104.9 L139.6 111.6 L139.2 112.2 L138.8 113.0 L138.4 114.0 L138.0 115.0 L137.6 116.0 L137.2 117.0 L136.6 118.0 L136.0 119.0 L135.6 120.0 L135.0 121.0 L134.4 122.0 L134.0 123.0 L133.4 124.0 L132.6 125.0 L131.8 126.0 L131.0 127.0 L130.0 128.0 L129.0 129.0 L128.0 130.0 L127.0 131.0 L126.0 131.8 L125.0 132.6 L124.0 133.4 L123.0 134.0 L122.0 134.4 L121.0 135.0 L120.0 135.6 L119.0 136.0 L118.0 136.6 L117.0 137.2 L116.0 137.6 L115.0 138.0 L114.0 138.4 L113.0 138.6 L112.0 138.8 L111.0 139.0 L110.0 139.2 L109.0 139.4 L108.0 139.6 L107.0 139.8 L106.0 140.0 L105.0 140.0 L104.0 140.0 L103.0 140.0 L102.0 140.0 L101.0 140.0 L100.0 140.0 L99.0 140.0 L98.0 140.0 L97.0 140.0 L96.0 140.0 L95.0 140.0 L94.0 140.0 L93.0 140.0 L92.0 139.8 L91.0 139.6 L90.0 139.4 L89.0 139.2 L88.0 139.0 L87.0 138.8 L86.0 138.6 L85.0 138.4 L84.0 138.0 L83.0 137.6 L82.0 137.2 L81.0 136.6 L80.0 136.0 L79.0 135.4 L78.0 134.8 L77.0 134.2 L76.0 133.6 L75.0 133.0 L74.0 132.6 L73.0 132.0 L72.0 131.6 L71.0 131.4 L70.0 131.2 L69.0 130.8 L68.0 130.6 L67.0 130.2 L66.0 129.8 L65.0 129.4 L64.0 129.0 L63.0 128.4 L62.2 127.8 L61.6 127.0 L61.0 126.0 L60.6 125.0 L60.4 124.0 L60.2 123.0 L60.0 122.0 L60.0 121.0 L59.8 120.0 L59.6 119.0 L59.6 118.0 L59.6 117.0 L59.6 116.0 L59.8 115.0 L59.8 114.0 L59.6 113.0 L59.4 112.2 L59.2 111.6 L56.7 104.0", maskWidth: 25.9), delay: 1.05, duration: 0.48),
-        GlyphElementSpec(body: .fill(path: "M104.0 147.5 L95.0 147.5 L94.0 146.5 L90.0 146.5 L89.0 145.5 L86.0 145.5 L85.0 144.5 L84.0 144.5 L83.0 143.5 L81.0 143.5 L80.0 142.5 L79.0 142.5 L78.0 141.5 L77.0 141.5 L75.0 139.5 L74.0 139.5 L72.0 137.5 L71.0 137.5 L70.0 136.5 L66.0 136.5 L65.5 137.0 L65.5 139.0 L62.0 142.5 L61.0 142.5 L60.0 143.5 L59.0 142.5 L58.0 142.5 L57.0 141.5 L56.0 141.5 L55.5 141.0 L55.5 140.0 L53.5 138.0 L53.5 111.0 L55.5 109.0 L55.5 108.0 L56.0 107.5 L57.0 107.5 L58.0 106.5 L59.0 106.5 L60.0 105.5 L61.0 106.5 L62.0 106.5 L65.5 110.0 L65.5 112.0 L66.5 113.0 L66.5 114.0 L67.5 115.0 L67.5 117.0 L69.5 119.0 L69.5 120.0 L72.5 123.0 L72.5 124.0 L75.0 126.5 L76.0 126.5 L79.0 129.5 L80.0 129.5 L82.0 131.5 L84.0 131.5 L85.0 132.5 L86.0 132.5 L87.0 133.5 L90.0 133.5 L91.0 134.5 L108.0 134.5 L109.0 133.5 L112.0 133.5 L113.0 132.5 L114.0 132.5 L115.0 131.5 L117.0 131.5 L119.0 129.5 L120.0 129.5 L123.0 126.5 L124.0 126.5 L126.5 124.0 L126.5 123.0 L129.5 120.0 L129.5 119.0 L131.5 117.0 L131.5 115.0 L132.5 114.0 L132.5 113.0 L133.5 112.0 L133.5 110.0 L137.0 106.5 L138.0 106.5 L139.0 105.5 L140.0 106.5 L141.0 106.5 L142.0 107.5 L143.0 107.5 L143.5 108.0 L143.5 109.0 L145.5 111.0 L145.5 113.0 L144.5 114.0 L144.5 115.0 L143.5 116.0 L143.5 118.0 L142.5 119.0 L142.5 120.0 L141.5 121.0 L141.5 122.0 L139.5 124.0 L139.5 125.0 L137.5 127.0 L137.5 128.0 L128.0 137.5 L127.0 137.5 L125.0 139.5 L124.0 139.5 L122.0 141.5 L121.0 141.5 L120.0 142.5 L119.0 142.5 L118.0 143.5 L116.0 143.5 L115.0 144.5 L114.0 144.5 L113.0 145.5 L110.0 145.5 L109.0 146.5 L105.0 146.5 L104.0 147.5Z", evenOdd: false, maskPath: "M62.3 122.1 L61.0 128.0 L59.0 137.0 L57.7 142.9", maskWidth: 13.3), delay: 1.56, duration: 0.2),
-    ]
-}
-
-// MARK: - Glyph rendering (the designs' SVG semantics, drawn with CG)
-
-private enum GlyphRenderer {
-    private static var cache: [String: SVGPolyline] = [:]
-
-    private static func polyline(_ d: String) -> SVGPolyline {
-        if let cached = cache[d] { return cached }
-        let parsed = SVGPolyline(d)
-        cache[d] = parsed
-        return parsed
-    }
-
-    /// Renders one glyph at the given draw-on moment. Each element's reveal
-    /// progress follows the designs' script: delay data-d, duration data-t,
-    /// easing cubic-bezier(.35,.55,.35,1), fill both — before the delay the
-    /// element is invisible, after its duration it rests fully drawn.
-    ///
-    /// Every element is composed like its SVG original: a gradient base
-    /// (for fills, clipped to the fill path) whose alpha is then cut by the
-    /// revealed centerline stroke — the SVG mask — via destination-in
-    /// stroking. Pure CG path painting honors the context blend mode
-    /// exactly, unlike the Build 8 approach.
-    static func image(kind: GlyphKind, pointSize: CGSize, scale: CGFloat,
-                      iconStops: [UIColor], dark: Bool,
-                      trait: UITraitCollection, elapsed: Double) -> UIImage {
-        let elements = kind == .left ? GlyphArtwork.left : GlyphArtwork.right
-        let format = UIGraphicsImageRendererFormat()
-        format.scale = scale
-        format.opaque = false
-        let stops = iconStops.map { $0.resolvedColor(with: trait) }
-        // viewBox is 0 0 200 200 in both designs.
-        let unit = pointSize.width / 200
-        let full = CGRect(x: 0, y: 0, width: 200, height: 200)
-        func canvas(_ draw: (CGContext) -> Void) -> UIImage {
-            UIGraphicsImageRenderer(size: pointSize, format: format).image { context in
-                context.cgContext.scaleBy(x: unit, y: unit)
-                draw(context.cgContext)
-            }
-        }
-        var image = UIGraphicsImageRenderer(size: pointSize, format: format).image { context in
-            let ctx = context.cgContext
-            ctx.scaleBy(x: unit, y: unit)
-            let easing = CSSBezier(x1: 0.35, y1: 0.55, x2: 0.35, y2: 1)
-            for element in elements {
-                let raw = (elapsed - element.delay) / element.duration
-                let progress = easing.value(atX: min(max(raw, 0), 1))
-                if progress <= 0 { continue }
-                let composed: UIImage
-                switch element.body {
-                case let .strokeCircle(cx, cy, r, width):
-                    let bbox = CGRect(x: cx - r, y: cy - r, width: 2 * r, height: 2 * r)
-                    let base = canvas { c in
-                        drawIconGradient(c, bbox: bbox, stops: stops)
-                    }
-                    let arc = UIBezierPath(arcCenter: CGPoint(x: cx, y: cy),
-                                           radius: CGFloat(r),
-                                           startAngle: 0,
-                                           endAngle: CGFloat(progress) * 2 * .pi,
-                                           clockwise: true)
-                    composed = canvas { c in
-                        base.draw(in: full)
-                        strokeReveal(c, path: arc.cgPath, width: width)
-                    }
-                case let .fill(pathD, evenOdd, maskD, maskWidth):
-                    let fillLine = polyline(pathD)
-                    let base = canvas { c in
-                        c.saveGState()
-                        c.addPath(fillLine.fullPath)
-                        c.clip(using: evenOdd ? .evenOdd : .winding)
-                        drawIconGradient(c, bbox: fillLine.boundingBox, stops: stops)
-                        c.restoreGState()
-                    }
-                    let maskLine = polyline(maskD)
-                    let revealed = maskLine.partialPath(
-                        upTo: CGFloat(progress) * maskLine.totalLength)
-                    composed = canvas { c in
-                        base.draw(in: full)
-                        strokeReveal(c, path: revealed, width: maskWidth)
-                    }
-                }
-                composed.draw(in: full)
-            }
-        }
-        if dark {
-            // .card svg { filter: saturate(1.55) ... } in the dark CSS.
-            image = saturate(image, factor: 1.55, scale: scale) ?? image
-        }
-        return image
-    }
-
-    /// Cuts the canvas down to where the revealed centerline stroke lies:
-    /// stroking with destination-in keeps the destination only under the
-    /// stroke (butt caps, miter joins, miter limit 4 — the SVG defaults).
-    private static func strokeReveal(_ ctx: CGContext, path: CGPath, width: Double) {
-        ctx.saveGState()
-        ctx.setBlendMode(.destinationIn)
-        ctx.setStrokeColor(UIColor.white.cgColor)
-        ctx.setLineWidth(CGFloat(width))
-        ctx.setLineCap(.butt)
-        ctx.setLineJoin(.miter)
-        ctx.setMiterLimit(4)
-        ctx.addPath(path)
-        ctx.strokePath()
-        ctx.restoreGState()
-    }
-
-    /// The designs' iconGrad: linearGradient x1 .08 y1 0 → x2 .92 y2 1 in
-    /// objectBoundingBox units of the element being painted.
-    private static func drawIconGradient(_ ctx: CGContext, bbox: CGRect, stops: [UIColor]) {
-        guard stops.count > 1 else { return }
-        let colors = stops.map { $0.cgColor } as CFArray
-        guard let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(),
-                                        colors: colors, locations: [0, 0.5, 1]) else { return }
-        let start = CGPoint(x: bbox.minX + 0.08 * bbox.width, y: bbox.minY)
-        let end = CGPoint(x: bbox.minX + 0.92 * bbox.width, y: bbox.minY + bbox.height)
-        // SVG gradients pad their end colors (spreadMethod="pad").
-        ctx.drawLinearGradient(gradient, start: start, end: end,
-                               options: [.drawsBeforeStartLocation, .drawsAfterEndLocation])
-    }
-
-    private static func saturate(_ image: UIImage, factor: Double, scale: CGFloat) -> UIImage? {
-        guard let input = CIImage(image: image),
-              let filter = CIFilter(name: "CIColorControls") else { return nil }
-        filter.setValue(input, forKey: kCIInputImageKey)
-        filter.setValue(factor, forKey: kCIInputSaturationKey)
-        guard let output = filter.outputImage else { return nil }
-        let context = CIContext(options: nil)
-        guard let cgImage = context.createCGImage(output, from: input.extent) else { return nil }
-        return UIImage(cgImage: cgImage, scale: scale, orientation: .up)
-    }
-}
-
-
 // MARK: - Baked card art (modal background + hero band, from the CSS)
 
 private enum BakedArt {
@@ -714,42 +402,46 @@ private enum BakedArt {
     }
 }
 
-// MARK: - Gradient title (line 1): text baked into an image, filled with
-// the design's 90deg gradient via clip-to-mask — no layer masks on labels.
+// MARK: - Gradient title (line 1): text baked into an image with the
+// design's 90deg gradient. Two passes, both inside UIGraphicsImageRenderer
+// (top-left origin by construction):
+//   1. the text drawn solid via NSString — the mask;
+//   2. the gradient painted by a CAGradientLayer, then cut to the glyphs
+//      by drawing the mask back with .destinationIn.
+// UIImage compositing can never mirror the text — the Build 9 approach
+// (CGContext clip-to-mask in a raw bitmap context) flipped it on device.
+// No CGBitmapContext, no CTLine, no transform flips anywhere in this file's
+// title path.
 
 private enum TitleRenderer {
     static func image(text: String, font: UIFont,
                       stops: [(UIColor, CGFloat)],
                       trait: UITraitCollection) -> UIImage? {
         guard !text.isEmpty else { return nil }
-        let measureAttrs: [NSAttributedString.Key: Any] = [.font: font]
-        let textSize = (text as NSString).size(withAttributes: measureAttrs)
+        let textSize = (text as NSString).size(withAttributes: [.font: font])
         let canvas = CGSize(width: ceil(textSize.width), height: ceil(font.lineHeight))
         guard canvas.width > 0, canvas.height > 0 else { return nil }
         let format = UIGraphicsImageRendererFormat()
         format.scale = trait.displayScale
         format.opaque = false
-        let maskImage = UIGraphicsImageRenderer(size: canvas, format: format).image { _ in
-            let attrs: [NSAttributedString.Key: Any] = [
+        let rect = CGRect(origin: .zero, size: canvas)
+        // Pass 1 — the mask: the string drawn solid white.
+        let mask = UIGraphicsImageRenderer(size: canvas, format: format).image { _ in
+            (text as NSString).draw(in: rect, withAttributes: [
                 .font: font,
                 .foregroundColor: UIColor.white
-            ]
-            (text as NSString).draw(in: CGRect(origin: .zero, size: canvas),
-                                    withAttributes: attrs)
+            ])
         }
-        guard let mask = maskImage.cgImage else { return nil }
+        // Pass 2 — gradient fill, cut to the mask via destination-in.
+        let gradientLayer = CAGradientLayer()
+        gradientLayer.frame = rect
+        gradientLayer.colors = stops.map { $0.0.resolvedColor(with: trait).cgColor }
+        gradientLayer.locations = stops.map { NSNumber(value: Double($0.1)) }
+        gradientLayer.startPoint = CGPoint(x: 0, y: 0.5)
+        gradientLayer.endPoint = CGPoint(x: 1, y: 0.5)
         return UIGraphicsImageRenderer(size: canvas, format: format).image { context in
-            let ctx = context.cgContext
-            let rect = CGRect(origin: .zero, size: canvas)
-            ctx.clip(to: rect, mask: mask)
-            let colors = stops.map { $0.0.resolvedColor(with: trait).cgColor } as CFArray
-            guard let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(),
-                                            colors: colors,
-                                            locations: stops.map { $0.1 }) else { return }
-            ctx.drawLinearGradient(gradient,
-                                   start: CGPoint(x: 0, y: canvas.height / 2),
-                                   end: CGPoint(x: canvas.width, y: canvas.height / 2),
-                                   options: [.drawsBeforeStartLocation, .drawsAfterEndLocation])
+            gradientLayer.render(in: context.cgContext)
+            mask.draw(in: rect, blendMode: .destinationIn, alpha: 1)
         }
     }
 }
@@ -806,9 +498,7 @@ final class VersionPopupViewController: UIViewController {
 
     private var lastCardSize: CGSize = .zero
     private var entranceBegan = false
-    private var glyphStart: CFTimeInterval = 0
-    private var glyphElapsed: Double = .greatestFiniteMagnitude
-    private var glyphLink: CADisplayLink?
+    private var entranceStart: CFTimeInterval = 0
 
     init(payload: VersionPopup.Payload) {
         self.payload = payload
@@ -817,8 +507,6 @@ final class VersionPopupViewController: UIViewController {
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-
-    deinit { glyphLink?.invalidate() }
 
     // MARK: Build
 
@@ -991,6 +679,7 @@ final class VersionPopupViewController: UIViewController {
         rightButton.layer.shadowColor = palette.brandShadow.resolvedColor(with: trait).cgColor
         rightButton.layer.shadowOpacity = 1
         heroView.isHidden = dark
+        updateGlyphImages()
         for icon in [cardL, cardR] {
             icon.card.layer.shadowColor = palette.iconCardShadow.resolvedColor(with: trait).cgColor
             icon.card.layer.shadowOpacity = 1
@@ -1009,7 +698,6 @@ final class VersionPopupViewController: UIViewController {
             applyPalette()
             lastCardSize = .zero
             updateLayout()
-            renderGlyphs()
         }
     }
 
@@ -1087,7 +775,6 @@ final class VersionPopupViewController: UIViewController {
             heroImageView.image = BakedArt.hero(
                 size: CGSize(width: cardSize.width, height: 335 * s),
                 s: s, palette: palette, trait: traitCollection)
-            renderGlyphs()
         }
     }
 
@@ -1109,17 +796,13 @@ final class VersionPopupViewController: UIViewController {
         }
     }
 
-    private func renderGlyphs() {
-        let box = cardL.glyph.bounds.size
-        guard box.width > 1 else { return }
-        cardL.glyph.image = GlyphRenderer.image(
-            kind: .left, pointSize: box, scale: traitCollection.displayScale,
-            iconStops: palette.iconStops, dark: dark, trait: traitCollection,
-            elapsed: glyphElapsed)
-        cardR.glyph.image = GlyphRenderer.image(
-            kind: .right, pointSize: box, scale: traitCollection.displayScale,
-            iconStops: palette.iconStops, dark: dark, trait: traitCollection,
-            elapsed: glyphElapsed)
+    /// The glyphs are pre-rendered PNG assets (the designs' SVGs at their
+    /// fully drawn resting state; light/dark variants ship in the catalog
+    /// and resolve automatically). No runtime path/mask composition.
+    private func updateGlyphImages() {
+        let family = payload.banned ? "PopupGlyphBanned" : "PopupGlyphSoft"
+        cardL.glyph.image = UIImage(named: family + "Left")
+        cardR.glyph.image = UIImage(named: family + "Right")
     }
 
     // MARK: Entrance — the designs' choreography, verbatim:
@@ -1128,16 +811,14 @@ final class VersionPopupViewController: UIViewController {
     // icon cards (opacity 0→1, translateY 34px→0, blur 10px→0);
     // fadeUp .6s cubic-bezier(.22,.85,.3,1), delays 1.3s / 1.45s / 1.6s, on
     // the text lines (opacity 0→1, translateY 14px→0);
-    // the glyphs' stroke-draw runs on the same clock (see GlyphRenderer).
+    // the glyphs are static assets and ride the cards' riseIn.
 
     func beginEntrance() {
         guard !entranceBegan else { return }
         entranceBegan = true
-        glyphStart = CACurrentMediaTime()
+        entranceStart = CACurrentMediaTime()
         if UIAccessibility.isReduceMotionEnabled {
             // The designs' prefers-reduced-motion block: everything rests.
-            glyphElapsed = .greatestFiniteMagnitude
-            renderGlyphs()
             return
         }
         let jellyTiming = CAMediaTimingFunction(controlPoints: 0.2, 0.9, 0.25, 1.12)
@@ -1165,7 +846,7 @@ final class VersionPopupViewController: UIViewController {
             move.toValue = 0
             group.animations = [opacity, move]
             group.duration = 0.95
-            group.beginTime = glyphStart + delay
+            group.beginTime = entranceStart + delay
             group.timingFunction = riseTiming
             group.fillMode = .backwards
             icon.wrap.layer.add(group, forKey: "riseIn")
@@ -1174,7 +855,7 @@ final class VersionPopupViewController: UIViewController {
                 blur.fromValue = 10 * s
                 blur.toValue = 0
                 blur.duration = 0.95
-                blur.beginTime = glyphStart + delay
+                blur.beginTime = entranceStart + delay
                 blur.timingFunction = riseTiming
                 blur.fillMode = .backwards
                 icon.wrap.layer.add(blur, forKey: "riseInBlur")
@@ -1192,28 +873,11 @@ final class VersionPopupViewController: UIViewController {
             move.toValue = 0
             group.animations = [opacity, move]
             group.duration = 0.6
-            group.beginTime = glyphStart + delay
+            group.beginTime = entranceStart + delay
             group.timingFunction = riseTiming
             group.fillMode = .backwards
             target.layer.add(group, forKey: "fadeUp")
         }
-        glyphElapsed = 0
-        renderGlyphs()
-        let link = CADisplayLink(target: self, selector: #selector(glyphTick))
-        link.add(to: .main, forMode: .common)
-        glyphLink = link
-    }
-
-    @objc private func glyphTick() {
-        let elapsed = CACurrentMediaTime() - glyphStart
-        if elapsed >= GlyphArtwork.totalDuration {
-            glyphLink?.invalidate()
-            glyphLink = nil
-            glyphElapsed = .greatestFiniteMagnitude
-        } else {
-            glyphElapsed = elapsed
-        }
-        renderGlyphs()
     }
 
     // MARK: Actions
@@ -1232,8 +896,6 @@ final class VersionPopupViewController: UIViewController {
     @objc private func leftTapped() {
         if payload.banned {
             // 退出：fade out, then terminate.
-            glyphLink?.invalidate()
-            glyphLink = nil
             UIView.animate(withDuration: 0.25, animations: { self.view.alpha = 0 }) { _ in
                 exit(0)
             }
@@ -1256,8 +918,6 @@ final class VersionPopupViewController: UIViewController {
     }
 
     private func dismissPopup() {
-        glyphLink?.invalidate()
-        glyphLink = nil
         UIView.animate(withDuration: 0.25, animations: {
             self.shadowOuter.alpha = 0
             self.shadowOuter.transform = CGAffineTransform(scaleX: 0.96, y: 0.96)
