@@ -45,17 +45,12 @@ final class ActivationGateViewController: UIViewController {
             shell.setAuthorization(false, message: message)
         case .checking(let message):
             shell.setAuthorization(false, message: message, busy: true)
-        case .versionBlocked(let message, let reason):
+        case .versionBlocked(let message, _):
+            // Version bans are presented by the new feed-driven popup
+            // (VersionPopup); the gate only drops authorization here.
             shell.setAuthorization(false, message: message)
-            BlockedPopupWindow.show(title: "版本已被禁用", description: message,
-                                    reasonLabel: "禁用原因", reason: reason,
-                                    fontName: shell.currentThemeFont?.fontName)
-        case .banned(let reason):
+        case .banned:
             shell.setAuthorization(false, message: "设备已被拉黑")
-            BlockedPopupWindow.show(title: "设备已被拉黑",
-                                    description: "当前设备已被限制使用，确认后退出LUIYo",
-                                    reasonLabel: "拉黑原因", reason: reason,
-                                    fontName: shell.currentThemeFont?.fontName)
         }
     }
 }

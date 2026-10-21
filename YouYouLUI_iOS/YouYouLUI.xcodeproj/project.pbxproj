@@ -37,7 +37,6 @@
 		FA2961FB5633FC10E2AF92FF /* Activation/ActivationSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = FABB56384934C201D01ADE15 /* Activation/ActivationSession.swift */; };
 		FA50B0034834700E2E4CC499 /* Activation/ActivationClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = FACD8C46F898050E42BF7744 /* Activation/ActivationClient.swift */; };
 		FAC1D9BB473106800C85707D /* Activation/ActivationGateViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAE564ABA9BE31FCCE5518B9 /* Activation/ActivationGateViewController.swift */; };
-		FAB4BC8C36B87E5AF3F41D2C /* Activation/BlockedPopupWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA5E96DE7E4E7EA4A9B42174 /* Activation/BlockedPopupWindow.swift */; };
 		FA5925C69EA9D6830202EF81 /* Activation/DeviceIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAA990653CF8682B4A704B9A /* Activation/DeviceIdentity.swift */; };
 		FADCB0C8100B87AE3402EBD7 /* Security/KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FADF1C2C059C0960FC3D796C /* Security/KeychainStore.swift */; };
 		FA7618FE4D3C5D317D4C706D /* Shell/MainShellViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA8F34A714C9BD2EBFD270E6 /* Shell/MainShellViewController.swift */; };
@@ -121,6 +120,7 @@
 		AA4000000000000000040010 /* tab-settings@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000030010 /* tab-settings@3x.png */; };
 		AA4000000000000000040005 /* update.png in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000030005 /* update.png */; };
 		AA5000000000000000002001 /* SettingsNative/UpdateCheckViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA5000000000000000001001 /* SettingsNative/UpdateCheckViewController.swift */; };
+		AA6000000000000000002001 /* VersionPopup/VersionPopup.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA6000000000000000001001 /* VersionPopup/VersionPopup.swift */; };
 		AA5000000000000000002003 /* SettingsNative/AppSettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA5000000000000000001003 /* SettingsNative/AppSettingsViewController.swift */; };
 /* End PBXBuildFile section */
 
@@ -142,7 +142,6 @@
 		FABB56384934C201D01ADE15 /* Activation/ActivationSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivationSession.swift; sourceTree = "<group>"; };
 		FACD8C46F898050E42BF7744 /* Activation/ActivationClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivationClient.swift; sourceTree = "<group>"; };
 		FAE564ABA9BE31FCCE5518B9 /* Activation/ActivationGateViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivationGateViewController.swift; sourceTree = "<group>"; };
-		FA5E96DE7E4E7EA4A9B42174 /* Activation/BlockedPopupWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlockedPopupWindow.swift; sourceTree = "<group>"; };
 		FAA990653CF8682B4A704B9A /* Activation/DeviceIdentity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceIdentity.swift; sourceTree = "<group>"; };
 		FADF1C2C059C0960FC3D796C /* Security/KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
 		FA8F34A714C9BD2EBFD270E6 /* Shell/MainShellViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainShellViewController.swift; sourceTree = "<group>"; };
@@ -231,6 +230,7 @@
 		AA4000000000000000030010 /* tab-settings@3x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "tab-settings@3x.png"; sourceTree = "<group>"; };
 		AA4000000000000000030005 /* update.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = update.png; sourceTree = "<group>"; };
 		AA5000000000000000001001 /* SettingsNative/UpdateCheckViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "YouYouLUI/SettingsNative/UpdateCheckViewController.swift"; sourceTree = SOURCE_ROOT; };
+		AA6000000000000000001001 /* VersionPopup/VersionPopup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "YouYouLUI/VersionPopup/VersionPopup.swift"; sourceTree = SOURCE_ROOT; };
 		AA5000000000000000001003 /* SettingsNative/AppSettingsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "YouYouLUI/SettingsNative/AppSettingsViewController.swift"; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
@@ -285,7 +285,6 @@
 				FABB56384934C201D01ADE15 /* ActivationSession.swift */,
 				FACD8C46F898050E42BF7744 /* ActivationClient.swift */,
 				FAE564ABA9BE31FCCE5518B9 /* ActivationGateViewController.swift */,
-				FA5E96DE7E4E7EA4A9B42174 /* BlockedPopupWindow.swift */,
 				FAA990653CF8682B4A704B9A /* DeviceIdentity.swift */,
 			);
 			path = Activation;
@@ -596,6 +595,7 @@
 				AA4000000000000000002001 /* Theme/FontLibrary.swift in Sources */,
 				AA4000000000000000002002 /* SettingsNative/FontSettingsViewController.swift in Sources */,
 				AA5000000000000000002001 /* SettingsNative/UpdateCheckViewController.swift in Sources */,
+				AA6000000000000000002001 /* VersionPopup/VersionPopup.swift in Sources */,
 				AA5000000000000000002003 /* SettingsNative/AppSettingsViewController.swift in Sources */,
 				AA2900000000000000000105 /* SettingsNative/SettingsContent.swift in Sources */,
 				AA2900000000000000000106 /* Home/HomeViewController.swift in Sources */,
@@ -606,7 +606,6 @@
 				FA2961FB5633FC10E2AF92FF /* Activation/ActivationSession.swift in Sources */,
 				FA50B0034834700E2E4CC499 /* Activation/ActivationClient.swift in Sources */,
 				FAC1D9BB473106800C85707D /* Activation/ActivationGateViewController.swift in Sources */,
-				FAB4BC8C36B87E5AF3F41D2C /* Activation/BlockedPopupWindow.swift in Sources */,
 				FA5925C69EA9D6830202EF81 /* Activation/DeviceIdentity.swift in Sources */,
 				FADCB0C8100B87AE3402EBD7 /* Security/KeychainStore.swift in Sources */,
 				FA7618FE4D3C5D317D4C706D /* Shell/MainShellViewController.swift in Sources */,

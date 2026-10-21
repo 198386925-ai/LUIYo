@@ -309,22 +309,6 @@ final class SettingsViewController: UIViewController {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in self?.refreshTheme() }
             .store(in: &cancellables)
-        updater.$showUpdateAlert
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] show in
-                guard let self, show else { return }
-                guard self.presentedViewController == nil else { return }
-                self.updater.showUpdateAlert = false
-                let alert = UIAlertController(
-                    title: "发现新版本",
-                    message: "LUIYo \(self.updater.latestVersion)（Build \(self.updater.latestBuild)）\n\(self.updater.changelog)",
-                    preferredStyle: .alert)
-                alert.addAction(UIAlertAction(title: "下载 IPA", style: .default) { _ in self.updater.downloadIPA() })
-                alert.addAction(UIAlertAction(title: "取消", style: .cancel))
-                self.present(alert, animated: true)
-            }
-            .store(in: &cancellables)
-
         refreshTheme()
         refreshFromModel()
         themeFold.setExpanded(model.themeExpanded, animated: false)

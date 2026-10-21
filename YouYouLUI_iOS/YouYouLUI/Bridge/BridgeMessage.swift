@@ -24,7 +24,6 @@ enum BridgeMessage: String, CaseIterable {
     case activationOpen
     case activationSubmit
     case luiyoBlocked
-    case blockedPopup
 
     var name: String { rawValue }
 }

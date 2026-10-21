@@ -16,7 +16,6 @@ final class AppUpdateChecker: ObservableObject {
     @Published var latestVersion: String = ""
     @Published var latestBuild: Int = 0
     @Published var changelog: String = ""
-    @Published var showUpdateAlert = false
 
     private var downloadURL: String = ""
     private var downloadTask: URLSessionDownloadTask?
@@ -52,7 +51,6 @@ final class AppUpdateChecker: ObservableObject {
                 self.downloadURL = (json["download_url"] as? String) ?? ""
                 if build > self.currentBuild, !self.downloadURL.isEmpty {
                     self.state = .idle
-                    self.showUpdateAlert = true
                 } else {
                     self.state = .error(message: "已是最新版本")
                 }

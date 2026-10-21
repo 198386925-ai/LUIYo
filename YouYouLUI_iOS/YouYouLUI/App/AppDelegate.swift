@@ -31,6 +31,7 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         window.rootViewController = AppRoot.makeRootViewController()
         window.makeKeyAndVisible()
         self.window = window
+        VersionPopup.checkIfNeeded(hostWindow: window)
         return true
     }
 }

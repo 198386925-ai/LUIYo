@@ -78,7 +78,7 @@ final class MainShellViewController: UITabBarController {
     var defaultTabAppearance: UITabBarAppearance?
     var defaultScrollEdgeAppearance: UITabBarAppearance?
 
-    /// The imported theme font — the blocked popup uses it to match the app.
+    /// The imported theme font, if one is active.
     var currentThemeFont: UIFont? { fontController.font }
 
     // MARK: - Lifecycle

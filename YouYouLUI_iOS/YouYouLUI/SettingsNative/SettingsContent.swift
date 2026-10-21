@@ -30,6 +30,7 @@ enum SettingsContent {
 
     static let changelog: [ChangelogVersion] = [
         ChangelogVersion(title: "Version 1.0.8", isCurrent: true, entries: [
+            ChangelogEntry(tag: "新增", text: "新增版本弹窗：启动后若当前版本被后台设为「弹更新」，会弹出蓝紫色更新提示（可取消，或点更新前往下载新版）；被设为「禁用」时弹出红橙色警告，点退出将关闭应用。"),
             ChangelogEntry(tag: "优化", text: "更改字体页改版：应用位置改为勾选（首页、规则页、设置页可多选），选好的字体立即应用到勾选的页面；页面改为从右侧淡入，标题居中，预览与字体列表改为卡片式排版。"),
             ChangelogEntry(tag: "优化", text: "检查更新改为独立页面：当前版本、检查状态、新版本内容与下载都在页面内完成。"),
             ChangelogEntry(tag: "优化", text: "主题、使用说明、更新日志的副标题只在展开时显示；自定义字体入口去掉副标题，只显示名称。"),

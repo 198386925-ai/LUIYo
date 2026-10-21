@@ -73,15 +73,6 @@ final class UpdateCheckViewController: UIViewController {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in self?.refresh() }
             .store(in: &cancellables)
-        updater.$showUpdateAlert
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] show in
-                guard let self, show else { return }
-                // The page itself shows the new version; no alert needed.
-                self.updater.showUpdateAlert = false
-                self.refresh()
-            }
-            .store(in: &cancellables)
         refresh()
     }
 
