@@ -79,7 +79,9 @@ enum AccountSession {
     /// kept in the Keychain, so the same install keeps the same device
     /// (and therefore the same token) across launches. A reinstall
     /// mints a new one, which the backend treats as a new device
-    /// (email confirmation flow) — by design.
+    /// (slider captcha at login, then a direct device switch) — by
+    /// design. Logout does NOT clear it: the install keeps its device
+    /// identity; only the session token/email go.
     static var deviceID: String {
         if let saved = KeychainStore.get(Key.deviceID) { return saved }
         let value = "ios-" + UUID().uuidString.lowercased()
@@ -96,6 +98,13 @@ enum AccountSession {
         KeychainStore.delete(Key.token)
         KeychainStore.delete(Key.email)
     }
+}
+
+extension Notification.Name {
+    /// Posted after the account session has been cleared from the
+    /// settings （我的） page: the entry gate hears it and immediately
+    /// returns the app to the splash-03 register gate.
+    static let accountSessionDidLogout = Notification.Name("LUIYoAccountSessionDidLogout")
 }
 
 /// Outcome of a `status` heartbeat for the stored token.

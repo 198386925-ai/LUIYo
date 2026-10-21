@@ -85,21 +85,27 @@ final class Splash04ViewController: UIViewController {
         blob2.frame = CGRect(x: bounds.width - (300 - 100) * s,
                              y: bounds.height - (300 - 60) * s,
                              width: 300 * s, height: 300 * s)
-        // Center column: ring 128 / dots / tag, gap 26, centered.
+        // Center column: icon cluster / dots / tag, gap 26, centered.
+        // Build 16: the icon renders at 22% of the screen width (the
+        // design's own ~15% read too small on device — the user's
+        // approved enlargement); ring and halo scale by the same
+        // cluster unit `u`, keeping the design's proportions to the
+        // icon (ring 166 around icon 128, halo 290 across).
+        let u = bounds.width * 0.22 / 128
         let tagHeight = 14.4 * s
-        let columnHeight = (128 + 26 + 7 + 26) * s + tagHeight
+        let columnHeight = 128 * u + (26 + 7 + 26) * s + tagHeight
         let columnTop = (bounds.height - columnHeight) / 2
-        let ringFrame = CGRect(x: (bounds.width - 128 * s) / 2, y: columnTop,
-                               width: 128 * s, height: 128 * s)
+        let ringFrame = CGRect(x: (bounds.width - 128 * u) / 2, y: columnTop,
+                               width: 128 * u, height: 128 * u)
         ringWrap.frame = ringFrame
         ringInner.frame = ringWrap.bounds
-        halo.frame = CGRect(x: (128 - 290) / 2 * s, y: (128 - 290) / 2 * s,
-                            width: 290 * s, height: 290 * s)
-        ringImage.frame = CGRect(x: -19 * s, y: -19 * s, width: 166 * s, height: 166 * s)
+        halo.frame = CGRect(x: (128 - 290) / 2 * u, y: (128 - 290) / 2 * u,
+                            width: 290 * u, height: 290 * u)
+        ringImage.frame = CGRect(x: -19 * u, y: -19 * u, width: 166 * u, height: 166 * u)
         iconImage.frame = ringInner.bounds
-        iconImage.layer.shadowOffset = CGSize(width: 0, height: 14 * s)
-        iconImage.layer.shadowRadius = 18 * s
-        let dotsY = columnTop + (128 + 26) * s
+        iconImage.layer.shadowOffset = CGSize(width: 0, height: 14 * u)
+        iconImage.layer.shadowRadius = 18 * u
+        let dotsY = columnTop + 128 * u + 26 * s
         dotsView.scale = s
         dotsView.frame = CGRect(x: (bounds.width - dotsView.intrinsicContentSize.width) / 2,
                                 y: dotsY, width: dotsView.intrinsicContentSize.width,
@@ -166,6 +172,18 @@ final class Splash04ViewController: UIViewController {
             blur.timingFunction = CAMediaTimingFunction(controlPoints: 0.22, 1.45, 0.36, 1)
             blur.fillMode = .backwards
             ringInner.layer.add(blur, forKey: "iconInBlur")
+        }
+        // Once iconIn has landed, take the gaussian filter OFF the
+        // inner container for good: a filtered layer renders into a
+        // fixed-resolution offscreen, and the breathe scale on the
+        // wrapper then magnifies that bitmap — the soften/sharpen
+        // pulsing seen on device at the breathe peaks. With the
+        // filter gone, breathe scales the source artwork directly
+        // (icon 512px, ring re-rendered at 1026px — several times
+        // their displayed size), so the peaks stay crisp.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 6.5 * 0.24 + 0.05) { [weak self] in
+            self?.ringInner.layer.removeAnimation(forKey: "iconInBlur")
+            self?.ringInner.layer.filters = nil
         }
         // breathe on the wrapper: 18t ease-in-out infinite from 6.5t.
         let breathe = CAKeyframeAnimation(keyPath: "transform.scale")

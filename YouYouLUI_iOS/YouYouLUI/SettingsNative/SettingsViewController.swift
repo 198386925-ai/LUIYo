@@ -160,6 +160,7 @@ final class SettingsViewController: UIViewController {
     private var changelogFold: FoldView!
     private let updateCard = GlassCardView(radius: 26)
     private let appSettingsCard = GlassCardView(radius: 26)
+    private let accountLogoutCard = GlassCardView(radius: 26)
     private var changelogCards: [GlassCardView] = []
     private var backgroundWell: UIColorWell!
     private var minimizeSwitch: UISwitch!
@@ -272,6 +273,9 @@ final class SettingsViewController: UIViewController {
         buildAppSettingsCard()
         stack.addArrangedSubview(appSettingsCard)
 
+        buildAccountLogoutCard()
+        stack.addArrangedSubview(accountLogoutCard)
+
         let footer = UILabel()
         footer.text = "特别鸣谢 Mk · 作者：优优\n仅供学习交流"
         footer.numberOfLines = 2
@@ -280,7 +284,8 @@ final class SettingsViewController: UIViewController {
         footer.textColor = UIAppColors.secondary
         stack.addArrangedSubview(footer)
         stack.setCustomSpacing(8, after: updateCard)
-        stack.setCustomSpacing(12, after: appSettingsCard)
+        stack.setCustomSpacing(8, after: appSettingsCard)
+        stack.setCustomSpacing(12, after: accountLogoutCard)
 
         model.objectWillChange
             .receive(on: DispatchQueue.main)
@@ -832,6 +837,59 @@ final class SettingsViewController: UIViewController {
         present(page, animated: true)
     }
 
+    // MARK: - Account logout
+
+    /// The account （邮箱） logout row: same single-row glass card as
+    /// 检查更新 / 设置 above it, with a centered red title. Visible
+    /// only while an account session exists. This logs out the
+    /// ACCOUNT only — the old device-code activation state inside
+    /// the app is a separate system and is not touched.
+    private func buildAccountLogoutCard() {
+        let tap = UIControl()
+        tap.addTarget(self, action: #selector(accountLogoutTapped), for: .touchUpInside)
+        accountLogoutCard.content.addSubview(tap)
+        tap.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            tap.leadingAnchor.constraint(equalTo: accountLogoutCard.content.leadingAnchor),
+            tap.trailingAnchor.constraint(equalTo: accountLogoutCard.content.trailingAnchor),
+            tap.topAnchor.constraint(equalTo: accountLogoutCard.content.topAnchor),
+            tap.bottomAnchor.constraint(equalTo: accountLogoutCard.content.bottomAnchor),
+            tap.heightAnchor.constraint(equalToConstant: 42),
+        ])
+        let title = UILabel()
+        title.text = "退出登录"
+        title.font = UIFont.systemFont(ofSize: 12, weight: .semibold)
+        title.textColor = .systemRed
+        title.textAlignment = .center
+        tap.addSubview(title)
+        title.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            title.centerXAnchor.constraint(equalTo: tap.centerXAnchor),
+            title.centerYAnchor.constraint(equalTo: tap.centerYAnchor),
+        ])
+        refreshAccountLogoutVisibility()
+    }
+
+    private func refreshAccountLogoutVisibility() {
+        accountLogoutCard.isHidden = !AccountSession.isLoggedIn
+    }
+
+    @objc private func accountLogoutTapped() {
+        let alert = UIAlertController(
+            title: "退出登录",
+            message: "退出后需要重新登录才能进入。",
+            preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "取消", style: .cancel))
+        alert.addAction(UIAlertAction(title: "退出登录", style: .destructive) { [weak self] _ in
+            AccountSession.clear()
+            self?.refreshAccountLogoutVisibility()
+            // The entry gate hears this and immediately swaps the
+            // app back to the splash-03 register gate.
+            NotificationCenter.default.post(name: .accountSessionDidLogout, object: nil)
+        })
+        present(alert, animated: true)
+    }
+
 
 
     // MARK: - Page font
@@ -848,6 +906,7 @@ final class SettingsViewController: UIViewController {
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        refreshAccountLogoutVisibility()
         if pageFontSet { PageFontApplier.apply(pageFont, to: view) }
     }
 
@@ -881,6 +940,7 @@ final class SettingsViewController: UIViewController {
         activationCard.configure(useBlur: homeModel.useBlur, tint: tint)
         updateCard.configure(useBlur: homeModel.useBlur, tint: tint)
         appSettingsCard.configure(useBlur: homeModel.useBlur, tint: tint)
+        accountLogoutCard.configure(useBlur: homeModel.useBlur, tint: tint)
         themeFold?.configureGlass(useBlur: homeModel.useBlur, tint: tint)
         guideFold?.configureGlass(useBlur: homeModel.useBlur, tint: tint)
         changelogFold?.configureGlass(useBlur: homeModel.useBlur, tint: tint)

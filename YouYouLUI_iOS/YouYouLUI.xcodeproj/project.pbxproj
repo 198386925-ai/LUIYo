@@ -112,6 +112,7 @@
 		AA4000000000000000020035 /* Inter-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000010035 /* Inter-Regular.ttf */; };
 		AA4000000000000000020036 /* Inter-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000010036 /* Inter-SemiBold.ttf */; };
 		AA4000000000000000020037 /* Inter-SemiBoldItalic.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000010037 /* Inter-SemiBoldItalic.ttf */; };
+		AA4000000000000000020038 /* Quicksand-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000010038 /* Quicksand-Bold.ttf */; };
 		AA4000000000000000040000 /* auth-no.png in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000030000 /* auth-no.png */; };
 		AA4000000000000000040001 /* auth-yes.png in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000030001 /* auth-yes.png */; };
 		AA4000000000000000040002 /* changelog.png in Resources */ = {isa = PBXBuildFile; fileRef = AA4000000000000000030002 /* changelog.png */; };
@@ -129,6 +130,7 @@
 		AA7000000000000000002006 /* Entry/AccountAuxViewControllers.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA7000000000000000001006 /* Entry/AccountAuxViewControllers.swift */; };
 		AA7000000000000000002007 /* Entry/LegalTexts.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA7000000000000000001007 /* Entry/LegalTexts.swift */; };
 		AA7000000000000000002008 /* Entry/EntryGateViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA7000000000000000001008 /* Entry/EntryGateViewController.swift */; };
+		AA7000000000000000002009 /* Entry/CaptchaViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA7000000000000000001009 /* Entry/CaptchaViewController.swift */; };
 		AA5000000000000000002003 /* SettingsNative/AppSettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA5000000000000000001003 /* SettingsNative/AppSettingsViewController.swift */; };
 /* End PBXBuildFile section */
 
@@ -230,6 +232,7 @@
 		AA4000000000000000010035 /* Inter-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Inter-Regular.ttf; sourceTree = "<group>"; };
 		AA4000000000000000010036 /* Inter-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Inter-SemiBold.ttf; sourceTree = "<group>"; };
 		AA4000000000000000010037 /* Inter-SemiBoldItalic.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Inter-SemiBoldItalic.ttf; sourceTree = "<group>"; };
+		AA4000000000000000010038 /* Quicksand-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = Quicksand-Bold.ttf; sourceTree = "<group>"; };
 		AA4000000000000000030000 /* auth-no.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = auth-no.png; sourceTree = "<group>"; };
 		AA4000000000000000030001 /* auth-yes.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = auth-yes.png; sourceTree = "<group>"; };
 		AA4000000000000000030002 /* changelog.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = changelog.png; sourceTree = "<group>"; };
@@ -247,6 +250,7 @@
 		AA7000000000000000001006 /* Entry/AccountAuxViewControllers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "YouYouLUI/Entry/AccountAuxViewControllers.swift"; sourceTree = SOURCE_ROOT; };
 		AA7000000000000000001007 /* Entry/LegalTexts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "YouYouLUI/Entry/LegalTexts.swift"; sourceTree = SOURCE_ROOT; };
 		AA7000000000000000001008 /* Entry/EntryGateViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "YouYouLUI/Entry/EntryGateViewController.swift"; sourceTree = SOURCE_ROOT; };
+		AA7000000000000000001009 /* Entry/CaptchaViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "YouYouLUI/Entry/CaptchaViewController.swift"; sourceTree = SOURCE_ROOT; };
 		AA5000000000000000001003 /* SettingsNative/AppSettingsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "YouYouLUI/SettingsNative/AppSettingsViewController.swift"; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
@@ -469,6 +473,7 @@
 				AA4000000000000000010035 /* Inter-Regular.ttf */,
 				AA4000000000000000010036 /* Inter-SemiBold.ttf */,
 				AA4000000000000000010037 /* Inter-SemiBoldItalic.ttf */,
+				AA4000000000000000010038 /* Quicksand-Bold.ttf */,
 			);
 			path = Fonts;
 			sourceTree = "<group>";
@@ -578,6 +583,7 @@
 				AA4000000000000000020035 /* Inter-Regular.ttf in Resources */,
 				AA4000000000000000020036 /* Inter-SemiBold.ttf in Resources */,
 				AA4000000000000000020037 /* Inter-SemiBoldItalic.ttf in Resources */,
+				AA4000000000000000020038 /* Quicksand-Bold.ttf in Resources */,
 				AA4000000000000000040000 /* auth-no.png in Resources */,
 				AA4000000000000000040001 /* auth-yes.png in Resources */,
 				AA4000000000000000040002 /* changelog.png in Resources */,
@@ -620,6 +626,7 @@
 				AA7000000000000000002006 /* Entry/AccountAuxViewControllers.swift in Sources */,
 				AA7000000000000000002007 /* Entry/LegalTexts.swift in Sources */,
 				AA7000000000000000002008 /* Entry/EntryGateViewController.swift in Sources */,
+				AA7000000000000000002009 /* Entry/CaptchaViewController.swift in Sources */,
 				AA5000000000000000002003 /* SettingsNative/AppSettingsViewController.swift in Sources */,
 				AA2900000000000000000105 /* SettingsNative/SettingsContent.swift in Sources */,
 				AA2900000000000000000106 /* Home/HomeViewController.swift in Sources */,

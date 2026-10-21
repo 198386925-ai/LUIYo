@@ -33,6 +33,9 @@ final class EntryGateViewController: UIViewController {
         NotificationCenter.default.addObserver(
             self, selector: #selector(startIfNeeded),
             name: UIApplication.didBecomeActiveNotification, object: nil)
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(accountLoggedOut),
+            name: .accountSessionDidLogout, object: nil)
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -81,6 +84,30 @@ final class EntryGateViewController: UIViewController {
         dismiss(animated: true) { [weak self] in
             self?.installContent()
         }
+    }
+
+    // MARK: Account logout (from the settings 我的 page)
+
+    /// The account session was cleared in settings: tear everything
+    /// down — presented pages, the installed app, any splash — and
+    /// put the 03 register gate back up. The next launch lands here
+    /// too (no token). The OLD device-code activation inside the app
+    /// is untouched: only the account door closed.
+    @objc private func accountLoggedOut() {
+        if presentedViewController != nil {
+            dismiss(animated: false)
+        }
+        splash03?.shutdown()
+        remove(splash03)
+        splash03 = nil
+        remove(splash04)
+        splash04 = nil
+        remove(bannedController)
+        bannedController = nil
+        remove(contentViewController)
+        contentViewController = nil
+        statusVerdict = nil
+        showSplash03()
     }
 
     // MARK: Splash 04 + status verdict

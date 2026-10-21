@@ -1,4 +1,5 @@
 import UIKit
+import CoreText
 
 /// Splash 03 （粒子聚合） — the not-logged-in HARD GATE.
 ///
@@ -185,6 +186,17 @@ final class Splash03ViewController: UIViewController {
 /// loops, the gate HOLDS the assembled wordmark (wobble + twinkle
 /// continue) — the splash is a door, not a loop.
 final class ParticleCanvasView: UIView {
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        // The gradient and blobs live UNDER this canvas in the splash;
+        // the canvas itself must stay transparent — an opaque backing
+        // here was half of Build 14's black splash.
+        backgroundColor = .clear
+        isOpaque = false
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
     private struct Particle {
         var sx: CGFloat, sy: CGFloat
         var tx: CGFloat, ty: CGFloat
@@ -241,59 +253,93 @@ final class ParticleCanvasView: UIView {
     }
 
     /// Renders the wordmark offscreen and samples its pixels, exactly
-    /// as the design's buildTargets() does.
+    /// as the design's buildTargets() does — but into a bitmap context
+    /// this code OWNS, with a guaranteed pixel layout.
+    ///
+    /// Build 14 read the bytes behind a `UIGraphicsImageRenderer`
+    /// image's data provider assuming 4 bytes/pixel RGBA. On device
+    /// that image's storage is a wider pixel format, so the alpha
+    /// probe landed on garbage bytes and the "targets" were noise
+    /// scattered over the whole box — the black-static splash. Here
+    /// the buffer is created with DeviceRGB / 8-bit /
+    /// premultipliedLast / bytesPerRow = width × 4 by construction,
+    /// so the alpha byte is always exactly where the sampler looks.
     private func sampleTargets() -> [(x: CGFloat, y: CGFloat, color: UIColor)] {
-        let boxW: CGFloat = 640, boxH: CGFloat = 220
-        let format = UIGraphicsImageRendererFormat()
-        format.scale = 1
-        format.opaque = false
-        let image = UIGraphicsImageRenderer(size: CGSize(width: boxW, height: boxH), format: format)
-            .image { _ in
-                let font = roundedHeavyFont(size: 130)
-                let attrs: [NSAttributedString.Key: Any] = [
-                    .font: font, .foregroundColor: UIColor.white
-                ]
-                let text = "LUiYo" as NSString
-                let textWidth = text.size(withAttributes: attrs).width
-                let rect = CGRect(x: (boxW - textWidth) / 2,
-                                  y: 112 - font.lineHeight / 2,
-                                  width: textWidth, height: font.lineHeight)
-                text.draw(in: rect, withAttributes: attrs)
-            }
-        guard let cg = image.cgImage,
-              let provider = cg.dataProvider,
-              let data = provider.data else { return [] }
-        let bytes = CFDataGetBytePtr(data)!
-        let bytesPerRow = cg.bytesPerRow
+        let boxW = 640, boxH = 220
+        let bytesPerRow = boxW * 4
+        var buffer = [UInt8](repeating: 0, count: bytesPerRow * boxH)
+        let font = Self.wordmarkFont(size: 130)
+        buffer.withUnsafeMutableBytes { raw in
+            guard let base = raw.baseAddress,
+                  let context = CGContext(
+                    data: base, width: boxW, height: boxH,
+                    bitsPerComponent: 8, bytesPerRow: bytesPerRow,
+                    space: CGColorSpaceCreateDeviceRGB(),
+                    bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+            else { return }
+            // CoreText draws in the context's native y-up space and
+            // the buffer's first row is the BOTTOM row. The design
+            // centres the wordmark at (320, 112) in y-down canvas
+            // space, i.e. (320, 220 − 112) y-up; centre the line's
+            // optical bounds on that point.
+            let line = CTLineCreateWithAttributedString(NSAttributedString(
+                string: "LUiYo",
+                attributes: [.font: font, .foregroundColor: UIColor.white]))
+            let bounds = CTLineGetBoundsWithOptions(line, .useOpticalBounds)
+            context.textPosition = CGPoint(
+                x: 320 - (bounds.minX + bounds.width / 2),
+                y: (220 - 112) - (bounds.minY + bounds.height / 2))
+            CTLineDraw(line, context)
+        }
         let colors = ["#ffffff", "#eaf6ff", "#a9d4f5", "#8ab6f5", "#c9aaf7"]
             .map { splashHex($0) }
         var points: [(x: CGFloat, y: CGFloat, color: UIColor)] = []
-        var y: CGFloat = 0
-        while y < boxH {
-            var x: CGFloat = 0
+        var row = 0
+        while row < boxH {
+            var x = 0
             while x < boxW {
-                let alpha = bytes[Int(y) * bytesPerRow + Int(x) * 4 + 3]
-                if alpha > 128 {
-                    let idx = min(colors.count - 1, Int(x / boxW * CGFloat(colors.count - 1)))
-                    points.append((x, y, colors[idx]))
+                if buffer[row * bytesPerRow + x * 4 + 3] > 128 {
+                    let idx = min(colors.count - 1,
+                                  Int(CGFloat(x) / CGFloat(boxW) * CGFloat(colors.count - 1)))
+                    // Buffer rows run bottom-up; the design's canvas
+                    // coordinates run top-down.
+                    points.append((CGFloat(x), CGFloat(boxH - row), colors[idx]))
                 }
                 x += 4
             }
-            y += 4
+            row += 4
         }
         if points.count > 1400 {
             let stride = Int(ceil(Double(points.count) / 1400))
             points = points.enumerated().filter { $0.offset % stride == 0 }.map { $0.element }
         }
         let W = designSize.width, H = designSize.height
-        let k = min(W * 0.8 / boxW, 1)
-        let ox = (W - boxW * k) / 2
-        let oy = (H - boxH * k) / 2 - 30
+        let boxWf = CGFloat(boxW), boxHf = CGFloat(boxH)
+        let k = min(W * 0.8 / boxWf, 1)
+        let ox = (W - boxWf * k) / 2
+        let oy = (H - boxHf * k) / 2 - 30
         return points.map { (ox + $0.x * k, oy + $0.y * k, $0.color) }
     }
 
-    private func roundedHeavyFont(size: CGFloat) -> UIFont {
-        let base = UIFont.systemFont(ofSize: size, weight: .black)
+    private static var fontRegistered = false
+
+    /// The design's wordmark font: Quicksand at 800 (the design loads
+    /// the family and asks the canvas for 800; the shipped static is
+    /// its Bold, `Fonts/Quicksand-Bold.ttf`, registered on first
+    /// use). If it is ever unavailable the fallback is the system
+    /// rounded heavy — the bitmap sampling stays correct either way.
+    private static func wordmarkFont(size: CGFloat) -> UIFont {
+        if !fontRegistered {
+            fontRegistered = true
+            let url = Bundle.main.url(forResource: "Quicksand-Bold",
+                                      withExtension: "ttf", subdirectory: "Fonts")
+                ?? Bundle.main.url(forResource: "Quicksand-Bold", withExtension: "ttf")
+            if let url {
+                CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
+            }
+        }
+        if let font = UIFont(name: "Quicksand-Bold", size: size) { return font }
+        let base = UIFont.systemFont(ofSize: size, weight: .heavy)
         if let descriptor = base.fontDescriptor.withDesign(.rounded) {
             return UIFont(descriptor: descriptor, size: size)
         }
@@ -306,6 +352,7 @@ final class ParticleCanvasView: UIView {
 
     override func draw(_ rect: CGRect) {
         guard let context = UIGraphicsGetCurrentContext(), !particles.isEmpty else { return }
+        context.clear(rect)
         let total: CFTimeInterval = 14000 * 0.24 / 1000  // cycleMs = --t × 14000 (3.36 s)
         let staticMode = displayLink == nil
         let elapsed = staticMode ? total : CACurrentMediaTime() - startStamp

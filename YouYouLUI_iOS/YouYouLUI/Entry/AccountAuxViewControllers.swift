@@ -2,9 +2,10 @@ import UIKit
 
 /// Aux pages of the account gate, all in the register/login design
 /// language (same card, same fields, same buttons): the password
-/// reset form, the new-device email-confirmation wait page, and the
-/// blocking banned page. Each form sits on a plain white region
-/// inside the card, echoing the main page's `.forms` body.
+/// reset form and the blocking banned page. Each form sits on a
+/// plain white region inside the card, echoing the main page's
+/// `.forms` body. (The new-device email-confirmation wait page is
+/// gone in Build 16 — the slider captcha replaced that flow.)
 
 // MARK: - Reset password
 
@@ -30,6 +31,7 @@ final class ResetPasswordViewController: AccountFormBaseViewController {
         cardView.addSubview(whiteView)
         let (emailF, chip) = makeEmailField()
         emailField = emailF; emailChip = chip
+        emailChip.onLayoutNeeded = { [weak self] in self?.relayout(animated: false) }
         let (codeF, codeBtn) = makeCodeField(target: self, action: #selector(getCodeTapped))
         codeField = codeF; codeButton = codeBtn
         countdown = CodeCountdown(button: codeBtn)
@@ -74,15 +76,18 @@ final class ResetPasswordViewController: AccountFormBaseViewController {
 
     @objc private func getCodeTapped() {
         if countdown.isCounting { return }
-        let email = emailField.text.trimmingCharacters(in: .whitespaces)
-        if email.isEmpty { emailField.setError("请输入邮箱地址。"); return }
+        let email = emailChip.resolvedEmail()
+        if emailField.text.trimmingCharacters(in: .whitespaces).isEmpty {
+            emailField.setError("请输入邮箱地址。"); return
+        }
         if !AccountViewController.emailValid(email) {
             emailField.setError("邮箱格式不完整，请检查。"); return
         }
         emailField.setError(nil)
-        codeButton.isEnabled = false
-        AccountAPI.post("send_code", ["email": email, "purpose": "reset"]) { [weak self] result in
-            guard let self else { return }
+        performProtected("send_code", ["email": email, "purpose": "reset"],
+                         onStart: { [weak self] in self?.codeButton.isEnabled = false }
+        ) { [weak self] result in
+            guard let self, let result else { return }
             switch AccountAPI.outcome(result) {
             case .ok:
                 countdown.start()
@@ -95,9 +100,9 @@ final class ResetPasswordViewController: AccountFormBaseViewController {
     }
 
     @objc private func submitTapped() {
-        let email = emailField.text.trimmingCharacters(in: .whitespaces)
+        let email = emailChip.resolvedEmail()
         var firstBad: UITextField?
-        if email.isEmpty {
+        if emailField.text.trimmingCharacters(in: .whitespaces).isEmpty {
             emailField.setError("请输入邮箱地址。"); firstBad = emailField.input
         } else if !AccountViewController.emailValid(email) {
             emailField.setError("邮箱格式不完整，请检查。"); firstBad = firstBad ?? emailField.input
@@ -115,11 +120,11 @@ final class ResetPasswordViewController: AccountFormBaseViewController {
             firstBad.becomeFirstResponder()
             return
         }
-        submitButton.setBusy("正在重置…")
-        AccountAPI.post("reset_password", [
+        performProtected("reset_password", [
             "email": email, "password": passField.text, "code": code
-        ]) { [weak self] result in
-            guard let self else { return }
+        ], onStart: { [weak self] in self?.submitButton.setBusy("正在重置…") }
+        ) { [weak self] result in
+            guard let self, let result else { return }
             switch AccountAPI.outcome(result) {
             case .ok:
                 submitButton.setSuccess()
@@ -133,145 +138,6 @@ final class ResetPasswordViewController: AccountFormBaseViewController {
                 else { emailField.setError(message) }
             }
         }
-    }
-}
-
-// MARK: - New-device confirmation wait
-
-final class ConfirmWaitViewController: AccountFormBaseViewController {
-    /// Fired with the session token once the email link is confirmed.
-    var onConfirmed: ((String) -> Void)?
-
-    private let email: String
-    private let whiteView = UIView()
-    private let spinner = UIActivityIndicatorView(style: .large)
-    private let bodyLabel = UILabel()
-    private let statusLabel = UILabel()
-    private let confirmButton = DarkButton()
-    private let cancelButton = UIButton(type: .custom)
-    private var pollTimer: Timer?
-    private var pollCount = 0
-    private var finished = false
-
-    init(email: String) {
-        self.email = email
-        super.init(nibName: nil, bundle: nil)
-    }
-
-    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-
-    override func viewDidLoad() {
-        pageTitle = "新设备登录确认"
-        super.viewDidLoad()
-        whiteView.backgroundColor = .white
-        whiteView.layer.cornerRadius = 26
-        cardView.addSubview(whiteView)
-        spinner.color = AccountPalette.dark
-        spinner.startAnimating()
-        whiteView.addSubview(spinner)
-        bodyLabel.numberOfLines = 0
-        bodyLabel.textAlignment = .center
-        bodyLabel.font = .systemFont(ofSize: 15)
-        bodyLabel.textColor = AccountPalette.inkSoft
-        bodyLabel.text = "我们已向 \(email) 发送了一封确认邮件。\n请打开邮箱，点击邮件中的确认链接，然后回到这里完成登录。"
-        whiteView.addSubview(bodyLabel)
-        statusLabel.numberOfLines = 0
-        statusLabel.textAlignment = .center
-        statusLabel.font = .systemFont(ofSize: 13)
-        statusLabel.textColor = AccountPalette.muted
-        statusLabel.text = "正在等待确认…"
-        whiteView.addSubview(statusLabel)
-        confirmButton.setTitle("我已确认", for: .normal)
-        confirmButton.addTarget(self, action: #selector(checkNow), for: .touchUpInside)
-        whiteView.addSubview(confirmButton)
-        cancelButton.setTitle("取消", for: .normal)
-        cancelButton.titleLabel?.font = .systemFont(ofSize: 12.5)
-        cancelButton.setTitleColor(splashHex("#aaacb6"), for: .normal)
-        cancelButton.addTarget(self, action: #selector(cancelTapped), for: .touchUpInside)
-        whiteView.addSubview(cancelButton)
-    }
-
-    override func viewDidAppear(_ animated: Bool) {
-        super.viewDidAppear(animated)
-        checkNow()
-        pollTimer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { [weak self] _ in
-            self?.checkNow()
-        }
-    }
-
-    override func viewWillDisappear(_ animated: Bool) {
-        super.viewWillDisappear(animated)
-        pollTimer?.invalidate()
-        pollTimer = nil
-    }
-
-    override func contentHeight(forWidth width: CGFloat) -> CGFloat {
-        let w = width - 40 - 32
-        let bodyH = ceil((bodyLabel.text! as NSString).boundingRect(
-            with: CGSize(width: w, height: .greatestFiniteMagnitude),
-            options: [.usesLineFragmentOrigin, .usesFontLeading],
-            attributes: [.font: bodyLabel.font as Any], context: nil).height)
-        return 30 + 40 + 16 + bodyH + 14 + 20 + 24 + 48 + 14 + 21 + 24
-    }
-
-    override func layoutContent(originY: CGFloat, width: CGFloat) {
-        let h = contentHeight(forWidth: width)
-        whiteView.frame = CGRect(x: 20, y: originY, width: width - 40, height: h)
-        let w = width - 40 - 32
-        var y: CGFloat = 30
-        spinner.frame = CGRect(x: (width - 40 - 40) / 2, y: y, width: 40, height: 40)
-        y += 40 + 16
-        let bodyH = ceil((bodyLabel.text! as NSString).boundingRect(
-            with: CGSize(width: w, height: .greatestFiniteMagnitude),
-            options: [.usesLineFragmentOrigin, .usesFontLeading],
-            attributes: [.font: bodyLabel.font as Any], context: nil).height)
-        bodyLabel.frame = CGRect(x: 16, y: y, width: w, height: bodyH)
-        y += bodyH + 14
-        statusLabel.frame = CGRect(x: 16, y: y, width: w, height: 20)
-        y += 20 + 24
-        confirmButton.frame = CGRect(x: 16, y: y, width: w, height: 48)
-        y += 48 + 14
-        cancelButton.frame = CGRect(x: 16, y: y, width: w, height: 21)
-    }
-
-    @objc private func checkNow() {
-        guard !finished else { return }
-        pollCount += 1
-        if pollCount > 200 {
-            pollTimer?.invalidate()
-            statusLabel.text = "确认链接可能已过期，请返回重新登录。"
-            statusLabel.textColor = AccountPalette.danger
-            spinner.stopAnimating()
-            return
-        }
-        AccountAPI.post("check_confirm", [
-            "email": email, "device_id": AccountSession.deviceID
-        ]) { [weak self] result in
-            guard let self, !finished else { return }
-            if case .ok(let json) = AccountAPI.outcome(result) {
-                if json["confirmed"] as? Bool == true {
-                    finished = true
-                    pollTimer?.invalidate()
-                    spinner.stopAnimating()
-                    statusLabel.text = "确认成功，正在登录…"
-                    statusLabel.textColor = AccountPalette.success
-                    let token = json["token"] as? String ?? AccountSession.deviceID
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
-                        self.onConfirmed?(token)
-                    }
-                }
-            } else if case .error(let message) = AccountAPI.outcome(result) {
-                pollTimer?.invalidate()
-                spinner.stopAnimating()
-                statusLabel.text = message
-                statusLabel.textColor = AccountPalette.danger
-            }
-        }
-    }
-
-    @objc private func cancelTapped() {
-        pollTimer?.invalidate()
-        onClose?()
     }
 }
 

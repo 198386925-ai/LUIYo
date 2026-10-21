@@ -206,15 +206,14 @@ final class WhitePanelView: UIView {
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
     func setHeight(_ height: CGFloat) {
-        let changed = abs(height - panelHeight) > 0.5
         panelHeight = height
-        rebuildPaths(animatePath: changed)
+        rebuildPaths()
     }
 
     override func layoutSubviews() {
         super.layoutSubviews()
         formsView.frame = bounds
-        rebuildPaths(animatePath: false)
+        rebuildPaths()
     }
 
     /// The bump in bump-local coordinates: local width is B + 18
@@ -284,21 +283,19 @@ final class WhitePanelView: UIView {
         return path.cgPath
     }
 
-    private func rebuildPaths(animatePath: Bool) {
+    private func rebuildPaths() {
         let W = bounds.width
         guard W > 0, panelHeight > 54 else { return }
         let signup = tabIndex == 0
         let B = W / 2
-        let newFormsPath = formsPath(signup: signup, width: W, tabs: 54, height: panelHeight)
-        if animatePath, let oldPath = formsView.shape.path {
-            let anim = CABasicAnimation(keyPath: "path")
-            anim.fromValue = oldPath
-            anim.toValue = newFormsPath
-            anim.duration = 0.25
-            anim.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-            formsView.shape.add(anim, forKey: "heightMorph")
-        }
-        formsView.shape.path = newFormsPath
+        // No path morphing: interpolating between the two path
+        // topologies bent the panel into a trapezoid mid-switch (the
+        // warp seen on device). The design never morphs shapes — its
+        // panel simply transitions HEIGHT (.2s) while the forms body
+        // swaps its top corner at the slide's midpoint; the layout
+        // animation moves the height and this path is rebuilt at the
+        // current height every layout pass, so it follows cleanly.
+        formsView.shape.path = formsPath(signup: signup, width: W, tabs: 54, height: panelHeight)
         bumpView.shape.path = bumpPath(signup: signup, half: B, tabs: 54)
         if !sliding {
             bumpView.frame = CGRect(x: signup ? 0 : B - 18, y: 0,
@@ -332,7 +329,7 @@ final class WhitePanelView: UIView {
         }, delayFactor: 0.5)
         animator.addCompletion { [weak self] _ in
             self?.sliding = false
-            self?.rebuildPaths(animatePath: false)
+            self?.rebuildPaths()
         }
         animator.startAnimation()
     }
@@ -438,13 +435,20 @@ final class EyeButton: UIButton {
 
 /// The in-field email suffix picker: a chip showing the current
 /// suffix with the design's double chevron; tapping opens a menu of
-/// the design's suffix list and rewrites the field as
-/// `userPart + suffix`. Typing a known suffix syncs the chip.
+/// the design's suffix list. The address is COMPOSED — the box holds
+/// the local part, the chip holds the suffix, and validation/submit
+/// always evaluate local-part + selected suffix as one address (see
+/// `resolvedEmail`). Selecting a suffix is enough on its own: the
+/// suffix is never typed into the box. Typing a known suffix into
+/// the box syncs the chip instead.
 final class SuffixChip: UIButton {
     static let suffixes = ["@qq.com", "@163.com", "@gmail.com", "@126.com",
                            "@outlook.com", "@hotmail.com", "@sina.com",
                            "@foxmail.com", "@139.com", "@icloud.com"]
     private(set) var current = "@qq.com"
+    /// Fired when the chip's width changes (a different suffix was
+    /// picked), so the owner can re-layout the field's accessories.
+    var onLayoutNeeded: (() -> Void)?
     private weak var field: UITextField?
 
     init(field: UITextField) {
@@ -484,15 +488,32 @@ final class SuffixChip: UIButton {
         current = suffix
         setTitle(suffix, for: .normal)
         rebuildMenu()
-        if let field {
-            let value = field.text ?? ""
-            let userPart = value.split(separator: "@", maxSplits: 1).first.map(String.init) ?? value
-            field.text = userPart + suffix
-            field.sendActions(for: .editingChanged)
-        }
+        // The box keeps holding just the local part — the suffix
+        // lives here on the chip. Nudge the field's change handlers
+        // so a stale email error re-evaluates against the new pair.
+        field?.sendActions(for: .editingChanged)
+        onLayoutNeeded?()
     }
 
-    @objc private func fieldChanged() {
+    /// The address this field means: local part (whatever precedes
+    /// any "@" in the box) + the chip's selected suffix. A fully
+    /// typed address whose suffix is NOT one of the chip's is taken
+    /// as typed. This composed value — never the raw box text — is
+    /// what validation and every account call use, so a complete
+    /// valid pair can never sit in the red error state.
+    func resolvedEmail() -> String {
+        let raw = (field?.text ?? "").trimmingCharacters(in: .whitespaces)
+        guard let at = raw.firstIndex(of: "@") else { return raw + current }
+        let typedSuffix = String(raw[at...])
+        if Self.suffixes.contains(typedSuffix) {
+            return String(raw[..<at]) + current
+        }
+        return raw
+    }
+
+    /// Re-reads the suffix from the box (used after the box text is
+    /// set programmatically, e.g. returning from the reset page).
+    func syncFromField() {
         guard let value = field?.text,
               let at = value.firstIndex(of: "@") else { return }
         let suffix = String(value[at...])
@@ -500,7 +521,12 @@ final class SuffixChip: UIButton {
             current = suffix
             setTitle(suffix, for: .normal)
             rebuildMenu()
+            onLayoutNeeded?()
         }
+    }
+
+    @objc private func fieldChanged() {
+        syncFromField()
     }
 }
 
@@ -694,10 +720,18 @@ class AccountFormBaseViewController: UIViewController {
 
     func relayout(animated: Bool) {
         if animated {
-            UIView.animate(withDuration: 0.25, delay: 0,
-                           options: [.curveEaseInOut, .beginFromCurrentState]) {
-                self.view.layoutIfNeeded()
-            }
+            // The design's panel height transition: .2s
+            // cubic-bezier(.4,.05,.2,1). The layout itself carries
+            // the height change (the card and panel resize through
+            // layoutIfNeeded inside the animation), so every shape
+            // follows its real geometry frame by frame.
+            let animator = UIViewPropertyAnimator(
+                duration: 0.2,
+                timingParameters: UICubicTimingParameters(
+                    controlPoint1: CGPoint(x: 0.4, y: 0.05),
+                    controlPoint2: CGPoint(x: 0.2, y: 1)))
+            animator.addAnimations { self.view.layoutIfNeeded() }
+            animator.startAnimation()
         } else {
             view.setNeedsLayout()
         }
@@ -939,6 +973,7 @@ final class AccountViewController: AccountFormBaseViewController {
         // Signup form
         let (emailF, emailChip) = makeEmailField()
         suEmail = emailF; suChip = emailChip
+        suChip.onLayoutNeeded = { [weak self] in self?.relayout(animated: false) }
         let (codeF, codeBtn) = makeCodeField(target: self, action: #selector(getCodeTapped))
         suCode = codeF; suCodeButton = codeBtn
         suCountdown = CodeCountdown(button: codeBtn)
@@ -964,6 +999,7 @@ final class AccountViewController: AccountFormBaseViewController {
         // Login form
         let (liEmailF, liEmailChip) = makeEmailField()
         liEmail = liEmailF; liChip = liEmailChip
+        liChip.onLayoutNeeded = { [weak self] in self?.relayout(animated: false) }
         let (liPassF, liPassEyeBtn) = makePasswordField(placeholder: "请输入密码")
         liPass = liPassF; liPassEye = liPassEyeBtn
         liPass.input.textContentType = .password
@@ -1182,15 +1218,25 @@ final class AccountViewController: AccountFormBaseViewController {
         let incoming = index == 0 ? signupForm : loginForm
         let outgoing = index == 0 ? loginForm : signupForm
         clearErrors(of: outgoing)
+        // The design's own switch, from its CSS: the old form is
+        // display:none instantly (no ghost, no warp), the panel
+        // height transitions, and the new form runs formIn — 0.32s
+        // cubic-bezier(.25,.8,.3,1) after a .24s delay, opacity
+        // 0→1 with a flat 7px rise. Nothing else moves.
         outgoing.isHidden = true
         incoming.isHidden = false
         incoming.alpha = 0
         incoming.transform = CGAffineTransform(translationX: 0, y: 7)
-        UIView.animate(withDuration: 0.32, delay: 0.24,
-                       options: [.curveEaseOut]) {
+        let formIn = UIViewPropertyAnimator(
+            duration: 0.32,
+            timingParameters: UICubicTimingParameters(
+                controlPoint1: CGPoint(x: 0.25, y: 0.8),
+                controlPoint2: CGPoint(x: 0.3, y: 1)))
+        formIn.addAnimations {
             incoming.alpha = 1
             incoming.transform = .identity
         }
+        formIn.startAnimation(afterDelay: 0.24)
         relayout(animated: true)
     }
 
@@ -1267,13 +1313,17 @@ extension AccountViewController {
             setAgreeWarn(true)
             return
         }
-        let email = suEmail.text.trimmingCharacters(in: .whitespaces)
-        if email.isEmpty { suEmail.setError("请输入邮箱地址。"); return }
+        // The composed address: box local part + the chip's suffix.
+        let email = suChip.resolvedEmail()
+        if suEmail.text.trimmingCharacters(in: .whitespaces).isEmpty {
+            suEmail.setError("请输入邮箱地址。"); return
+        }
         if !Self.emailValid(email) { suEmail.setError("邮箱格式不完整，请检查。"); return }
         suEmail.setError(nil)
-        suCodeButton.isEnabled = false
-        AccountAPI.post("send_code", ["email": email, "purpose": "register"]) { [weak self] result in
-            guard let self else { return }
+        performProtected("send_code", ["email": email, "purpose": "register"],
+                         onStart: { [weak self] in self?.suCodeButton.isEnabled = false }
+        ) { [weak self] result in
+            guard let self, let result else { return }
             switch AccountAPI.outcome(result) {
             case .ok:
                 suCountdown.start()
@@ -1287,9 +1337,9 @@ extension AccountViewController {
     // MARK: Signup — submit
 
     @objc func signupTapped() {
-        let email = suEmail.text.trimmingCharacters(in: .whitespaces)
+        let email = suChip.resolvedEmail()
         var firstBad: UITextField?
-        if email.isEmpty {
+        if suEmail.text.trimmingCharacters(in: .whitespaces).isEmpty {
             suEmail.setError("请输入邮箱地址。"); firstBad = firstBad ?? suEmail.input
         } else if !Self.emailValid(email) {
             suEmail.setError("邮箱格式不完整，请检查。"); firstBad = firstBad ?? suEmail.input
@@ -1320,15 +1370,15 @@ extension AccountViewController {
             firstBad?.becomeFirstResponder()
             return
         }
-        suButton.setBusy("正在创建账户…")
-        AccountAPI.post("register", [
+        performProtected("register", [
             "email": email, "password": suPass.text, "code": code
-        ]) { [weak self] result in
-            guard let self else { return }
+        ], onStart: { [weak self] in self?.suButton.setBusy("正在创建账户…") }
+        ) { [weak self] result in
+            guard let self, let result else { return }
             switch AccountAPI.outcome(result) {
             case .ok:
                 login(email: email, password: suPass.text,
-                      button: suButton, restoreTitle: "创建账户",
+                      button: suButton, restoreTitle: "创建账户", busyTitle: "正在创建账户…",
                       card: suKey.text.trimmingCharacters(in: .whitespaces),
                       passwordField: suPass, emailField: suEmail)
             case .error(let message):
@@ -1343,9 +1393,9 @@ extension AccountViewController {
     // MARK: Login — submit
 
     @objc func loginTapped() {
-        let email = liEmail.text.trimmingCharacters(in: .whitespaces)
+        let email = liChip.resolvedEmail()
         var firstBad: UITextField?
-        if email.isEmpty {
+        if liEmail.text.trimmingCharacters(in: .whitespaces).isEmpty {
             liEmail.setError("请输入邮箱地址。"); firstBad = liEmail.input
         } else if !Self.emailValid(email) {
             liEmail.setError("邮箱格式不完整，请检查。"); firstBad = firstBad ?? liEmail.input
@@ -1357,23 +1407,26 @@ extension AccountViewController {
             firstBad.becomeFirstResponder()
             return
         }
-        liButton.setBusy("正在登录…")
         login(email: email, password: liPass.text,
-              button: liButton, restoreTitle: "登录",
+              button: liButton, restoreTitle: "登录", busyTitle: "正在登录…",
               card: "", passwordField: liPass, emailField: liEmail)
     }
 
-    /// The shared login call: success persists the token; a new device
-    /// detours through the email-confirmation wait page; a ban opens
-    /// the blocking ban page; errors land on the relevant field.
+    /// The shared login call (captcha-protected): success persists
+    /// the token — a new device now logs in directly once the slider
+    /// proof is attached (the backend switches the device and kicks
+    /// the old one; there is no email-confirmation detour anymore);
+    /// a ban opens the blocking ban page; errors land on the
+    /// relevant field.
     func login(email: String, password: String, button: DarkButton,
-               restoreTitle: String, card: String,
+               restoreTitle: String, busyTitle: String, card: String,
                passwordField: FormField, emailField: FormField) {
-        AccountAPI.post("login", [
+        performProtected("login", [
             "email": email, "password": password,
             "device_id": AccountSession.deviceID
-        ]) { [weak self] result in
-            guard let self else { return }
+        ], onStart: { button.setBusy(busyTitle) }
+        ) { [weak self] result in
+            guard let self, let result else { return }
             switch result {
             case .failure:
                 button.restore(title: restoreTitle)
@@ -1381,9 +1434,6 @@ extension AccountViewController {
             case .success(let json):
                 if (json["ok"] as? Bool) == true, let token = json["token"] as? String {
                     completeAuth(token: token, email: email, card: card, button: button)
-                } else if (json["ok"] as? Bool) == true, json["need_confirm"] as? Bool == true {
-                    button.restore(title: restoreTitle)
-                    presentConfirmWait(email: email, card: card, button: button)
                 } else if json["banned"] as? Bool == true {
                     button.restore(title: restoreTitle)
                     presentBanned(title: json["ban_title"] as? String ?? "",
@@ -1434,21 +1484,6 @@ extension AccountViewController {
         present(controller, animated: true)
     }
 
-    func presentConfirmWait(email: String, card: String, button: DarkButton) {
-        let wait = ConfirmWaitViewController(email: email)
-        wait.onClose = { [weak self, weak wait] in
-            self?.dismiss(animated: true)
-            _ = wait
-        }
-        wait.onConfirmed = { [weak self, weak wait] token in
-            guard let self else { return }
-            wait?.dismiss(animated: true) {
-                self.completeAuth(token: token, email: email, card: card, button: button)
-            }
-        }
-        presentAux(wait)
-    }
-
     func presentBanned(title: String, subtitle: String, reason: String) {
         let banned = BannedViewController(
             banTitle: title, banSubtitle: subtitle, banReason: reason,
@@ -1465,6 +1500,7 @@ extension AccountViewController {
             dismiss(animated: true) {
                 self.setTab(1)
                 self.liEmail.input.text = email
+                self.liChip.syncFromField()
                 self.liEmail.setError(nil)
                 self.liPass.input.becomeFirstResponder()
             }
