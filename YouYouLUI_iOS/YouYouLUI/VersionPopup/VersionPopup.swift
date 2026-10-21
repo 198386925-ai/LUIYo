@@ -415,6 +415,12 @@ private enum GlyphRenderer {
     /// progress follows the designs' script: delay data-d, duration data-t,
     /// easing cubic-bezier(.35,.55,.35,1), fill both — before the delay the
     /// element is invisible, after its duration it rests fully drawn.
+    ///
+    /// Every element is composed like its SVG original: a gradient base
+    /// (for fills, clipped to the fill path) whose alpha is then cut by the
+    /// revealed centerline stroke — the SVG mask — via destination-in
+    /// stroking. Pure CG path painting honors the context blend mode
+    /// exactly, unlike the Build 8 approach.
     static func image(kind: GlyphKind, pointSize: CGSize, scale: CGFloat,
                       iconStops: [UIColor], dark: Bool,
                       trait: UITraitCollection, elapsed: Double) -> UIImage {
@@ -422,27 +428,58 @@ private enum GlyphRenderer {
         let format = UIGraphicsImageRendererFormat()
         format.scale = scale
         format.opaque = false
-        let renderer = UIGraphicsImageRenderer(size: pointSize, format: format)
         let stops = iconStops.map { $0.resolvedColor(with: trait) }
-        var image = renderer.image { context in
+        // viewBox is 0 0 200 200 in both designs.
+        let unit = pointSize.width / 200
+        let full = CGRect(x: 0, y: 0, width: 200, height: 200)
+        func canvas(_ draw: (CGContext) -> Void) -> UIImage {
+            UIGraphicsImageRenderer(size: pointSize, format: format).image { context in
+                context.cgContext.scaleBy(x: unit, y: unit)
+                draw(context.cgContext)
+            }
+        }
+        var image = UIGraphicsImageRenderer(size: pointSize, format: format).image { context in
             let ctx = context.cgContext
-            // viewBox is 0 0 200 200 in both designs.
-            let unit = pointSize.width / 200
             ctx.scaleBy(x: unit, y: unit)
             let easing = CSSBezier(x1: 0.35, y1: 0.55, x2: 0.35, y2: 1)
             for element in elements {
                 let raw = (elapsed - element.delay) / element.duration
                 let progress = easing.value(atX: min(max(raw, 0), 1))
                 if progress <= 0 { continue }
+                let composed: UIImage
                 switch element.body {
                 case let .strokeCircle(cx, cy, r, width):
-                    drawStrokeCircle(ctx, cx: cx, cy: cy, r: r, width: width,
-                                     progress: progress, stops: stops)
+                    let bbox = CGRect(x: cx - r, y: cy - r, width: 2 * r, height: 2 * r)
+                    let base = canvas { c in
+                        drawIconGradient(c, bbox: bbox, stops: stops)
+                    }
+                    let arc = UIBezierPath(arcCenter: CGPoint(x: cx, y: cy),
+                                           radius: CGFloat(r),
+                                           startAngle: 0,
+                                           endAngle: CGFloat(progress) * 2 * .pi,
+                                           clockwise: true)
+                    composed = canvas { c in
+                        base.draw(in: full)
+                        strokeReveal(c, path: arc.cgPath, width: width)
+                    }
                 case let .fill(pathD, evenOdd, maskD, maskWidth):
-                    drawMaskedFill(ctx, pathD: pathD, evenOdd: evenOdd,
-                                   maskD: maskD, maskWidth: maskWidth,
-                                   progress: progress, stops: stops)
+                    let fillLine = polyline(pathD)
+                    let base = canvas { c in
+                        c.saveGState()
+                        c.addPath(fillLine.fullPath)
+                        c.clip(using: evenOdd ? .evenOdd : .winding)
+                        drawIconGradient(c, bbox: fillLine.boundingBox, stops: stops)
+                        c.restoreGState()
+                    }
+                    let maskLine = polyline(maskD)
+                    let revealed = maskLine.partialPath(
+                        upTo: CGFloat(progress) * maskLine.totalLength)
+                    composed = canvas { c in
+                        base.draw(in: full)
+                        strokeReveal(c, path: revealed, width: maskWidth)
+                    }
                 }
+                composed.draw(in: full)
             }
         }
         if dark {
@@ -452,45 +489,19 @@ private enum GlyphRenderer {
         return image
     }
 
-    /// A stroked circle revealed from its start point (3 o'clock, clockwise)
-    /// — the SVG stroke-dashoffset draw-on of the designs' <circle> strokes.
-    private static func drawStrokeCircle(_ ctx: CGContext, cx: Double, cy: Double,
-                                         r: Double, width: Double,
-                                         progress: Double, stops: [UIColor]) {
-        let arc = UIBezierPath(arcCenter: CGPoint(x: cx, y: cy),
-                               radius: CGFloat(r),
-                               startAngle: 0,
-                               endAngle: CGFloat(progress) * 2 * .pi,
-                               clockwise: true)
-        var identity = CGAffineTransform.identity
-        guard let outline = CGPathCreateCopyByStrokingPath(
-            arc.cgPath, &identity, CGFloat(width), .butt, .miter, 4) else { return }
-        let bbox = CGRect(x: cx - r, y: cy - r, width: 2 * r, height: 2 * r)
+    /// Cuts the canvas down to where the revealed centerline stroke lies:
+    /// stroking with destination-in keeps the destination only under the
+    /// stroke (butt caps, miter joins, miter limit 4 — the SVG defaults).
+    private static func strokeReveal(_ ctx: CGContext, path: CGPath, width: Double) {
         ctx.saveGState()
-        ctx.addPath(outline)
-        ctx.clip()
-        drawIconGradient(ctx, bbox: bbox, stops: stops)
-        ctx.restoreGState()
-    }
-
-    /// A gradient-filled path visible only where the stroked centerline
-    /// mask has been revealed to `progress` of its total length.
-    private static func drawMaskedFill(_ ctx: CGContext, pathD: String,
-                                       evenOdd: Bool, maskD: String,
-                                       maskWidth: Double, progress: Double,
-                                       stops: [UIColor]) {
-        let fillLine = polyline(pathD)
-        let maskLine = polyline(maskD)
-        let revealed = maskLine.partialPath(upTo: CGFloat(progress) * maskLine.totalLength)
-        var identity = CGAffineTransform.identity
-        guard let outline = CGPathCreateCopyByStrokingPath(
-            revealed, &identity, CGFloat(maskWidth), .butt, .miter, 4) else { return }
-        ctx.saveGState()
-        ctx.addPath(fillLine.fullPath)
-        ctx.clip(using: evenOdd ? .evenOdd : .winding)
-        ctx.addPath(outline)
-        ctx.clip()
-        drawIconGradient(ctx, bbox: fillLine.boundingBox, stops: stops)
+        ctx.setBlendMode(.destinationIn)
+        ctx.setStrokeColor(UIColor.white.cgColor)
+        ctx.setLineWidth(CGFloat(width))
+        ctx.setLineCap(.butt)
+        ctx.setLineJoin(.miter)
+        ctx.setMiterLimit(4)
+        ctx.addPath(path)
+        ctx.strokePath()
         ctx.restoreGState()
     }
 
@@ -519,6 +530,7 @@ private enum GlyphRenderer {
         return UIImage(cgImage: cgImage, scale: scale, orientation: .up)
     }
 }
+
 
 // MARK: - Baked card art (modal background + hero band, from the CSS)
 
