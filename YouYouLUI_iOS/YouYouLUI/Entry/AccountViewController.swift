@@ -963,8 +963,8 @@ final class AccountViewController: AccountFormBaseViewController {
         // Login form
         let (liEmailF, liEmailChip) = makeEmailField()
         liEmail = liEmailF; liChip = liEmailChip
-        let (liPassF, liPassEye) = makePasswordField(placeholder: "请输入密码")
-        liPass = liPassF; liPassEye = liPassEye
+        let (liPassF, liPassEyeBtn) = makePasswordField(placeholder: "请输入密码")
+        liPass = liPassF; liPassEye = liPassEyeBtn
         liPass.input.textContentType = .password
         for field in [liEmail, liPass] {
             loginForm.addSubview(field!.view)

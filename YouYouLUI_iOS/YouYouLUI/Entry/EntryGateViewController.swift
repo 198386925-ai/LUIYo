@@ -168,7 +168,7 @@ final class EntryGateViewController: UIViewController {
         UIView.animate(withDuration: 0.45, animations: {
             splash.view.alpha = 0
         }, completion: { _ in
-            remove(splash)
+            self.remove(splash)
         })
     }
 
