@@ -462,9 +462,8 @@ private enum GlyphRenderer {
                                startAngle: 0,
                                endAngle: CGFloat(progress) * 2 * .pi,
                                clockwise: true)
-        let outline = arc.cgPath.copyByStroking(
-            withWidth: CGFloat(width), lineCap: .butt, lineJoin: .miter,
-            miterLimit: 4, transform: .identity)
+        guard let outline = CGPathCreateCopyByStrokingPath(
+            arc.cgPath, nil, CGFloat(width), .butt, .miter, 4) else { return }
         let bbox = CGRect(x: cx - r, y: cy - r, width: 2 * r, height: 2 * r)
         ctx.saveGState()
         ctx.addPath(outline)
@@ -482,9 +481,8 @@ private enum GlyphRenderer {
         let fillLine = polyline(pathD)
         let maskLine = polyline(maskD)
         let revealed = maskLine.partialPath(upTo: CGFloat(progress) * maskLine.totalLength)
-        let outline = revealed.copyByStroking(
-            withWidth: CGFloat(maskWidth), lineCap: .butt, lineJoin: .miter,
-            miterLimit: 4, transform: .identity)
+        guard let outline = CGPathCreateCopyByStrokingPath(
+            revealed, nil, CGFloat(maskWidth), .butt, .miter, 4) else { return }
         ctx.saveGState()
         ctx.addPath(fillLine.fullPath)
         ctx.clip(using: evenOdd ? .evenOdd : .winding)
