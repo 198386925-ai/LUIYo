@@ -22,12 +22,25 @@ import CoreImage
 ///              latest IPA's download URL in Safari)
 ///   - banned → the red-orange popup, not dismissible （退出 exits the app,
 ///              联系客服 is wired but has no destination yet — no-op)
-/// The fetch starts immediately at launch; the popup is presented as soon
-/// as the answer arrives. Fail-open: any network/parse failure = no popup.
+/// The fetch starts immediately at launch, but presentation is gated:
+/// the popup is presented only once the app is `.active` AND the home
+/// shell has completed its first appearance. Presenting during the
+/// launch/inactive phase leaves the popup's baked images, gradient
+/// layers and (formerly) effect views uncommitted — on device the popup
+/// appeared as floating text and solid-color shapes over the home page
+/// and only healed after a background→foreground cycle forced a
+/// re-render. If the answer arrives before the gate opens, the payload
+/// is held and presented the moment both conditions hold (re-checked on
+/// `didBecomeActive` and on the shell's first `viewDidAppear`).
+/// Fail-open: any network/parse failure = no popup.
 enum VersionPopup {
     private static let feedURL = URL(string: "https://luioe.bbroot.com/updates/latest.json")!
     private static var didCheck = false
     private static var popupWindow: UIWindow?
+    private static var pendingPayload: Payload?
+    private static var hostWindowRef: UIWindow?
+    private static var homeAppeared = false
+    private static var activeObserver: NSObjectProtocol?
 
     struct Payload {
         let banned: Bool
@@ -40,10 +53,37 @@ enum VersionPopup {
     static func checkIfNeeded(hostWindow: UIWindow) {
         guard !didCheck else { return }
         didCheck = true
+        hostWindowRef = hostWindow
+        if activeObserver == nil {
+            activeObserver = NotificationCenter.default.addObserver(
+                forName: UIApplication.didBecomeActiveNotification,
+                object: nil, queue: .main) { _ in
+                tryPresent()
+            }
+        }
         fetch { payload in
             guard let payload else { return }
-            present(payload, hostWindow: hostWindow)
+            pendingPayload = payload
+            tryPresent()
         }
+    }
+
+    /// Called by the main shell on every `viewDidAppear`; only the
+    /// first appearance matters (the gate opens once per launch, and
+    /// any held payload is presented then if the app is active).
+    static func noteHomeShellDidAppear() {
+        homeAppeared = true
+        tryPresent()
+    }
+
+    private static func tryPresent() {
+        guard popupWindow == nil,
+              let payload = pendingPayload,
+              homeAppeared,
+              UIApplication.shared.applicationState == .active,
+              let hostWindow = hostWindowRef else { return }
+        pendingPayload = nil
+        present(payload, hostWindow: hostWindow)
     }
 
     private static func fetch(completion: @escaping (Payload?) -> Void) {
@@ -364,6 +404,96 @@ private enum BakedArt {
         }
     }
 
+    /// CI gaussian blur of a rendered image (radius in device px). With
+    /// `clampEdges` the image is edge-clamped first so its borders don't
+    /// fade out (the streak's trick); without it the blur bleeds to
+    /// transparent, which is what a highlight wants.
+    static func gaussianBlurred(_ image: UIImage, radiusPx: CGFloat,
+                                clampEdges: Bool) -> UIImage {
+        guard let ci = CIImage(image: image),
+              let blur = CIFilter(name: "CIGaussianBlur") else { return image }
+        var input = ci
+        if clampEdges, let clamp = CIFilter(name: "CIAffineClamp") {
+            clamp.setValue(ci, forKey: kCIInputImageKey)
+            clamp.setValue(CGAffineTransform.identity, forKey: kCIInputTransformKey)
+            if let clamped = clamp.outputImage { input = clamped }
+        }
+        blur.setValue(input, forKey: kCIInputImageKey)
+        blur.setValue(radiusPx, forKey: kCIInputRadiusKey)
+        guard let output = blur.outputImage else { return image }
+        let context = CIContext(options: nil)
+        guard let cgImage = context.createCGImage(output, from: ci.extent) else { return image }
+        return UIImage(cgImage: cgImage, scale: image.scale, orientation: .up)
+    }
+
+    /// Flattens what sits beneath the icon cards into one image: the
+    /// modal background over the whole card, plus (light mode only —
+    /// the hero is hidden in dark mode, where the modal background's
+    /// own brand glow is the backdrop) the hero band at its rect.
+    static func flattenedBackdrop(base: UIImage, heroArt: UIImage?,
+                                  size: CGSize, s: CGFloat,
+                                  trait: UITraitCollection) -> UIImage {
+        guard let heroArt else { return base }
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = trait.displayScale
+        format.opaque = false
+        return UIGraphicsImageRenderer(size: size, format: format).image { _ in
+            base.draw(in: CGRect(origin: .zero, size: size))
+            heroArt.draw(in: CGRect(x: 0, y: 0,
+                                    width: size.width, height: 335 * s))
+        }
+    }
+
+    /// The icon cards' frosted glass, BAKED — no live effect view, no
+    /// live backdrop sampling anywhere in the popup (Build 12). The
+    /// cards sit fully inside the hero band, so the design's backdrop
+    /// for a card is exactly the artwork beneath the card's rect: crop
+    /// that region out of the flattened backdrop, blur it by the CSS
+    /// blur(14px), composite the design fill (rgba(255,255,255,.44)
+    /// light / .16 dark), then the CSS `inset 0 0 4px` highlight — the
+    /// same 8s-wide edge stroke Build 11 drew as a layer, here blurred
+    /// by blur/2 and clipped to the card like the box-shadow it is.
+    /// The card's pixels are literally the design's composite formula.
+    static func glassCard(backdrop: UIImage, region: CGRect, size: CGSize,
+                          s: CGFloat, palette: PopupPalette,
+                          trait: UITraitCollection) -> UIImage? {
+        guard let heroCG = backdrop.cgImage else { return nil }
+        let scale = backdrop.scale
+        let pixelRegion = CGRect(x: region.origin.x * scale,
+                                 y: region.origin.y * scale,
+                                 width: region.size.width * scale,
+                                 height: region.size.height * scale).integral
+        guard pixelRegion.width > 0, pixelRegion.height > 0,
+              let cropped = heroCG.cropping(to: pixelRegion) else { return nil }
+        let crop = UIImage(cgImage: cropped, scale: scale, orientation: .up)
+        let blurred = gaussianBlurred(crop, radiusPx: 14 * s * scale,
+                                      clampEdges: true)
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = scale
+        format.opaque = false
+        let rect = CGRect(origin: .zero, size: size)
+        let radius = 44 * s
+        // The inset highlight on its own layer first, softened by blur/2
+        // (the box-shadow convention used for the modal's inset bands).
+        let ring = palette.iconCardRing.resolvedColor(with: trait)
+        let highlightRaw = UIGraphicsImageRenderer(size: size, format: format).image { _ in
+            let path = UIBezierPath(roundedRect: rect, cornerRadius: radius)
+            ring.setStroke()
+            path.lineWidth = 8 * s
+            path.stroke()
+        }
+        let highlight = gaussianBlurred(highlightRaw, radiusPx: 2 * s * scale,
+                                        clampEdges: false)
+        return UIGraphicsImageRenderer(size: size, format: format).image { context in
+            let ctx = context.cgContext
+            UIBezierPath(roundedRect: rect, cornerRadius: radius).addClip()
+            blurred.draw(in: rect)
+            ctx.setFillColor(palette.iconCardTint.resolvedColor(with: trait).cgColor)
+            ctx.fill(rect)
+            highlight.draw(in: rect)
+        }
+    }
+
     /// The ::after band: left 52%, top -55%, width 42%, height 220%,
     /// background linear-gradient(150deg, transparent, white .55,
     /// transparent), transform rotate(24deg), filter blur(26px).
@@ -458,11 +588,14 @@ private final class IconCard {
     let wrap = UIView()       // riseIn target (opacity / translateY / blur)
     let card = UIView()       // resting tilt + design box-shadow
     let clip = UIView()       // rounded glass clipping
-    let blur = UIVisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterial))
-    let tint = UIView()
-    /// The CSS `inset 0 0 4px` highlight: an edge stroke, clipped to its
-    /// inner half and blurred — NOT a hard outline ring.
-    let glow = CAShapeLayer()
+    /// Baked frosted-glass background (BakedArt.glassCard): the
+    /// flattened artwork under the card, blurred + tinted +
+    /// highlighted — never a
+    /// live effect view (removed in Build 12; its material tint
+    /// stacking made the cards milky in Build 10, and a live effect
+    /// view's backdrop is exactly what failed to appear in Build 11's
+    /// launch-phase ghost render).
+    let glass = UIImageView()
     let glyph = UIImageView()
     /// Live draw-on mask over the glyph image (the designs' .drw strokes).
     let glyphMask = CALayer()
@@ -537,21 +670,13 @@ final class VersionPopupViewController: UIViewController {
         cardView.addSubview(heroView)
 
         for icon in [cardL, cardR] {
-            stripEffectTint(icon.blur)
-            icon.clip.addSubview(icon.blur)
-            icon.clip.addSubview(icon.tint)
+            icon.clip.addSubview(icon.glass)
             icon.clip.clipsToBounds = true
-            icon.clip.layer.addSublayer(icon.glow)
-            icon.glow.fillColor = nil
-            if let glowFilter = makeRiseBlurFilter() {
-                icon.glow.filters = [glowFilter]
-            }
             icon.card.addSubview(icon.clip)
             icon.card.addSubview(icon.glyph)
             icon.wrap.addSubview(icon.card)
             cardView.addSubview(icon.wrap)
-            pinEdges(icon.blur, to: icon.clip)
-            pinEdges(icon.tint, to: icon.clip)
+            pinEdges(icon.glass, to: icon.clip)
             pinEdges(icon.clip, to: icon.card)
             pinEdges(icon.card, to: icon.wrap)
             icon.glyph.translatesAutoresizingMaskIntoConstraints = false
@@ -679,20 +804,6 @@ final class VersionPopupViewController: UIViewController {
         return filter
     }
 
-    /// UIVisualEffectView's material stacks its own milky tint subview
-    /// over the backdrop blur — that hidden third layer (on top of the
-    /// design's exact rgba(255,255,255,.44/.16) fill) is what made the
-    /// icon cards render as near-opaque white tiles in Build 10. The
-    /// design's glass is blur(14px) + the fill and nothing else, so clear
-    /// the material's tint subview and let `tint` be the only fill.
-    /// (No-op if the effect view's hierarchy ever changes.)
-    private func stripEffectTint(_ effectView: UIVisualEffectView) {
-        for subview in effectView.subviews
-        where NSStringFromClass(type(of: subview)).hasSuffix("EffectSubview") {
-            subview.backgroundColor = .clear
-        }
-    }
-
     /// Builds the glyph's draw-on mask: one CAShapeLayer per .drw stroke
     /// from the designs' SVGs — the mask centerlines for the filled parts,
     /// the elements' own geometry for the stroked circles — each with the
@@ -765,9 +876,6 @@ final class VersionPopupViewController: UIViewController {
         for icon in [cardL, cardR] {
             icon.card.layer.shadowColor = palette.iconCardShadow.resolvedColor(with: trait).cgColor
             icon.card.layer.shadowOpacity = 1
-            icon.tint.backgroundColor = palette.iconCardTint
-            icon.glow.strokeColor = palette.iconCardRing.resolvedColor(with: trait).cgColor
-            stripEffectTint(icon.blur)
             icon.glyph.layer.shadowColor = palette.glyphShadow.resolvedColor(with: trait).cgColor
             icon.glyph.layer.shadowOpacity = dark ? 1 : 0
         }
@@ -813,17 +921,6 @@ final class VersionPopupViewController: UIViewController {
             icon.card.layer.shadowPath = UIBezierPath(
                 roundedRect: icon.card.bounds, cornerRadius: 44 * s).cgPath
             icon.clip.layer.cornerRadius = 44 * s
-            // inset 0 0 4px highlight: an 8s-wide stroke centered on the
-            // card's edge — the clip keeps its inner half and the layer's
-            // own gaussian filter (radius = blur/2, the box-shadow
-            // convention used throughout this file) softens it into the
-            // design's inset glow. (Build 10 drew this as a hard 2s-wide
-            // outline ring, which read as a solid tile border.)
-            icon.glow.path = UIBezierPath(
-                roundedRect: icon.clip.bounds, cornerRadius: 44 * s).cgPath
-            icon.glow.lineWidth = 8 * s
-            (icon.glow.filters?.first as? CIFilter)?.setValue(
-                2 * s, forKey: kCIInputRadiusKey)
             icon.glyph.layer.shadowRadius = 2.5 * s
             // The draw-on mask tracks the glyph's laid-out size.
             let glyphBounds = icon.glyph.bounds
@@ -874,6 +971,26 @@ final class VersionPopupViewController: UIViewController {
             heroImageView.image = BakedArt.hero(
                 size: CGSize(width: cardSize.width, height: 335 * s),
                 s: s, palette: palette, trait: traitCollection)
+            // Icon-card glass, baked from the flattened backdrop (the
+            // modal background + hero band as one image): each card
+            // composites the region under its own design rect (145×145
+            // at (295, 84) / (416, 84) — fully inside the hero band),
+            // blurred + tinted per the design. Runs here, i.e. at
+            // presentation time under the active-app gate, and again
+            // whenever the card size (or, via lastCardSize invalidation
+            // in traitCollectionDidChange, the palette) changes.
+            let backdrop = BakedArt.flattenedBackdrop(
+                base: bgImageView.image ?? UIImage(),
+                heroArt: dark ? nil : heroImageView.image,
+                size: cardSize, s: s, trait: traitCollection)
+            let glassSize = CGSize(width: 145 * s, height: 145 * s)
+            for (icon, left) in [(cardL, 295.0), (cardR, 416.0)] {
+                let region = CGRect(x: CGFloat(left) * s, y: 84 * s,
+                                    width: 145 * s, height: 145 * s)
+                icon.glass.image = BakedArt.glassCard(
+                    backdrop: backdrop, region: region, size: glassSize,
+                    s: s, palette: palette, trait: traitCollection)
+            }
         }
     }
 

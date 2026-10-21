@@ -107,6 +107,16 @@ final class MainShellViewController: UITabBarController {
         runSnapshotScenarioIfNeeded()
     }
 
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        // The version popup (VersionPopup) presents only once the home
+        // shell has completed its first appearance and the app is
+        // active: presenting during the launch phase leaves the popup's
+        // baked images / gradient layers uncommitted (a ghost render
+        // that only heals after a background→foreground cycle).
+        VersionPopup.noteHomeShellDidAppear()
+    }
+
     deinit {
         scrollOffsetObservation?.invalidate()
     }
