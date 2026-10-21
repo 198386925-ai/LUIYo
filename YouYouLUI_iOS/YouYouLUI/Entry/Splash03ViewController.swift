@@ -56,6 +56,7 @@ final class Splash03ViewController: UIViewController {
         view.addSubview(blob1)
         view.addSubview(blob2)
         view.addSubview(canvas)
+        dotsView.sizeBoost = 1.4  // Build 18: dots x1.4 (see layout)
         view.addSubview(dotsView)
         tagLabel.text = "ASSEMBLE · FLOW"
         tagLabel.textColor = UIColor.white.withAlphaComponent(0.85)
@@ -104,17 +105,24 @@ final class Splash03ViewController: UIViewController {
                              width: 300 * s, height: 300 * s)
         // Center column: spacer 220 / dots / tag, gap 26, centered —
         // the same flex column as the design's .center overlay.
+        // Build 18: the whole central cluster (this column AND the
+        // particle wordmark, whose sampler applies the same shift)
+        // sits 4% of the screen height lower than the design's exact
+        // centre — the device read as too high. The dots and the tag
+        // are scaled x1.4 (they read too small); the wordmark and the
+        // gaps keep the design's sizes.
         dotsView.scale = s
-        let tagHeight = 14.4 * s
-        let columnHeight = (220 + 26 + 7 + 26) * s + tagHeight
-        let columnTop = (bounds.height - columnHeight) / 2
+        let dotsHeight = dotsView.intrinsicContentSize.height
+        let tagHeight = 14.4 * 1.4 * s
+        let columnHeight = (220 + 26) * s + dotsHeight + 26 * s + tagHeight
+        let columnTop = (bounds.height - columnHeight) / 2 + bounds.height * 0.04
         let dotsY = columnTop + (220 + 26) * s
         dotsView.frame = CGRect(x: (bounds.width - dotsView.intrinsicContentSize.width) / 2,
-                                y: dotsY, width: dotsView.intrinsicContentSize.width, height: 7 * s)
-        let tagY = dotsY + 7 * s + 26 * s
+                                y: dotsY, width: dotsView.intrinsicContentSize.width, height: dotsHeight)
+        let tagY = dotsY + dotsHeight + 26 * s
         tagLabel.frame = CGRect(x: 0, y: tagY, width: bounds.width, height: tagHeight)
-        tagLabel.font = .systemFont(ofSize: 12 * s, weight: .bold)
-        tagLabel.addTracking(5 * s)
+        tagLabel.font = .systemFont(ofSize: 12 * 1.4 * s, weight: .bold)
+        tagLabel.addTracking(5 * 1.4 * s)
         // The register button hangs below the tag, in the same column.
         let buttonSize = CGSize(width: 320 * s, height: 96 * s)
         registerWrap.frame = CGRect(x: (bounds.width - buttonSize.width) / 2,
@@ -321,7 +329,11 @@ final class ParticleCanvasView: UIView {
         let boxWf = CGFloat(boxW), boxHf = CGFloat(boxH)
         let k = min(W * 0.8 / boxWf, 1) * 1.35  // Build 17: wordmark ×1.35 (≈60% of screen width)
         let ox = (W - boxWf * k) / 2
-        let oy = (H - boxHf * k) / 2 - 30
+        // Build 18: +4% of the screen height — the whole central
+        // cluster (wordmark + dots + tag + button) shifts down
+        // together; the view controller's column applies the same
+        // 4% shift in points.
+        let oy = (H - boxHf * k) / 2 - 30 + H * 0.04
         return points.map { (ox + $0.x * k, oy + $0.y * k, $0.color) }
     }
 

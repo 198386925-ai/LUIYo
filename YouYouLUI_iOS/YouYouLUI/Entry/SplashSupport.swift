@@ -109,6 +109,15 @@ final class SplashDotsView: UIView {
     var scale: CGFloat = 0.5 {
         didSet { setNeedsLayout() }
     }
+    /// Uniform size multiplier for the dots and their gaps (Build 18:
+    /// splash 03's dots read too small on device — it uses 1.4; the
+    /// jump amplitude scales with it, rhythm unchanged).
+    var sizeBoost: CGFloat = 1 {
+        didSet {
+            setNeedsLayout()
+            invalidateIntrinsicContentSize()
+        }
+    }
     private var s: CGFloat { scale }
 
     init() {
@@ -129,16 +138,17 @@ final class SplashDotsView: UIView {
 
     override func layoutSubviews() {
         super.layoutSubviews()
-        let d = 7 * s, gap = 8 * s
+        let d = 7 * s * sizeBoost, gap = 8 * s * sizeBoost
         for (i, dot) in dots.enumerated() {
             dot.frame = CGRect(x: CGFloat(i) * (d + gap), y: 0, width: d, height: d)
-            dot.layer.cornerRadius = 3.5 * s
-            dot.layer.shadowRadius = 4 * s
+            dot.layer.cornerRadius = d / 2
+            dot.layer.shadowRadius = 4 * s * sizeBoost
         }
     }
 
     override var intrinsicContentSize: CGSize {
-        CGSize(width: 3 * 7 * s + 2 * 8 * s, height: 7 * s)
+        CGSize(width: 3 * 7 * s * sizeBoost + 2 * 8 * s * sizeBoost,
+               height: 7 * s * sizeBoost)
     }
 
     /// Starts the dot choreography relative to `startTime`
@@ -155,7 +165,7 @@ final class SplashDotsView: UIView {
             opacity.values = [0.25, 1, 0.25]
             opacity.keyTimes = [0, 0.45, 1]
             let move = CAKeyframeAnimation(keyPath: "transform.translation.y")
-            move.values = [0, -7 * s, 0]
+            move.values = [0, -7 * s * sizeBoost, 0]
             move.keyTimes = [0, 0.45, 1]
             group.animations = [opacity, move]
             group.duration = 5.2 * 0.24

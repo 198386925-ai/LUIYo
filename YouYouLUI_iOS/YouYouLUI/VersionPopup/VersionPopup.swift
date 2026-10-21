@@ -375,6 +375,13 @@ final class VersionPopupViewController: UIViewController {
                 icon.wrap.layer.filters = [filter]
             }
         }
+        // Design stacking: the left card (z-index 4) sits OVER the
+        // right (z-index 3) in their 24px overlap strip. The loop
+        // above added left first (right on top) — restore the
+        // design's order. (Build 18; the left glass is also baked
+        // refracting the right card beneath it, as the browser's
+        // backdrop-filter does.)
+        cardView.bringSubviewToFront(cardL.wrap)
         cardL.card.transform = CGAffineTransform(rotationAngle: -8 * .pi / 180)
         cardR.card.transform = CGAffineTransform(rotationAngle: 6 * .pi / 180)
         setupDrawMask(for: cardL, specs: GlyphDraw.left)

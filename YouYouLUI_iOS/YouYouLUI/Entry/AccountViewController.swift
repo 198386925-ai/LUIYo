@@ -181,62 +181,121 @@ final class FormField: NSObject {
     }
 }
 
-/// The white region behind the tabs + form: TWO static folder
-/// shapes (one per tab), each a forms body + tab bump pair of shape
-/// layers, crossfaded on a switch — the design's own model.
+/// The white region behind the tabs + form: a PRE-RENDERED BITMAP
+/// of the folder outline — one image per (tab, width, height,
+/// interface style), drawn once from the exact CGPaths below and
+/// shown in a plain UIImageView. No CAShapeLayer anywhere.
 ///
-/// Build history: Build 14 slid a ShapeView and swapped its path
-/// mid-slide; Build 16 swapped the paths inside a delayed animation
-/// block, which made Core Animation INTERPOLATE the path between the
-/// two folder topologies — the panel bent into a skewed trapezoid
-/// mid-switch, exactly what the user kept screenshotting. Here every
-/// path is assigned once per (tab, width, height) with actions
-/// disabled, frames never move, and the ONLY animated property in a
-/// switch is the two pairs' opacity. At any mid-switch instant the
-/// screen shows at most two axis-aligned folder panels at partial
-/// opacity — there is no path interpolation and no skew/perspective
-/// transform anywhere in the switch path.
+/// Build history: Build 14 slid a shape view and swapped its path
+/// mid-slide; Build 16 swapped paths inside a delayed animation
+/// block, which made Core Animation INTERPOLATE between the two
+/// folder topologies (the skewed trapezoid); Build 17 kept two
+/// static shape pairs and crossfaded only opacity, and the device
+/// STILL rested with a slanted bottom edge, curled corners, and a
+/// sheet below that failed to contract to the shorter login form.
+/// A bitmap cannot deform. Rendering a path into an image once is
+/// fine — it is LIVE layer path/frame animation that warps. A tab
+/// switch swaps the image instantly and the view controller re-lays
+/// out the whole sheet (panel + card + content) in the same
+/// disabled-actions transaction, so everything below contracts in
+/// the same frame; only the form content animates.
 final class WhitePanelView: UIView {
     /// 0 = signup (bump left), 1 = login (bump right).
     private(set) var tabIndex = 0
-    /// [tab][forms, bump] — both pairs are always in the hierarchy;
-    /// the inactive pair rests at alpha 0.
-    private let pairs: [[ShapeView]] = [
-        [ShapeView(), ShapeView()],
-        [ShapeView(), ShapeView()],
-    ]
-    /// Each tab's own panel height: a pair's shapes are built at its
-    /// OWN height and never follow the container's animated height,
-    /// so the height transition can never deform an outline either.
+    private let imageView = UIImageView()
+    /// Each tab's own panel height; a tab's image is rendered at its
+    /// OWN height and never follows an animated container height.
     private var heights: [CGFloat] = [0, 0]
-    private var fadeAnimator: UIViewPropertyAnimator?
+    /// Rendered images per interface style: [style][tab].
+    private var cache: [UIUserInterfaceStyle: [UIImage?]] = [:]
+    /// (width, signupHeight, loginHeight) in half-points; a change
+    /// invalidates the cache.
+    private var cacheKey: (Int, Int, Int)?
 
     override init(frame: CGRect) {
         super.init(frame: frame)
-        for (tab, pair) in pairs.enumerated() {
-            for piece in pair {
-                piece.shape.fillColor = UIColor.white.cgColor
-                piece.alpha = tab == 0 ? 1 : 0
-                addSubview(piece)
-            }
-        }
-        // A taller outgoing pair is clipped to the panel's current
-        // (animating) height while it fades; both pairs are the same
-        // white, so the clip line itself is invisible.
-        clipsToBounds = true
         isUserInteractionEnabled = false
+        imageView.contentMode = .scaleToFill
+        addSubview(imageView)
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
     func setHeights(signup: CGFloat, login: CGFloat) {
-        heights = [signup, login]
-        rebuildPairs()
+        if [signup, login] != heights {
+            heights = [signup, login]
+            cache.removeAll()
+            cacheKey = nil
+        }
+        updateImage()
+    }
+
+    /// Instant tab switch: swap the bitmap. The caller performs the
+    /// sheet-wide layout inside the same disabled-actions
+    /// transaction, so no frame of the switch is ever deformed.
+    func select(_ index: Int) {
+        guard index != tabIndex else { return }
+        tabIndex = index
+        updateImage()
     }
 
     override func layoutSubviews() {
         super.layoutSubviews()
-        rebuildPairs()
+        updateImage()
+    }
+
+    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        if previousTraitCollection?.userInterfaceStyle != traitCollection.userInterfaceStyle {
+            updateImage()
+        }
+    }
+
+    private func updateImage() {
+        let W = bounds.width
+        let H = heights[tabIndex]
+        guard W > 0, H > 54 else { imageView.image = nil; return }
+        imageView.frame = CGRect(x: 0, y: 0, width: W, height: H)
+        let key = (Int((W * 2).rounded()), Int((heights[0] * 2).rounded()),
+                   Int((heights[1] * 2).rounded()))
+        if cacheKey != key {
+            cache.removeAll()
+            cacheKey = key
+        }
+        let style = traitCollection.userInterfaceStyle
+        var pair = cache[style] ?? [nil, nil]
+        if pair[tabIndex] == nil {
+            pair[tabIndex] = renderImage(tab: tabIndex, width: W, height: H, style: style)
+            cache[style] = pair
+        }
+        imageView.image = pair[tabIndex]
+    }
+
+    /// Draws the tab's folder outline (forms body + tab bump, the
+    /// exact paths the shape version used) into a bitmap ONCE.
+    private func renderImage(tab: Int, width W: CGFloat, height H: CGFloat,
+                             style: UIUserInterfaceStyle) -> UIImage {
+        let signup = tab == 0
+        let B = W / 2
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = traitCollection.displayScale
+        format.opaque = false
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: W, height: H), format: format)
+        let trait = UITraitCollection(userInterfaceStyle: style)
+        return renderer.image { _ in
+            guard let context = UIGraphicsGetCurrentContext() else { return }
+            context.addPath(formsPath(signup: signup, width: W, tabs: 54, height: H))
+            // The bump path is in bump-local coordinates; a path is
+            // converted to device space when it is ADDED, so
+            // translating the CTM first lands it at its panel offset
+            // (the old bump layer's frame origin).
+            context.saveGState()
+            context.translateBy(x: signup ? 0 : B - 18, y: 0)
+            context.addPath(bumpPath(signup: signup, half: B, tabs: 54))
+            context.restoreGState()
+            context.setFillColor(UIColor.white.resolvedColor(with: trait).cgColor)
+            context.fillPath()
+        }
     }
 
     /// The bump in bump-local coordinates: local width is B + 18
@@ -306,62 +365,6 @@ final class WhitePanelView: UIView {
         return path.cgPath
     }
 
-    /// (Re)builds both static pairs for the current width and the
-    /// stored per-tab heights. Every frame/path assignment runs with
-    /// actions disabled: a shape layer must NEVER implicitly animate
-    /// a path change (that implicit animation IS path interpolation).
-    private func rebuildPairs() {
-        let W = bounds.width
-        guard W > 0 else { return }
-        let B = W / 2
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        for tab in 0 ... 1 {
-            let H = heights[tab]
-            guard H > 54 else { continue }
-            let signup = tab == 0
-            let forms = pairs[tab][0], bump = pairs[tab][1]
-            forms.frame = CGRect(x: 0, y: 0, width: W, height: H)
-            forms.shape.path = formsPath(signup: signup, width: W, tabs: 54, height: H)
-            bump.frame = CGRect(x: signup ? 0 : B - 18, y: 0,
-                                width: B + 18, height: 54)
-            bump.shape.path = bumpPath(signup: signup, half: B, tabs: 54)
-        }
-        CATransaction.commit()
-    }
-
-    /// The tab switch for the panel: a pure opacity crossfade between
-    /// the two static pairs on the design's .52s tab curve
-    /// (cubic-bezier(.62,.04,.33,1)). The panel's height change is the
-    /// view controller's separate .2s layout transition; the shapes
-    /// themselves never move, morph, or transform.
-    func crossfade(to index: Int) {
-        guard index != tabIndex else { return }
-        if let running = fadeAnimator, running.isRunning {
-            running.stopAnimation(false)
-            running.finishAnimation(at: .end)
-        }
-        let outgoing = pairs[tabIndex]
-        let incoming = pairs[index]
-        tabIndex = index
-        let animator = UIViewPropertyAnimator(
-            duration: 0.52,
-            timingParameters: UICubicTimingParameters(
-                controlPoint1: CGPoint(x: 0.62, y: 0.04),
-                controlPoint2: CGPoint(x: 0.33, y: 1)))
-        animator.addAnimations {
-            for piece in incoming { piece.alpha = 1 }
-            for piece in outgoing { piece.alpha = 0 }
-        }
-        fadeAnimator = animator
-        animator.startAnimation()
-    }
-}
-
-/// A view backed by a CAShapeLayer (for the white panel pieces).
-final class ShapeView: UIView {
-    override class var layerClass: AnyClass { CAShapeLayer.self }
-    var shape: CAShapeLayer { layer as! CAShapeLayer }
 }
 
 // MARK: - Shared controls
@@ -1240,20 +1243,31 @@ final class AccountViewController: AccountFormBaseViewController {
     func setTab(_ index: Int) {
         guard index != activeTab else { return }
         activeTab = index
-        whitePanel.crossfade(to: index)
         updateTabStyles()
         let incoming = index == 0 ? signupForm : loginForm
         let outgoing = index == 0 ? loginForm : signupForm
         clearErrors(of: outgoing)
-        // The design's own switch, from its CSS: the old form is
-        // display:none instantly (no ghost, no warp), the panel
-        // height transitions, and the new form runs formIn — 0.32s
-        // cubic-bezier(.25,.8,.3,1) after a .24s delay, opacity
-        // 0→1 with a flat 7px rise. Nothing else moves.
+        // Build 18: the switch's GEOMETRY is entirely instant, in
+        // one disabled-actions transaction — the panel bitmap swaps
+        // and every height (panel, card, sheet content) takes its
+        // new value in the same frame, so when the shorter login
+        // form is selected the sheet below contracts with it instead
+        // of trailing behind an animated layout (the Build 17 device
+        // failure). The ONLY animation is the form content's, from
+        // the design's CSS: the old form is display:none instantly
+        // and the new form runs formIn — 0.32s
+        // cubic-bezier(.25,.8,.3,1) after a .24s delay, opacity 0→1
+        // with a flat 7px rise. Nothing else moves, ever.
         outgoing.isHidden = true
         incoming.isHidden = false
         incoming.alpha = 0
         incoming.transform = CGAffineTransform(translationX: 0, y: 7)
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        whitePanel.select(index)
+        view.setNeedsLayout()
+        view.layoutIfNeeded()
+        CATransaction.commit()
         let formIn = UIViewPropertyAnimator(
             duration: 0.32,
             timingParameters: UICubicTimingParameters(
@@ -1264,7 +1278,6 @@ final class AccountViewController: AccountFormBaseViewController {
             incoming.transform = .identity
         }
         formIn.startAnimation(afterDelay: 0.24)
-        relayout(animated: true)
     }
 
     private func clearErrors(of form: UIView) {

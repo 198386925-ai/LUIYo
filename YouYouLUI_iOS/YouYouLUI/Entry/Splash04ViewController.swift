@@ -81,12 +81,17 @@ final class Splash04ViewController: UIViewController {
                              y: bounds.height - (300 - 60) * s,
                              width: 300 * s, height: 300 * s)
         // Center column: icon cluster / dots / tag, gap 26, centered.
-        // Build 16: the icon renders at 22% of the screen width (the
-        // design's own ~15% read too small on device — the user's
-        // approved enlargement); ring and halo scale by the same
-        // cluster unit `u`, keeping the design's proportions to the
-        // icon (ring 166 around icon 128, halo 290 across).
-        let u = bounds.width * 0.22 / 128
+        // Build 18: the icon ARTWORK renders at exactly 27% of the
+        // screen width. Build 16's "22%" sized the image VIEW — but
+        // the PNG's opaque glass square spans only x 30...480 of its
+        // 512 px (the rest is transparent margin), so the artwork
+        // itself measured ~19% on device and still read too small.
+        // The view is therefore sized 0.27 / (451/512) ≈ 30.65% of
+        // the width; ring and halo scale by the same cluster unit
+        // `u`, keeping the design's proportions to the icon (ring
+        // 166 around icon 128, halo 290 across). Verified by a
+        // measured simulation frame (build18/sim04.py).
+        let u = bounds.width * 0.27 / (451.0 / 512.0) / 128
         let tagHeight = 14.4 * s
         let columnHeight = 128 * u + (26 + 7 + 26) * s + tagHeight
         let columnTop = (bounds.height - columnHeight) / 2
