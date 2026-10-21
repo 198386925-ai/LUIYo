@@ -120,6 +120,7 @@ final class FormField: NSObject {
             view.addSubview(label)
             hintLabel = label
         }
+        super.init()
         input.addTarget(self, action: #selector(editingBegan), for: .editingDidBegin)
         input.addTarget(self, action: #selector(editingEnded), for: .editingDidEnd)
         input.addTarget(self, action: #selector(editingChanged), for: .editingChanged)
