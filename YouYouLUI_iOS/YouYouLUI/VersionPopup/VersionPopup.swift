@@ -24,19 +24,27 @@ import CoreImage
 ///              联系客服 is wired but has no destination yet — no-op)
 /// The fetch starts immediately at launch, but presentation is gated:
 /// the popup is presented only once the app is `.active` AND the home
-/// shell has completed its first appearance. Presenting during the
-/// launch/inactive phase leaves the popup's baked images, gradient
-/// layers and (formerly) effect views uncommitted — on device the popup
-/// appeared as floating text and solid-color shapes over the home page
-/// and only healed after a background→foreground cycle forced a
-/// re-render. If the answer arrives before the gate opens, the payload
-/// is held and presented the moment both conditions hold (re-checked on
-/// `didBecomeActive` and on the shell's first `viewDidAppear`).
-/// Fail-open: any network/parse failure = no popup.
+/// shell has completed its first appearance. If the answer arrives
+/// before the gate opens, the payload is held and presented the moment
+/// both conditions hold (re-checked on `didBecomeActive` and on the
+/// shell's first `viewDidAppear`). Fail-open: any network/parse
+/// failure = no popup.
+///
+/// Build 13 architecture (the Builds 11/12 mechanisms each failed on
+/// device, so the architecture changed instead of the parameters):
+/// 1. The popup is presented INSIDE the app's main window — a child
+///    view controller of the window's root controller, its view
+///    covering the shell — never in a separate overlay UIWindow.
+/// 2. All artwork is pre-rendered offline from the designs at
+///    design-space @3x and shipped as PNG assets (card background,
+///    icon-card glass, primary-button gradient). Nothing is baked at
+///    runtime except the gradient title (dynamic server text; that
+///    bake demonstrably draws — it was visible even in the ghost
+///    renders).
 enum VersionPopup {
     private static let feedURL = URL(string: "https://luioe.bbroot.com/updates/latest.json")!
     private static var didCheck = false
-    private static var popupWindow: UIWindow?
+    private static var popupController: VersionPopupViewController?
     private static var pendingPayload: Payload?
     private static var hostWindowRef: UIWindow?
     private static var homeAppeared = false
@@ -77,7 +85,7 @@ enum VersionPopup {
     }
 
     private static func tryPresent() {
-        guard popupWindow == nil,
+        guard popupController == nil,
               let payload = pendingPayload,
               homeAppeared,
               UIApplication.shared.applicationState == .active,
@@ -121,25 +129,34 @@ enum VersionPopup {
         )
     }
 
+    /// Build 13: the popup is hosted in the app's MAIN window — the
+    /// popup controller becomes a child of the window's root view
+    /// controller and its view covers the whole window, above the
+    /// shell. No separate overlay window (Builds 8–12 presented in a
+    /// dedicated UIWindow; on device that window's contents were the
+    /// first-appearance ghosts). Appearance traits (interface style
+    /// included) inherit from the host window through the root
+    /// controller, as they did via the old window copy.
     private static func present(_ payload: Payload, hostWindow: UIWindow) {
-        guard let scene = hostWindow.windowScene else { return }
+        guard let root = hostWindow.rootViewController else { return }
         let controller = VersionPopupViewController(payload: payload)
-        let window = UIWindow(windowScene: scene)
-        window.windowLevel = .alert + 10
-        window.overrideUserInterfaceStyle = hostWindow.overrideUserInterfaceStyle
-        window.backgroundColor = .clear
-        window.frame = scene.coordinateSpace.bounds
-        window.rootViewController = controller
         controller.onDismiss = { dismiss() }
-        popupWindow = window
-        window.isHidden = false
-        window.layoutIfNeeded()
+        popupController = controller
+        root.addChild(controller)
+        controller.view.frame = root.view.bounds
+        controller.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        root.view.addSubview(controller.view)
+        controller.didMove(toParent: root)
+        controller.view.layoutIfNeeded()
         controller.beginEntrance()
     }
 
     private static func dismiss() {
-        popupWindow?.isHidden = true
-        popupWindow = nil
+        guard let controller = popupController else { return }
+        popupController = nil
+        controller.willMove(toParent: nil)
+        controller.view.removeFromSuperview()
+        controller.removeFromParent()
     }
 }
 
@@ -154,17 +171,12 @@ private func vpRGBA(_ r: CGFloat, _ g: CGFloat, _ b: CGFloat, _ a: CGFloat) -> U
 }
 
 private struct PopupPalette {
-    /// (color, location) stops of the hero band's 180deg gradient.
-    let heroStops: [(UIColor, CGFloat)]
-    /// (color, location) stops of the primary button's 135deg gradient.
-    let brandStops: [(UIColor, CGFloat)]
+    /// Runtime colors only: the card background, icon-card glass and
+    /// primary-button gradient are pre-rendered assets since Build 13;
+    /// what remains is text/button chrome colors and layer shadows.
     let brandShadow: UIColor
     /// (color, location) stops of line 1's 90deg text gradient.
     let titleStops: [(UIColor, CGFloat)]
-    /// Stops (0 / .5 / 1) of the SVG icons' linear gradients.
-    let iconStops: [UIColor]
-    /// (color, location) stops of the dark modal's brand radial glow.
-    let brandGlowStops: [(UIColor, CGFloat)]
     /// Dark mode: the svg drop-shadow color.
     let glyphShadow: UIColor
     let subText: UIColor
@@ -174,39 +186,18 @@ private struct PopupPalette {
     /// Modal box-shadows: 0 30px 66px and 0 10px 22px.
     let outerShadow: UIColor
     let innerShadow: UIColor
-    let iconCardTint: UIColor
     let iconCardShadow: UIColor
-    let iconCardRing: UIColor
-    let baseTop: UIColor
-    let baseBottom: UIColor
-    /// Modal sheen radial: white at this alpha at 0, fading out at sheenEnd.
-    let sheenAlpha: CGFloat
-    let sheenEnd: CGFloat
-    let insetTop: UIColor
-    let insetBottom: UIColor
-    let edgeRing: UIColor
 
     static func make(banned: Bool, dark: Bool) -> PopupPalette {
         let brand: [UIColor] = banned
             ? [vpHex("#ff8a3d"), vpHex("#ff5b5b"), vpHex("#ff3d3d")]
             : [vpHex("#8a7bff"), vpHex("#3d8bff"), vpHex("#49c6fd")]
-        let brandStops: [(UIColor, CGFloat)] = [(brand[0], 0), (brand[1], 0.5), (brand[2], 1)]
         if dark {
             return PopupPalette(
-                heroStops: [],
-                brandStops: brandStops,
                 brandShadow: banned ? vpRGBA(230, 90, 90, 0.32) : vpRGBA(80, 120, 230, 0.32),
                 titleStops: banned
                     ? [(vpHex("#ffd7c2"), 0), (vpHex("#ffaf9f"), 0.52), (vpHex("#ff9a97"), 1)]
                     : [(vpHex("#ded7ff"), 0), (vpHex("#9fcaff"), 0.52), (vpHex("#97e2ff"), 1)],
-                iconStops: banned
-                    ? [vpHex("#ff9d5c"), vpHex("#ff7d63"), vpHex("#ff5252")]
-                    : [vpHex("#bb86ff"), vpHex("#849dff"), vpHex("#4fb5ff")],
-                brandGlowStops: banned
-                    ? [(vpRGBA(240, 112, 112, 0.34), 0), (vpRGBA(242, 126, 112, 0.19), 0.44),
-                       (vpRGBA(250, 148, 84, 0.05), 0.74), (vpRGBA(253, 174, 73, 0), 1)]
-                    : [(vpRGBA(130, 112, 240, 0.34), 0), (vpRGBA(112, 126, 242, 0.19), 0.44),
-                       (vpRGBA(84, 148, 250, 0.05), 0.74), (vpRGBA(73, 174, 253, 0), 1)],
                 glyphShadow: banned ? vpRGBA(255, 150, 110, 0.38) : vpRGBA(130, 160, 255, 0.38),
                 subText: vpHex("#9d9da3"),
                 cancelBackground: vpHex("#3a3a40"),
@@ -214,31 +205,12 @@ private struct PopupPalette {
                 cancelText: vpHex("#f2f2f4"),
                 outerShadow: vpRGBA(0, 0, 0, 0.55),
                 innerShadow: vpRGBA(0, 0, 0, 0.40),
-                iconCardTint: vpRGBA(255, 255, 255, 0.16),
-                iconCardShadow: vpRGBA(0, 0, 0, 0.34),
-                iconCardRing: vpRGBA(255, 255, 255, 0.28),
-                baseTop: vpHex("#2b2b30"),
-                baseBottom: vpHex("#222226"),
-                sheenAlpha: 0.05,
-                sheenEnd: 0.52,
-                insetTop: vpRGBA(255, 255, 255, 0.06),
-                insetBottom: vpRGBA(0, 0, 0, 0.40),
-                edgeRing: vpRGBA(255, 255, 255, 0.10)
+                iconCardShadow: vpRGBA(0, 0, 0, 0.34)
             )
         }
         return PopupPalette(
-            heroStops: banned
-                ? [(vpHex("#ffb07a"), 0), (vpHex("#ff8a5b"), 0.26), (vpHex("#ff5b5b"), 0.48),
-                   (vpRGBA(255, 91, 91, 0.45), 0.78), (vpRGBA(255, 91, 91, 0), 0.98)]
-                : [(vpHex("#f9c0fc"), 0), (vpHex("#c9bdfa"), 0.26), (vpHex("#8fb4fb"), 0.48),
-                   (vpRGBA(139, 180, 251, 0.45), 0.78), (vpRGBA(139, 180, 251, 0), 0.98)],
-            brandStops: brandStops,
             brandShadow: banned ? vpRGBA(230, 90, 90, 0.32) : vpRGBA(80, 120, 230, 0.32),
             titleStops: [(brand[0], 0), (brand[1], 0.52), (brand[2], 1)],
-            iconStops: banned
-                ? [vpHex("#ff8a3d"), vpHex("#ff6a5b"), vpHex("#ff3d3d")]
-                : [vpHex("#b07bf2"), vpHex("#6f8bf6"), vpHex("#49aefd")],
-            brandGlowStops: [],
             glyphShadow: vpRGBA(130, 160, 255, 0),
             subText: vpHex("#afb1b2"),
             cancelBackground: vpHex("#ffffff"),
@@ -246,289 +218,8 @@ private struct PopupPalette {
             cancelText: vpHex("#111111"),
             outerShadow: vpRGBA(120, 130, 150, 0.20),
             innerShadow: vpRGBA(120, 130, 150, 0.12),
-            iconCardTint: vpRGBA(255, 255, 255, 0.44),
-            iconCardShadow: vpRGBA(110, 145, 190, 0.14),
-            iconCardRing: vpRGBA(255, 255, 255, 0.9),
-            baseTop: vpHex("#ffffff"),
-            baseBottom: vpHex("#ffffff"),
-            sheenAlpha: 0.96,
-            sheenEnd: 0.58,
-            insetTop: vpRGBA(255, 255, 255, 0.95),
-            insetBottom: vpRGBA(185, 192, 205, 0.13),
-            edgeRing: vpRGBA(255, 255, 255, 0.7)
+            iconCardShadow: vpRGBA(110, 145, 190, 0.14)
         )
-    }
-}
-
-// MARK: - Baked card art (modal background + hero band, from the CSS)
-
-private enum BakedArt {
-    /// CSS linear-gradient endpoints for an angle in a rect (y-down space):
-    /// 0deg points up, angles grow clockwise, the gradient line is sized so
-    /// its stops land exactly as CSS computes them.
-    static func cssEndpoints(angleDeg: Double, rect: CGRect) -> (CGPoint, CGPoint) {
-        let rad = CGFloat(angleDeg * .pi / 180)
-        let dir = CGPoint(x: sin(rad), y: -cos(rad))
-        let length = abs(rect.width * dir.x) + abs(rect.height * dir.y)
-        let center = CGPoint(x: rect.midX, y: rect.midY)
-        return (CGPoint(x: center.x - dir.x * length / 2,
-                        y: center.y - dir.y * length / 2),
-                CGPoint(x: center.x + dir.x * length / 2,
-                        y: center.y + dir.y * length / 2))
-    }
-
-    /// Elliptical radial gradient, like CSS radial-gradient(rx ry at cx cy).
-    static func drawRadial(_ ctx: CGContext, center: CGPoint, rx: CGFloat, ry: CGFloat,
-                           colors: [CGColor], locations: [CGFloat]) {
-        guard let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(),
-                                        colors: colors as CFArray,
-                                        locations: locations) else { return }
-        ctx.saveGState()
-        ctx.translateBy(x: center.x, y: center.y)
-        ctx.scaleBy(x: rx, y: ry)
-        ctx.drawRadialGradient(gradient, startCenter: .zero, startRadius: 0,
-                               endCenter: .zero, endRadius: 1,
-                               options: [.drawsAfterEndLocation])
-        ctx.restoreGState()
-    }
-
-    static func modalBackground(size: CGSize, s: CGFloat, palette: PopupPalette,
-                                dark: Bool, trait: UITraitCollection) -> UIImage {
-        let format = UIGraphicsImageRendererFormat()
-        format.scale = trait.displayScale
-        format.opaque = false
-        return UIGraphicsImageRenderer(size: size, format: format).image { context in
-            let ctx = context.cgContext
-            let rect = CGRect(origin: .zero, size: size)
-            func resolved(_ color: UIColor) -> CGColor {
-                color.resolvedColor(with: trait).cgColor
-            }
-            // Base: linear-gradient(180deg, baseTop, baseBottom).
-            if dark {
-                let colors = [resolved(palette.baseTop), resolved(palette.baseBottom)] as CFArray
-                if let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(),
-                                             colors: colors, locations: [0, 1]) {
-                    ctx.drawLinearGradient(gradient, start: CGPoint(x: 0, y: 0),
-                                           end: CGPoint(x: 0, y: size.height), options: [])
-                }
-            } else {
-                ctx.setFillColor(resolved(palette.baseTop))
-                ctx.fill(rect)
-            }
-            // Sheen: radial-gradient(140% 70% at 50% -12%, white, transparent).
-            drawRadial(ctx,
-                       center: CGPoint(x: size.width * 0.5, y: -size.height * 0.12),
-                       rx: size.width * 1.40, ry: size.height * 0.70,
-                       colors: [vpRGBA(255, 255, 255, palette.sheenAlpha).cgColor,
-                                vpRGBA(255, 255, 255, 0).cgColor],
-                       locations: [0, palette.sheenEnd])
-            // Dark: brand glow baked into the modal background (hero hidden):
-            // radial-gradient(118% 42% at 50% -6%, brand stops).
-            if dark {
-                drawRadial(ctx,
-                           center: CGPoint(x: size.width * 0.5, y: -size.height * 0.06),
-                           rx: size.width * 1.18, ry: size.height * 0.42,
-                           colors: palette.brandGlowStops.map { resolved($0.0) },
-                           locations: palette.brandGlowStops.map { $0.1 })
-            }
-            // Inset shadows, approximated as edge gradient bands spanning
-            // the designs' offset + blur extents.
-            drawInsetBand(ctx, rect: rect,
-                          color: palette.insetTop.resolvedColor(with: trait),
-                          height: 11 * s, atTop: true)
-            drawInsetBand(ctx, rect: rect,
-                          color: palette.insetBottom.resolvedColor(with: trait),
-                          height: 78 * s, atTop: false)
-            // inset 0 0 0 1px edge ring.
-            let ringRect = rect.insetBy(dx: 0.5 * s, dy: 0.5 * s)
-            let ringPath = UIBezierPath(roundedRect: ringRect,
-                                        cornerRadius: max(88 * s - 0.5 * s, 0))
-            ctx.setStrokeColor(resolved(palette.edgeRing))
-            ctx.setLineWidth(1 * s)
-            ctx.addPath(ringPath.cgPath)
-            ctx.strokePath()
-        }
-    }
-
-    private static func drawInsetBand(_ ctx: CGContext, rect: CGRect, color: UIColor,
-                                      height: CGFloat, atTop: Bool) {
-        var red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0
-        guard color.getRed(&red, green: &green, blue: &blue, alpha: &alpha) else { return }
-        let solid = CGColor(red: red, green: green, blue: blue, alpha: alpha)
-        let clear = CGColor(red: red, green: green, blue: blue, alpha: 0)
-        guard let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(),
-                                        colors: [solid, clear] as CFArray,
-                                        locations: [0, 1]) else { return }
-        ctx.saveGState()
-        ctx.clip(to: rect)
-        if atTop {
-            ctx.drawLinearGradient(gradient, start: CGPoint(x: 0, y: 0),
-                                   end: CGPoint(x: 0, y: height), options: [])
-        } else {
-            ctx.drawLinearGradient(gradient, start: CGPoint(x: 0, y: rect.height),
-                                   end: CGPoint(x: 0, y: rect.height - height), options: [])
-        }
-        ctx.restoreGState()
-    }
-
-    static func hero(size: CGSize, s: CGFloat, palette: PopupPalette,
-                     trait: UITraitCollection) -> UIImage {
-        let format = UIGraphicsImageRendererFormat()
-        format.scale = trait.displayScale
-        format.opaque = false
-        return UIGraphicsImageRenderer(size: size, format: format).image { context in
-            let ctx = context.cgContext
-            func resolved(_ color: UIColor) -> CGColor {
-                color.resolvedColor(with: trait).cgColor
-            }
-            // linear-gradient(180deg, hero stops).
-            let colors = palette.heroStops.map { resolved($0.0) } as CFArray
-            if let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(),
-                                         colors: colors,
-                                         locations: palette.heroStops.map { $0.1 }) {
-                ctx.drawLinearGradient(gradient, start: CGPoint(x: 0, y: 0),
-                                       end: CGPoint(x: 0, y: size.height), options: [])
-            }
-            // radial-gradient(60% 78% at 52% 22%, white glow).
-            drawRadial(ctx,
-                       center: CGPoint(x: size.width * 0.52, y: size.height * 0.22),
-                       rx: size.width * 0.60, ry: size.height * 0.78,
-                       colors: [vpRGBA(255, 255, 255, 0.88).cgColor,
-                                vpRGBA(255, 255, 255, 0.22).cgColor,
-                                vpRGBA(255, 255, 255, 0).cgColor],
-                       locations: [0, 0.34, 0.64])
-            // .hero::after streak, blurred by 26 design px as in the CSS.
-            if let streak = streakImage(size: size, s: s, trait: trait) {
-                streak.draw(in: CGRect(origin: .zero, size: size))
-            }
-        }
-    }
-
-    /// CI gaussian blur of a rendered image (radius in device px). With
-    /// `clampEdges` the image is edge-clamped first so its borders don't
-    /// fade out (the streak's trick); without it the blur bleeds to
-    /// transparent, which is what a highlight wants.
-    static func gaussianBlurred(_ image: UIImage, radiusPx: CGFloat,
-                                clampEdges: Bool) -> UIImage {
-        guard let ci = CIImage(image: image),
-              let blur = CIFilter(name: "CIGaussianBlur") else { return image }
-        var input = ci
-        if clampEdges, let clamp = CIFilter(name: "CIAffineClamp") {
-            clamp.setValue(ci, forKey: kCIInputImageKey)
-            clamp.setValue(CGAffineTransform.identity, forKey: kCIInputTransformKey)
-            if let clamped = clamp.outputImage { input = clamped }
-        }
-        blur.setValue(input, forKey: kCIInputImageKey)
-        blur.setValue(radiusPx, forKey: kCIInputRadiusKey)
-        guard let output = blur.outputImage else { return image }
-        let context = CIContext(options: nil)
-        guard let cgImage = context.createCGImage(output, from: ci.extent) else { return image }
-        return UIImage(cgImage: cgImage, scale: image.scale, orientation: .up)
-    }
-
-    /// Flattens what sits beneath the icon cards into one image: the
-    /// modal background over the whole card, plus (light mode only —
-    /// the hero is hidden in dark mode, where the modal background's
-    /// own brand glow is the backdrop) the hero band at its rect.
-    static func flattenedBackdrop(base: UIImage, heroArt: UIImage?,
-                                  size: CGSize, s: CGFloat,
-                                  trait: UITraitCollection) -> UIImage {
-        guard let heroArt else { return base }
-        let format = UIGraphicsImageRendererFormat()
-        format.scale = trait.displayScale
-        format.opaque = false
-        return UIGraphicsImageRenderer(size: size, format: format).image { _ in
-            base.draw(in: CGRect(origin: .zero, size: size))
-            heroArt.draw(in: CGRect(x: 0, y: 0,
-                                    width: size.width, height: 335 * s))
-        }
-    }
-
-    /// The icon cards' frosted glass, BAKED — no live effect view, no
-    /// live backdrop sampling anywhere in the popup (Build 12). The
-    /// cards sit fully inside the hero band, so the design's backdrop
-    /// for a card is exactly the artwork beneath the card's rect: crop
-    /// that region out of the flattened backdrop, blur it by the CSS
-    /// blur(14px), composite the design fill (rgba(255,255,255,.44)
-    /// light / .16 dark), then the CSS `inset 0 0 4px` highlight — the
-    /// same 8s-wide edge stroke Build 11 drew as a layer, here blurred
-    /// by blur/2 and clipped to the card like the box-shadow it is.
-    /// The card's pixels are literally the design's composite formula.
-    static func glassCard(backdrop: UIImage, region: CGRect, size: CGSize,
-                          s: CGFloat, palette: PopupPalette,
-                          trait: UITraitCollection) -> UIImage? {
-        guard let heroCG = backdrop.cgImage else { return nil }
-        let scale = backdrop.scale
-        let pixelRegion = CGRect(x: region.origin.x * scale,
-                                 y: region.origin.y * scale,
-                                 width: region.size.width * scale,
-                                 height: region.size.height * scale).integral
-        guard pixelRegion.width > 0, pixelRegion.height > 0,
-              let cropped = heroCG.cropping(to: pixelRegion) else { return nil }
-        let crop = UIImage(cgImage: cropped, scale: scale, orientation: .up)
-        let blurred = gaussianBlurred(crop, radiusPx: 14 * s * scale,
-                                      clampEdges: true)
-        let format = UIGraphicsImageRendererFormat()
-        format.scale = scale
-        format.opaque = false
-        let rect = CGRect(origin: .zero, size: size)
-        let radius = 44 * s
-        // The inset highlight on its own layer first, softened by blur/2
-        // (the box-shadow convention used for the modal's inset bands).
-        let ring = palette.iconCardRing.resolvedColor(with: trait)
-        let highlightRaw = UIGraphicsImageRenderer(size: size, format: format).image { _ in
-            let path = UIBezierPath(roundedRect: rect, cornerRadius: radius)
-            ring.setStroke()
-            path.lineWidth = 8 * s
-            path.stroke()
-        }
-        let highlight = gaussianBlurred(highlightRaw, radiusPx: 2 * s * scale,
-                                        clampEdges: false)
-        return UIGraphicsImageRenderer(size: size, format: format).image { context in
-            let ctx = context.cgContext
-            UIBezierPath(roundedRect: rect, cornerRadius: radius).addClip()
-            blurred.draw(in: rect)
-            ctx.setFillColor(palette.iconCardTint.resolvedColor(with: trait).cgColor)
-            ctx.fill(rect)
-            highlight.draw(in: rect)
-        }
-    }
-
-    /// The ::after band: left 52%, top -55%, width 42%, height 220%,
-    /// background linear-gradient(150deg, transparent, white .55,
-    /// transparent), transform rotate(24deg), filter blur(26px).
-    private static func streakImage(size: CGSize, s: CGFloat,
-                                    trait: UITraitCollection) -> UIImage? {
-        let format = UIGraphicsImageRendererFormat()
-        format.scale = trait.displayScale
-        format.opaque = false
-        let band = UIGraphicsImageRenderer(size: size, format: format).image { context in
-            let ctx = context.cgContext
-            let bandRect = CGRect(x: -size.width * 0.21, y: -size.height * 1.1,
-                                  width: size.width * 0.42, height: size.height * 2.2)
-            ctx.translateBy(x: size.width * 0.73, y: size.height * 0.55)
-            ctx.rotate(by: 24 * .pi / 180)
-            let (start, end) = cssEndpoints(angleDeg: 150, rect: bandRect)
-            let colors = [vpRGBA(255, 255, 255, 0).cgColor,
-                          vpRGBA(255, 255, 255, 0.55).cgColor,
-                          vpRGBA(255, 255, 255, 0).cgColor] as CFArray
-            if let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(),
-                                         colors: colors, locations: [0, 0.5, 1]) {
-                ctx.drawLinearGradient(gradient, start: start, end: end, options: [])
-            }
-        }
-        guard let ci = CIImage(image: band),
-              let clamp = CIFilter(name: "CIAffineClamp"),
-              let blur = CIFilter(name: "CIGaussianBlur") else { return band }
-        clamp.setValue(ci, forKey: kCIInputImageKey)
-        clamp.setValue(CGAffineTransform.identity, forKey: kCIInputTransformKey)
-        guard let clamped = clamp.outputImage else { return band }
-        blur.setValue(clamped, forKey: kCIInputImageKey)
-        blur.setValue(26 * s * trait.displayScale, forKey: kCIInputRadiusKey)
-        guard let output = blur.outputImage else { return band }
-        let context = CIContext(options: nil)
-        guard let cgImage = context.createCGImage(output, from: ci.extent) else { return band }
-        return UIImage(cgImage: cgImage, scale: trait.displayScale, orientation: .up)
     }
 }
 
@@ -588,13 +279,13 @@ private final class IconCard {
     let wrap = UIView()       // riseIn target (opacity / translateY / blur)
     let card = UIView()       // resting tilt + design box-shadow
     let clip = UIView()       // rounded glass clipping
-    /// Baked frosted-glass background (BakedArt.glassCard): the
-    /// flattened artwork under the card, blurred + tinted +
-    /// highlighted — never a
-    /// live effect view (removed in Build 12; its material tint
-    /// stacking made the cards milky in Build 10, and a live effect
-    /// view's backdrop is exactly what failed to appear in Build 11's
-    /// launch-phase ghost render).
+    /// Pre-rendered frosted-glass background (a shipped PNG asset):
+    /// the artwork under the card, blurred + tinted + highlighted
+    /// offline with the design's composite formula — never a live
+    /// effect view (its material tint stacking made the cards milky
+    /// in Build 10, and a live effect view's backdrop failed to
+    /// appear in Build 11's ghost render) and never a runtime bake
+    /// (Build 12's runtime-baked images ghosted exactly the same way).
     let glass = UIImageView()
     let glyph = UIImageView()
     /// Live draw-on mask over the glyph image (the designs' .drw strokes).
@@ -617,8 +308,6 @@ final class VersionPopupViewController: UIViewController {
     private let shadowInner = UIView()
     private let cardView = UIView()
     private let bgImageView = UIImageView()
-    private let heroView = UIView()
-    private let heroImageView = UIImageView()
     private let cardL = IconCard()
     private let cardR = IconCard()
     private let titleView = UIImageView()
@@ -626,7 +315,6 @@ final class VersionPopupViewController: UIViewController {
     private let line3 = UILabel()
     private let leftButton = UIButton(type: .custom)
     private let rightButton = UIButton(type: .custom)
-    private let rightGradient = CAGradientLayer()
 
     private var scaledConstraints: [(NSLayoutConstraint, CGFloat)] = []
     private var titleTop: NSLayoutConstraint!
@@ -637,7 +325,6 @@ final class VersionPopupViewController: UIViewController {
     private var line2Height: NSLayoutConstraint!
     private var line3Height: NSLayoutConstraint!
 
-    private var lastCardSize: CGSize = .zero
     private var entranceBegan = false
     private var entranceStart: CFTimeInterval = 0
 
@@ -666,8 +353,6 @@ final class VersionPopupViewController: UIViewController {
         view.addSubview(shadowOuter)
         cardView.clipsToBounds = true
         cardView.addSubview(bgImageView)
-        heroView.addSubview(heroImageView)
-        cardView.addSubview(heroView)
 
         for icon in [cardL, cardR] {
             icon.clip.addSubview(icon.glass)
@@ -706,7 +391,12 @@ final class VersionPopupViewController: UIViewController {
         leftButton.setTitle(payload.banned ? "退出" : "取消", for: .normal)
         rightButton.setTitle(payload.banned ? "联系客服" : "更新", for: .normal)
         rightButton.setTitleColor(.white, for: .normal)
-        rightButton.layer.insertSublayer(rightGradient, at: 0)
+        // The primary button's 135deg brand gradient is a pre-rendered
+        // pill-shaped PNG asset (Build 13) — no CAGradientLayer, whose
+        // contents were among the first-appearance ghosts.
+        rightButton.setBackgroundImage(
+            UIImage(named: payload.banned ? "PopupButtonBanned" : "PopupButtonSoft"),
+            for: .normal)
         for button in [leftButton, rightButton] {
             button.addTarget(self, action: #selector(buttonTouchDown(_:)), for: .touchDown)
             button.addTarget(self, action: #selector(buttonTouchUp(_:)),
@@ -740,8 +430,8 @@ final class VersionPopupViewController: UIViewController {
     }
 
     private func buildConstraints() {
-        for v in [scrimView, shadowOuter, shadowInner, cardView, bgImageView, heroView,
-                  heroImageView, titleView, line2, line3, leftButton, rightButton] {
+        for v in [scrimView, shadowOuter, shadowInner, cardView, bgImageView,
+                  titleView, line2, line3, leftButton, rightButton] {
             v.translatesAutoresizingMaskIntoConstraints = false
         }
         pinEdges(scrimView, to: view)
@@ -752,11 +442,6 @@ final class VersionPopupViewController: UIViewController {
         pinEdges(shadowInner, to: shadowOuter)
         pinEdges(cardView, to: shadowInner)
         pinEdges(bgImageView, to: cardView)
-        activate(heroView.leftAnchor.constraint(equalTo: cardView.leftAnchor))
-        activate(heroView.rightAnchor.constraint(equalTo: cardView.rightAnchor))
-        activate(heroView.topAnchor.constraint(equalTo: cardView.topAnchor))
-        pin(heroView.heightAnchor.constraint(equalToConstant: 0), px: 335)
-        pinEdges(heroImageView, to: heroView)
 
         for (icon, left) in [(cardL, 295.0), (cardR, 416.0)] {
             icon.wrap.translatesAutoresizingMaskIntoConstraints = false
@@ -867,11 +552,16 @@ final class VersionPopupViewController: UIViewController {
         leftButton.backgroundColor = palette.cancelBackground
         leftButton.layer.borderColor = palette.cancelBorder.resolvedColor(with: trait).cgColor
         leftButton.setTitleColor(palette.cancelText, for: .normal)
-        rightGradient.colors = palette.brandStops.map { $0.0.resolvedColor(with: trait).cgColor }
-        rightGradient.locations = palette.brandStops.map { NSNumber(value: Double($0.1)) }
         rightButton.layer.shadowColor = palette.brandShadow.resolvedColor(with: trait).cgColor
         rightButton.layer.shadowOpacity = 1
-        heroView.isHidden = dark
+        // All artwork is pre-rendered offline and shipped as assets;
+        // the catalog resolves each image's light/dark appearance
+        // variant automatically, so these assignments depend only on
+        // the variant (soft/banned), never on the trait.
+        bgImageView.image = UIImage(named: payload.banned ? "PopupCardBanned" : "PopupCardSoft")
+        let glassFamily = payload.banned ? "PopupGlassBanned" : "PopupGlassSoft"
+        cardL.glass.image = UIImage(named: glassFamily + "Left")
+        cardR.glass.image = UIImage(named: glassFamily + "Right")
         updateGlyphImages()
         for icon in [cardL, cardR] {
             icon.card.layer.shadowColor = palette.iconCardShadow.resolvedColor(with: trait).cgColor
@@ -887,7 +577,6 @@ final class VersionPopupViewController: UIViewController {
         if nowDark != dark {
             dark = nowDark
             applyPalette()
-            lastCardSize = .zero
             updateLayout()
         }
     }
@@ -949,49 +638,11 @@ final class VersionPopupViewController: UIViewController {
         leftButton.layer.cornerRadius = 45 * s
         leftButton.layer.borderWidth = 2 * s
         rightButton.layer.cornerRadius = 45 * s
-        rightGradient.frame = rightButton.bounds
-        rightGradient.cornerRadius = 45 * s
-        if rightButton.bounds.width > 0, rightButton.bounds.height > 0 {
-            let (gs, ge) = BakedArt.cssEndpoints(angleDeg: 135, rect: rightButton.bounds)
-            rightGradient.startPoint = CGPoint(
-                x: gs.x / rightButton.bounds.width, y: gs.y / rightButton.bounds.height)
-            rightGradient.endPoint = CGPoint(
-                x: ge.x / rightButton.bounds.width, y: ge.y / rightButton.bounds.height)
-        }
         rightButton.layer.shadowOffset = CGSize(width: 0, height: 12 * s)
         rightButton.layer.shadowRadius = 13 * s
         rightButton.layer.shadowPath = UIBezierPath(
             roundedRect: rightButton.bounds, cornerRadius: 45 * s).cgPath
         renderTitle()
-        let cardSize = cardView.bounds.size
-        if cardSize.width > 0, cardSize != lastCardSize {
-            lastCardSize = cardSize
-            bgImageView.image = BakedArt.modalBackground(
-                size: cardSize, s: s, palette: palette, dark: dark, trait: traitCollection)
-            heroImageView.image = BakedArt.hero(
-                size: CGSize(width: cardSize.width, height: 335 * s),
-                s: s, palette: palette, trait: traitCollection)
-            // Icon-card glass, baked from the flattened backdrop (the
-            // modal background + hero band as one image): each card
-            // composites the region under its own design rect (145×145
-            // at (295, 84) / (416, 84) — fully inside the hero band),
-            // blurred + tinted per the design. Runs here, i.e. at
-            // presentation time under the active-app gate, and again
-            // whenever the card size (or, via lastCardSize invalidation
-            // in traitCollectionDidChange, the palette) changes.
-            let backdrop = BakedArt.flattenedBackdrop(
-                base: bgImageView.image ?? UIImage(),
-                heroArt: dark ? nil : heroImageView.image,
-                size: cardSize, s: s, trait: traitCollection)
-            let glassSize = CGSize(width: 145 * s, height: 145 * s)
-            for (icon, left) in [(cardL, 295.0), (cardR, 416.0)] {
-                let region = CGRect(x: CGFloat(left) * s, y: 84 * s,
-                                    width: 145 * s, height: 145 * s)
-                icon.glass.image = BakedArt.glassCard(
-                    backdrop: backdrop, region: region, size: glassSize,
-                    s: s, palette: palette, trait: traitCollection)
-            }
-        }
     }
 
     private func setConstant(_ constraint: NSLayoutConstraint, _ value: CGFloat) {

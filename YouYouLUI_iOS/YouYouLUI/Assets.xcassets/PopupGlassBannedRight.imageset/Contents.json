@@ -1,0 +1,40 @@
+{
+  "images": [
+    {
+      "idiom": "universal",
+      "scale": "2x",
+      "filename": "PopupGlassBannedRight@2x.png"
+    },
+    {
+      "idiom": "universal",
+      "scale": "3x",
+      "filename": "PopupGlassBannedRight@3x.png"
+    },
+    {
+      "idiom": "universal",
+      "scale": "2x",
+      "filename": "PopupGlassBannedRightDark@2x.png",
+      "appearances": [
+        {
+          "appearance": "luminosity",
+          "value": "dark"
+        }
+      ]
+    },
+    {
+      "idiom": "universal",
+      "scale": "3x",
+      "filename": "PopupGlassBannedRightDark@3x.png",
+      "appearances": [
+        {
+          "appearance": "luminosity",
+          "value": "dark"
+        }
+      ]
+    }
+  ],
+  "info": {
+    "author": "xcode",
+    "version": 1
+  }
+}
