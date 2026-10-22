@@ -322,7 +322,7 @@ final class SettingsViewController: UIViewController {
             { [weak self] in
                 guard let self else { return }
                 self.model.changelogExpanded.toggle()
-                if self.model.pendingScroll { self.model.pendingScroll = "changelog" }
+                if self.model.changelogExpanded { self.model.pendingScroll = "changelog" }
             },
             { [weak self] in self?.openAccountInfo() }
         )
