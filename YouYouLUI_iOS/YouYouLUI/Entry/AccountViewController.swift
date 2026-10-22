@@ -181,30 +181,44 @@ final class FormField: NSObject {
     }
 }
 
-/// The white region behind the tabs + form: a PRE-RENDERED BITMAP
+/// The white region behind the tabs + form: PRE-RENDERED BITMAPS
 /// of the folder outline — one image per (tab, width, height,
 /// interface style), drawn once from the exact CGPaths below and
-/// shown in a plain UIImageView. No CAShapeLayer anywhere.
+/// shown in UIImageViews. No CAShapeLayer anywhere.
 ///
-/// Build history: Build 14 slid a shape view and swapped its path
-/// mid-slide; Build 16 swapped paths inside a delayed animation
-/// block, which made Core Animation INTERPOLATE between the two
-/// folder topologies (the skewed trapezoid); Build 17 kept two
-/// static shape pairs and crossfaded only opacity, and the device
-/// STILL rested with a slanted bottom edge, curled corners, and a
-/// sheet below that failed to contract to the shorter login form.
-/// A bitmap cannot deform. Rendering a path into an image once is
-/// fine — it is LIVE layer path/frame animation that warps. A tab
-/// switch swaps the image instantly and the view controller re-lays
-/// out the whole sheet (panel + card + content) in the same
-/// disabled-actions transaction, so everything below contracts in
-/// the same frame; only the form content animates.
+/// Build 19 FORENSICS (the warp that survived Builds 16/17/18):
+/// the bitmap pipeline was faithfully reproducing a BROKEN PATH.
+/// In formsPath's login branch the bottom-left corner arc was
+/// ordered for the signup walk, so addArc auto-drew diagonal
+/// chords (documented UIKit behaviour when the current point is
+/// not the arc's start), the bottom edge ran diagonally from
+/// (0, H-r) to (W-r, H), and close() ran the right edge
+/// diagonally from (W-r, H) back to (W, T). Replicating the exact
+/// path math offline reproduces the device shape to the pixel:
+/// bottom slope +0.0764 (theory r/(W-r) = +0.0776, device
+/// +0.077), right-edge slope -0.1009 (theory -r/(H-T) = -0.1036,
+/// device -0.104), triangular spikes at both bottom corners.
+/// Signup's branch was always correct, which is why only the
+/// login state ever warped — and why three rounds of "stop the
+/// live layers from deforming" changed nothing. The path is
+/// fixed in formsPath below.
+///
+/// Switch rendering (Build 19): both tabs' bitmaps live in the
+/// panel at NATURAL size, top-anchored, and the panel clips. A
+/// switch crossfades the two images while the controller animates
+/// the layout (card/panel heights) — a growing panel uncovers the
+/// taller image, a shrinking panel clips it; the images themselves
+/// are never scaled, so no frame of the switch can shear or squash
+/// anything either.
 final class WhitePanelView: UIView {
     /// 0 = signup (bump left), 1 = login (bump right).
     private(set) var tabIndex = 0
-    private let imageView = UIImageView()
-    /// Each tab's own panel height; a tab's image is rendered at its
-    /// OWN height and never follows an animated container height.
+    /// One image view per tab; each shows its tab's bitmap at its
+    /// OWN natural size, top-anchored. The panel clips to its
+    /// bounds, so while the controller animates the panel height,
+    /// the taller bitmap is uncovered/clipped — never stretched.
+    private let imageViews = [UIImageView(), UIImageView()]
+    /// Each tab's own panel height.
     private var heights: [CGFloat] = [0, 0]
     /// Rendered images per interface style: [style][tab].
     private var cache: [UIUserInterfaceStyle: [UIImage?]] = [:]
@@ -215,8 +229,14 @@ final class WhitePanelView: UIView {
     override init(frame: CGRect) {
         super.init(frame: frame)
         isUserInteractionEnabled = false
-        imageView.contentMode = .scaleToFill
-        addSubview(imageView)
+        clipsToBounds = true
+        for (i, iv) in imageViews.enumerated() {
+            // The frame is always set to the bitmap's own size, so
+            // this content mode never actually scales anything.
+            iv.contentMode = .scaleToFill
+            iv.alpha = i == tabIndex ? 1 : 0
+            addSubview(iv)
+        }
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -227,35 +247,53 @@ final class WhitePanelView: UIView {
             cache.removeAll()
             cacheKey = nil
         }
-        updateImage()
+        refreshImages()
     }
 
-    /// Instant tab switch: swap the bitmap. The caller performs the
-    /// sheet-wide layout inside the same disabled-actions
-    /// transaction, so no frame of the switch is ever deformed.
+    /// Instant tab switch: snap the two bitmaps' alphas.
     func select(_ index: Int) {
-        guard index != tabIndex else { return }
         tabIndex = index
-        updateImage()
+        refreshImages()
+        for (i, iv) in imageViews.enumerated() {
+            iv.alpha = i == index ? 1 : 0
+        }
+    }
+
+    /// Animated tab switch: crossfade the two bitmaps inside the
+    /// caller's animator (which also animates the sheet layout).
+    /// Both bitmaps stay at natural size for the whole switch.
+    func crossfade(to index: Int, in animator: UIViewPropertyAnimator) {
+        let outgoing = imageViews[tabIndex]
+        let incoming = imageViews[index]
+        tabIndex = index
+        refreshImages()
+        incoming.alpha = 0
+        outgoing.alpha = 1
+        animator.addAnimations {
+            incoming.alpha = 1
+            outgoing.alpha = 0
+        }
     }
 
     override func layoutSubviews() {
         super.layoutSubviews()
-        updateImage()
+        refreshImages()
     }
 
     override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
         super.traitCollectionDidChange(previousTraitCollection)
         if previousTraitCollection?.userInterfaceStyle != traitCollection.userInterfaceStyle {
-            updateImage()
+            refreshImages()
         }
     }
 
-    private func updateImage() {
+    /// Ensures both tabs' bitmaps exist for the current style and
+    /// pins each image view to its bitmap's natural frame. Never
+    /// touches alpha — a crossfade may be in flight while the
+    /// animated layout keeps calling this.
+    private func refreshImages() {
         let W = bounds.width
-        let H = heights[tabIndex]
-        guard W > 0, H > 54 else { imageView.image = nil; return }
-        imageView.frame = CGRect(x: 0, y: 0, width: W, height: H)
+        guard W > 0 else { return }
         let key = (Int((W * 2).rounded()), Int((heights[0] * 2).rounded()),
                    Int((heights[1] * 2).rounded()))
         if cacheKey.map({ $0 != key }) ?? true {
@@ -264,11 +302,17 @@ final class WhitePanelView: UIView {
         }
         let style = traitCollection.userInterfaceStyle
         var pair = cache[style] ?? [nil, nil]
-        if pair[tabIndex] == nil {
-            pair[tabIndex] = renderImage(tab: tabIndex, width: W, height: H, style: style)
-            cache[style] = pair
+        for tab in 0...1 {
+            let H = heights[tab]
+            let iv = imageViews[tab]
+            guard H > 54 else { iv.image = nil; continue }
+            if pair[tab] == nil {
+                pair[tab] = renderImage(tab: tab, width: W, height: H, style: style)
+            }
+            iv.image = pair[tab]
+            iv.frame = CGRect(x: 0, y: 0, width: W, height: H)
         }
-        imageView.image = pair[tabIndex]
+        cache[style] = pair
     }
 
     /// Draws the tab's folder outline (forms body + tab bump, the
@@ -355,11 +399,25 @@ final class WhitePanelView: UIView {
             path.addArc(withCenter: CGPoint(x: r, y: H - r), radius: r,
                         startAngle: .pi / 2, endAngle: .pi, clockwise: true)
         } else {
+            // Build 19: the login branch's point ORDER was wrong —
+            // it is the root cause of the warped panel in Builds
+            // 16-18 (see the WhitePanelView note). Travelling down
+            // the left edge, the path must FIRST take the bottom-left
+            // corner arc from (0, H-r) to (r, H) — the old code
+            // reused the signup arc (pi/2 -> pi), whose start point
+            // is (r, H), so addArc auto-drew a diagonal chord to it
+            // and back (the bottom-left "curl"); the following line
+            // to (W-r, H) then ran diagonally from (0, H-r) (bottom
+            // slope r/(W-r) = 0.078, device-measured 0.077), and
+            // close() connected (W-r, H) diagonally back up to the
+            // subpath start (W, T) (right-edge slope -r/(H-T) =
+            // -0.104, device-measured -0.104). Every arc below now
+            // starts EXACTLY at the current point.
             path.addArc(withCenter: CGPoint(x: r, y: H - r), radius: r,
-                        startAngle: .pi / 2, endAngle: .pi, clockwise: true)
+                        startAngle: .pi, endAngle: .pi / 2, clockwise: false)
             path.addLine(to: CGPoint(x: W - r, y: H))
             path.addArc(withCenter: CGPoint(x: W - r, y: H - r), radius: r,
-                        startAngle: 0, endAngle: .pi / 2, clockwise: true)
+                        startAngle: .pi / 2, endAngle: 0, clockwise: false)
         }
         path.close()
         return path.cgPath
@@ -947,6 +1005,13 @@ final class AccountViewController: AccountFormBaseViewController {
     private let signupForm = UIView()
     private let loginForm = UIView()
     private var activeTab = 0
+    /// The tab switch's three animators (panel crossfade + height,
+    /// outgoing form fade, incoming formIn). A new tap first snaps
+    /// any in-flight switch to its end state, so the choreography
+    /// can never stack or be left half-applied.
+    private var switchAnimator: UIViewPropertyAnimator?
+    private var fadeOutAnimator: UIViewPropertyAnimator?
+    private var formInAnimator: UIViewPropertyAnimator?
 
     private var suEmail: FormField!
     private var suChip: SuffixChip!
@@ -1240,34 +1305,69 @@ final class AccountViewController: AccountFormBaseViewController {
         setTab(sender.tag)
     }
 
+    /// Snaps any in-flight tab switch to its end state (final
+    /// alphas, final layout, outgoing form hidden) so a new switch
+    /// always starts from a coherent state.
+    private func finishSwitchAnimations() {
+        for animator in [fadeOutAnimator, switchAnimator, formInAnimator] {
+            if let animator, animator.isRunning {
+                animator.stopAnimation(false)
+                animator.finishAnimation(at: .end)
+            }
+        }
+        fadeOutAnimator = nil
+        switchAnimator = nil
+        formInAnimator = nil
+    }
+
     func setTab(_ index: Int) {
         guard index != activeTab else { return }
+        finishSwitchAnimations()
         activeTab = index
         updateTabStyles()
         let incoming = index == 0 ? signupForm : loginForm
         let outgoing = index == 0 ? loginForm : signupForm
         clearErrors(of: outgoing)
-        // Build 18: the switch's GEOMETRY is entirely instant, in
-        // one disabled-actions transaction — the panel bitmap swaps
-        // and every height (panel, card, sheet content) takes its
-        // new value in the same frame, so when the shorter login
-        // form is selected the sheet below contracts with it instead
-        // of trailing behind an animated layout (the Build 17 device
-        // failure). The ONLY animation is the form content's, from
-        // the design's CSS: the old form is display:none instantly
-        // and the new form runs formIn — 0.32s
-        // cubic-bezier(.25,.8,.3,1) after a .24s delay, opacity 0→1
-        // with a flat 7px rise. Nothing else moves, ever.
-        outgoing.isHidden = true
+        // Build 19 switch choreography (the Build 18 instant snap
+        // read as fake/abrupt on device): the old form fades out in
+        // 0.12s and hides; the panel bitmaps CROSSFADE while the
+        // sheet layout (panel + card heights, so the sheet below
+        // contracts/expands with the form) animates over 0.3s on
+        // the design's panel curve cubic-bezier(.4,.05,.2,1); the
+        // new form runs the design's formIn (0.32s
+        // cubic-bezier(.25,.8,.3,1), opacity 0→1 with a flat 7px
+        // rise) starting at 0.18s, overlapping the height
+        // animation's tail. The panel bitmaps are pinned at natural
+        // size inside the clipping panel for the whole switch —
+        // only frames, clip and opacity ever move, so no frame of
+        // the switch can shear or squash (and with the formsPath
+        // point order fixed, the bitmaps themselves are exact).
+        outgoing.isHidden = false
+        let fadeOut = UIViewPropertyAnimator(duration: 0.12, curve: .easeOut) {
+            outgoing.alpha = 0
+        }
+        fadeOut.addCompletion { position in
+            if position == .end {
+                outgoing.isHidden = true
+            }
+        }
+        fadeOut.startAnimation()
+        fadeOutAnimator = fadeOut
+
         incoming.isHidden = false
         incoming.alpha = 0
         incoming.transform = CGAffineTransform(translationX: 0, y: 7)
-        CATransaction.begin()
-        CATransaction.setDisableActions(true)
-        whitePanel.select(index)
-        view.setNeedsLayout()
-        view.layoutIfNeeded()
-        CATransaction.commit()
+
+        let panelAnim = UIViewPropertyAnimator(
+            duration: 0.3,
+            timingParameters: UICubicTimingParameters(
+                controlPoint1: CGPoint(x: 0.4, y: 0.05),
+                controlPoint2: CGPoint(x: 0.2, y: 1)))
+        whitePanel.crossfade(to: index, in: panelAnim)
+        panelAnim.addAnimations { self.view.layoutIfNeeded() }
+        panelAnim.startAnimation()
+        switchAnimator = panelAnim
+
         let formIn = UIViewPropertyAnimator(
             duration: 0.32,
             timingParameters: UICubicTimingParameters(
@@ -1277,7 +1377,8 @@ final class AccountViewController: AccountFormBaseViewController {
             incoming.alpha = 1
             incoming.transform = .identity
         }
-        formIn.startAnimation(afterDelay: 0.24)
+        formIn.startAnimation(afterDelay: 0.18)
+        formInAnimator = formIn
     }
 
     private func clearErrors(of form: UIView) {

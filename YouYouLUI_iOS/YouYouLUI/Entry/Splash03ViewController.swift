@@ -14,9 +14,27 @@ import CoreText
 /// NO stageOut and NO particle dispersal — after assembly the wordmark
 /// holds (with the design's wobble + twinkle continuing) and the
 /// ambient blob drift / dot jumps run forever. An 立即注册 glass button
-/// fades in once the wordmark has assembled (fadeUp at 11t, the tag's
-/// own timing) and stays. The splash never dismisses itself; only a
+/// fades in once the wordmark has assembled and stays. The splash
+/// never dismisses itself; only a
 /// successful register/login (via the button) leaves this screen.
+
+/// Splash 03 pacing (Build 19). The design's own JS assembles the
+/// wordmark over progress 0 → 0.78 of a --t × 14000 = 3.36 s cycle
+/// (fully assembled at 2.62 s), and the app originally matched it
+/// exactly — verified against the design file's constants and its
+/// rendered frames. The user reads that flight as too fast, so the
+/// assembly phase (only the flight — delays included) is stretched
+/// ×1.45 to ≈3.80 s. The tag and the register button still appear
+/// the moment assembly completes; the hold (wobble + twinkle) is
+/// unchanged.
+enum Splash03Pacing {
+    static let cycleSeconds: CFTimeInterval = 14000 * 0.24 / 1000  // 3.36
+    static let slowdown: CFTimeInterval = 1.45
+    static var assemblySeconds: CFTimeInterval {
+        cycleSeconds * 0.78 * slowdown  // ≈ 3.80
+    }
+}
+
 final class Splash03ViewController: UIViewController {
     var onRegisterTap: (() -> Void)?
 
@@ -149,12 +167,15 @@ final class Splash03ViewController: UIViewController {
             registerWrap.alpha = 1
             return
         }
-        addFadeUp(to: tagLabel.layer, beginTime: startTime + 11 * 0.24,
+        addFadeUp(to: tagLabel.layer,
+                  beginTime: startTime + Splash03Pacing.assemblySeconds + 0.02,
                   duration: 5 * 0.24, distance: 12 * s)
-        // The button fades in with the tag's own fadeUp timing (11t,
-        // once the wordmark has assembled at 0.78 of the cycle ≈ 10.9t)
-        // and then stays — model alpha 1, animation fills backwards.
-        addFadeUp(to: registerWrap.layer, beginTime: startTime + 11 * 0.24,
+        // The button fades in with the tag's own fadeUp timing, the
+        // moment the wordmark has assembled (Build 19: assembly is
+        // ≈3.80 s after the ×1.45 stretch, see Splash03Pacing) and
+        // then stays — model alpha 1, animation fills backwards.
+        addFadeUp(to: registerWrap.layer,
+                  beginTime: startTime + Splash03Pacing.assemblySeconds + 0.02,
                   duration: 5 * 0.24, distance: 12 * s)
         registerWrap.alpha = 1
     }
@@ -189,7 +210,8 @@ final class Splash03ViewController: UIViewController {
 /// colors run across the wordmark through the design's 5-stop palette;
 /// each particle starts on a ring of radius max(W,H) × 0.62, eases to
 /// its target with easeOutCubic over progress 0 → 0.78 of the 3360 ms
-/// cycle (per-particle delay up to 0.16), with the design's sinusoidal
+/// cycle (per-particle delay up to 0.16) — played on a ×1.45-stretched
+/// virtual clock since Build 19 (see Splash03Pacing), with the design's sinusoidal
 /// wobble and twinkle. Where the demo then disperses the particles and
 /// loops, the gate HOLDS the assembled wordmark (wobble + twinkle
 /// continue) — the splash is a door, not a loop.
@@ -369,10 +391,15 @@ final class ParticleCanvasView: UIView {
     override func draw(_ rect: CGRect) {
         guard let context = UIGraphicsGetCurrentContext(), !particles.isEmpty else { return }
         context.clear(rect)
-        let total: CFTimeInterval = 14000 * 0.24 / 1000  // cycleMs = --t × 14000 (3.36 s)
+        let total: CFTimeInterval = Splash03Pacing.cycleSeconds
         let staticMode = displayLink == nil
         let elapsed = staticMode ? total : CACurrentMediaTime() - startStamp
-        let p = min(elapsed / total, 1)
+        // The flight runs on a virtual clock stretched by the
+        // pacing slowdown (Build 19): progress p covers the same
+        // 0 → 0.78 flight window, but over ≈3.80 s instead of the
+        // design's 2.62 s; per-particle delays stretch with it.
+        // Wobble/twinkle below keep real time (nowMs), as before.
+        let p = min((elapsed / Splash03Pacing.slowdown) / total, 1)
         let nowMs = elapsed * 1000
         for particle in particles {
             let local: CGFloat
