@@ -102,11 +102,10 @@ enum UpdateCertificateStore {
     /// Extracts the embedded plist from a `.mobileprovision` (a CMS
     /// wrapper around an XML plist) and reads its identity fields.
     static func parseProvision(data: Data) -> (name: String, teamId: String, expiration: Date?)? {
-        guard let start = data.range(of: Data("<?xml".utf8)),
-              let end = data.range(of: Data("</plist>".utf8),
-                                   range: start.lowerBound..<data.count)
-        else { return nil }
-        let xml = data.subdata(in: start.lowerBound..<end.upperBound)
+        guard let start = data.range(of: Data("<?xml".utf8)) else { return nil }
+        let tail = data.subdata(in: start.lowerBound..<data.count)
+        guard let end = tail.range(of: Data("</plist>".utf8)) else { return nil }
+        let xml = tail.subdata(in: 0..<end.upperBound)
         guard let dict = try? PropertyListSerialization.propertyList(from: xml, options: [], format: nil) as? [String: Any],
               let name = dict["Name"] as? String, !name.isEmpty
         else { return nil }

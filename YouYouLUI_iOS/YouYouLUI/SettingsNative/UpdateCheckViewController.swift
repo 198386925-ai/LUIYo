@@ -249,7 +249,7 @@ final class UpdateCheckViewController: UIViewController {
         return row
     }
 
-    private func footnoteLabel(_ text: String) -> UILabel {
+    private func footnoteLabel(_ text: String) -> UIView {
         let label = UILabel()
         label.text = text
         label.font = UIFont.systemFont(ofSize: 12)
