@@ -107,11 +107,11 @@ enum SignedIPACheck {
               be32(cdStart) == 0xfade0c02 else { return false }
 
         let hashOffset = Int(be32(cdStart + 16))
-        let nCodeSlots = Int(be32(cdStart + 24))
-        let codeLimit = Int(be32(cdStart + 28))
-        let hashSize = Int(be32(cdStart + 32))
-        let hashType = be32(cdStart + 36)
-        let pageSize = Int(be32(cdStart + 40))  // log2
+        let nCodeSlots = Int(be32(cdStart + 28))
+        let codeLimit = Int(be32(cdStart + 32))
+        let hashSize = Int(bytes[cdStart + 36])
+        let hashType = UInt32(bytes[cdStart + 37])
+        let pageSize = Int(bytes[cdStart + 39])  // log2
         guard nCodeSlots > 0, codeLimit > 0, hashSize > 0,
               codeLimit <= sliceLength else { return false }
 

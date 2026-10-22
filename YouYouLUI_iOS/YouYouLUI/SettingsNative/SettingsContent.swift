@@ -47,6 +47,7 @@ enum SettingsContent {
             ChangelogEntry(tag: "修复", text: "修复版本弹窗首次出现时背景、图标与按钮不显示、需切到后台再切回才恢复的问题；弹窗画面按设计图一比一还原。"),
             ChangelogEntry(tag: "修复", text: "修复注册 / 登录切换时白色面板变形、卡片高度不随表单变化的问题。"),
             ChangelogEntry(tag: "修复", text: "修复多个内置字体文件残缺导致预览无法显示的问题，已全部换成完整的官方文件。"),
+            ChangelogEntry(tag: "修复", text: "修复 App 内签名完成后校验误报「签名校验失败」、签名文件被删除的问题。"),
         ]),
         ChangelogVersion(title: "Version 1.0.7-1", isCurrent: false, entries: [
             ChangelogEntry(tag: "新增", text: "自定义颜色新增「深色模式」分组：可单独开关深色图标反转，并自定义深色颜色。"),
