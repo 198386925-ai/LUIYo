@@ -146,11 +146,18 @@ final class EntryGateViewController: UIViewController {
         guard let splash = splash04, let verdict = statusVerdict else { return }
         switch verdict {
         case .ok, .unreachable:
-            // The splash's own finish() keeps stageOut on the design
-            // timeline (never before 10t); content installs as the
-            // stage dissolves.
+            // Build 21: the home shell is installed UNDER the
+            // splash first, fully rendered, and finish() then
+            // dissolves the splash into it in one monotonic fade;
+            // the completion only removes the emptied splash.
+            // (Before, content installed after stageOut and the
+            // gate faded the splash a second time — the visible
+            // icon flash at the end of the splash.)
+            addContentView()
             splash.finish { [weak self] in
-                self?.installContent()
+                guard let self, let splash = self.splash04 else { return }
+                self.splash04 = nil
+                self.remove(splash)
             }
         case .banned(let title, let subtitle, let reason):
             splash.fadeOutQuickly { [weak self] in
@@ -249,8 +256,31 @@ final class EntryGateViewController: UIViewController {
     /// Installs the real app over/under the splash and removes the
     /// splash. With a splash up we crossfade: content slides under
     /// the splash, the splash fades, then leaves the hierarchy.
+    /// (The splash-04 verdict path no longer comes through here —
+    /// it installs the shell via `addContentView()` first and lets
+    /// the splash's own finish() own the single exit fade.)
     private func installContent() {
-        guard contentViewController == nil else { return }
+        guard addContentView() else { return }
+        splash03?.shutdown()
+        let splash = splash03 ?? splash04
+        splash03 = nil
+        splash04 = nil
+        guard let splash else { return }
+        UIView.animate(withDuration: 0.45, animations: {
+            splash.view.alpha = 0
+        }, completion: { _ in
+            self.remove(splash)
+        })
+    }
+
+    /// Adds `AppRoot` under any splash currently up and starts the
+    /// account heartbeat. Split out of `installContent` (Build 21)
+    /// so the splash-04 exit can put the live shell beneath the
+    /// splash BEFORE the splash fades into it. False when content
+    /// was already installed.
+    @discardableResult
+    private func addContentView() -> Bool {
+        guard contentViewController == nil else { return false }
         let content = AppRoot.makeRootViewController()
         contentViewController = content
         startHeartbeat()
@@ -266,16 +296,7 @@ final class EntryGateViewController: UIViewController {
         }
         content.didMove(toParent: self)
         setNeedsStatusBarAppearanceUpdate()
-        splash03?.shutdown()
-        let splash = splash03 ?? splash04
-        splash03 = nil
-        splash04 = nil
-        guard let splash else { return }
-        UIView.animate(withDuration: 0.45, animations: {
-            splash.view.alpha = 0
-        }, completion: { _ in
-            self.remove(splash)
-        })
+        return true
     }
 
     // MARK: Child plumbing

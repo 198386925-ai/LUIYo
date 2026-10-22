@@ -28,6 +28,9 @@ final class ResetPasswordViewController: AccountFormBaseViewController {
     override func viewDidLoad() {
         pageTitle = "找回密码"
         super.viewDidLoad()
+        // Build 21: same captcha prefetch as the account page —
+        // reset_password is a protected action too.
+        CaptchaPrefetch.warm()
         whiteView.backgroundColor = .white
         whiteView.layer.cornerRadius = 26
         cardView.addSubview(whiteView)

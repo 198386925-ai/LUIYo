@@ -1061,6 +1061,13 @@ final class AccountViewController: AccountFormBaseViewController {
     private var fadeOutAnimator: UIViewPropertyAnimator?
     private var formInAnimator: UIViewPropertyAnimator?
 
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        // Returning to this page (e.g. from the reset page): top
+        // the spare challenge up if it went stale meanwhile.
+        CaptchaPrefetch.warm()
+    }
+
     private var suEmail: FormField!
     private var suChip: SuffixChip!
     private var suCode: FormField!
@@ -1099,6 +1106,10 @@ final class AccountViewController: AccountFormBaseViewController {
     override func viewDidLoad() {
         pageTitle = "注册或登录账户"
         super.viewDidLoad()
+        // Build 21: warm a slider-captcha challenge the moment the
+        // account page opens, so if verification is needed the
+        // sheet comes up with its notch already rendered.
+        CaptchaPrefetch.warm()
         cardView.addSubview(panelView)
         panelView.addSubview(whitePanel)
         // Tabs
@@ -1398,21 +1409,26 @@ final class AccountViewController: AccountFormBaseViewController {
         let outgoing = index == 0 ? loginForm : signupForm
         clearErrors(of: outgoing)
         // Build 19 switch choreography (the Build 18 instant snap
-        // read as fake/abrupt on device): the old form fades out in
-        // 0.12s and hides; the panel bitmaps CROSSFADE while the
-        // sheet layout (panel + card heights, so the sheet below
-        // contracts/expands with the form) animates over 0.3s on
-        // the design's panel curve cubic-bezier(.4,.05,.2,1); the
-        // new form runs the design's formIn (0.32s
-        // cubic-bezier(.25,.8,.3,1), opacity 0→1 with a flat 7px
-        // rise) starting at 0.18s, overlapping the height
+        // read as fake/abrupt on device): the old form fades out
+        // and hides; the panel bitmaps CROSSFADE while the sheet
+        // layout (panel + card heights, so the sheet below
+        // contracts/expands with the form) animates on the design's
+        // panel curve cubic-bezier(.4,.05,.2,1); the new form runs
+        // the design's formIn (cubic-bezier(.25,.8,.3,1), opacity
+        // 0→1 with a flat 7px rise) overlapping the height
         // animation's tail. The panel bitmaps are pinned at natural
         // size inside the clipping panel for the whole switch —
         // only frames, clip and opacity ever move, so no frame of
         // the switch can shear or squash (and with the formsPath
         // point order fixed, the bitmaps themselves are exact).
+        // Build 21: the whole switch slowed down — on device the
+        // Build 19/20 timings (0.12 / 0.30 / 0.18+0.32 ≈ 0.5s)
+        // still read fast and snappy. Same relationships, stretched:
+        // fade-out 0.22s, height + crossfade 0.55s, formIn starts
+        // at 0.25s and runs 0.35s; the switch settles at ≈0.6s in
+        // both directions.
         outgoing.isHidden = false
-        let fadeOut = UIViewPropertyAnimator(duration: 0.12, curve: .easeOut) {
+        let fadeOut = UIViewPropertyAnimator(duration: 0.22, curve: .easeOut) {
             outgoing.alpha = 0
         }
         fadeOut.addCompletion { position in
@@ -1428,7 +1444,7 @@ final class AccountViewController: AccountFormBaseViewController {
         incoming.transform = CGAffineTransform(translationX: 0, y: 7)
 
         let panelAnim = UIViewPropertyAnimator(
-            duration: 0.3,
+            duration: 0.55,
             timingParameters: UICubicTimingParameters(
                 controlPoint1: CGPoint(x: 0.4, y: 0.05),
                 controlPoint2: CGPoint(x: 0.2, y: 1)))
@@ -1438,7 +1454,7 @@ final class AccountViewController: AccountFormBaseViewController {
         switchAnimator = panelAnim
 
         let formIn = UIViewPropertyAnimator(
-            duration: 0.32,
+            duration: 0.35,
             timingParameters: UICubicTimingParameters(
                 controlPoint1: CGPoint(x: 0.25, y: 0.8),
                 controlPoint2: CGPoint(x: 0.3, y: 1)))
@@ -1446,7 +1462,7 @@ final class AccountViewController: AccountFormBaseViewController {
             incoming.alpha = 1
             incoming.transform = .identity
         }
-        formIn.startAnimation(afterDelay: 0.18)
+        formIn.startAnimation(afterDelay: 0.25)
         formInAnimator = formIn
     }
 

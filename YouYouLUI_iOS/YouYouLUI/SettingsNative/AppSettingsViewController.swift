@@ -47,7 +47,23 @@ enum AppFeedback {
         }
     }
 
+    /// Build 21: feedback stays DISARMED from process launch until
+    /// the first genuine user interaction arms it (a touch-driven
+    /// control action in the swizzle below, or a tab-bar
+    /// `shouldSelect`, which UIKit only calls for real taps).
+    /// Launch-time state restoration — the shell building its tab
+    /// bar and programmatically selecting the initial tab, which
+    /// UIKit reports through the same delegate callbacks as a user
+    /// tap — used to play a click the moment the user entered the
+    /// app, with no touch at all. While disarmed, `tap()` is a
+    /// no-op, so no restore path can sound off before the user has
+    /// touched anything; once armed it stays armed.
+    private static var armed = false
+
+    static func arm() { armed = true }
+
     static func tap() {
+        guard armed else { return }
         let haptics = hapticsLevel
         if (1...3).contains(haptics) { generators[haptics - 1].impactOccurred() }
         let sound = soundLevel
@@ -105,6 +121,9 @@ private extension UIControl {
     @objc func luiyo_feedbackSendAction(_ action: Selector, to target: Any?, for event: UIEvent?) {
         luiyo_feedbackSendAction(action, to: target, for: event)
         if event != nil, isEnabled {
+            // A real touch on a control: arm the launch-phase gate
+            // first, so this very tap still ticks.
+            AppFeedback.arm()
             AppFeedback.tap()
         }
     }

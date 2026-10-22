@@ -182,37 +182,47 @@ final class Splash04ViewController: UIViewController {
                   duration: 5 * 0.24, distance: 12 * s)
     }
 
-    /// Plays stageOut (never before its design start at 10t) and calls
-    /// completion when the stage has dissolved.
+    /// Exits the splash (never before the design's stageOut point
+    /// at 10t) and calls completion only when the splash has fully
+    /// dissolved.
+    ///
+    /// Build 21: ONE monotonic fade of the whole splash, nothing
+    /// else. The old exit ran stageOut as a CAAnimationGroup on
+    /// `inner` (removed on completion, so `inner` snapped back to
+    /// its model opacity 1 the moment the group ended) and the
+    /// gate then faded the root view from that restored state —
+    /// on device the icon visibly FLASHED back to full clarity
+    /// and faded a second time. Now every looping animation is
+    /// stripped first, and a single UIView fade of the root view
+    /// (no model/presentation split to snap back, no scale jump)
+    /// carries the exit; the completion fires from the fade's own
+    /// completion block, so the caller removes an already
+    /// invisible view over the home shell installed beneath it.
     func finish(completion: @escaping () -> Void) {
         guard !finishRequested else { return }
         finishRequested = true
         finishCompletion = completion
-        if UIAccessibility.isReduceMotionEnabled {
-            UIView.animate(withDuration: 0.3, animations: { self.inner.alpha = 0 }) { _ in
-                self.finishCompletion?()
-            }
-            return
+        let reduceMotion = UIAccessibility.isReduceMotionEnabled
+        let earliest = started ? startTime + 10 * 0.24 : CACurrentMediaTime()
+        let delay = reduceMotion ? 0 : max(0, earliest - CACurrentMediaTime())
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+            guard let self else { return }
+            stripAnimations(from: view.layer)
+            UIView.animate(withDuration: reduceMotion ? 0.3 : 0.7,
+                           delay: 0,
+                           options: [.curveEaseOut, .beginFromCurrentState],
+                           animations: { self.view.alpha = 0 },
+                           completion: { _ in self.finishCompletion?() })
         }
-        let now = CACurrentMediaTime()
-        let outStart = max(now, startTime + 10 * 0.24)
-        let group = CAAnimationGroup()
-        let opacity = CABasicAnimation(keyPath: "opacity")
-        opacity.fromValue = 1
-        opacity.toValue = 0
-        let scale = CABasicAnimation(keyPath: "transform.scale")
-        scale.fromValue = 1
-        scale.toValue = 1.07
-        group.animations = [opacity, scale]
-        group.duration = 5 * 0.24
-        group.beginTime = outStart
-        group.timingFunction = CAMediaTimingFunction(controlPoints: 0.6, 0, 0.8, 0.4)
-        group.fillMode = .both
-        inner.layer.add(group, forKey: "stageOut")
-        let wait = outStart + 5 * 0.24 - CACurrentMediaTime()
-        DispatchQueue.main.asyncAfter(deadline: .now() + max(0, wait)) {
-            self.finishCompletion?()
-        }
+    }
+
+    /// Removes every Core Animation in a layer subtree (blob
+    /// drift, ring spin, halo pulse, breathe, iconIn, dot jumps),
+    /// so nothing can keep moving — or restore a property — while
+    /// the exit fade runs.
+    private func stripAnimations(from layer: CALayer) {
+        layer.removeAllAnimations()
+        layer.sublayers?.forEach { stripAnimations(from: $0) }
     }
 
     /// Skips the choreography and fades out plainly (used when the

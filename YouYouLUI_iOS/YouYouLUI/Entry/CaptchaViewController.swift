@@ -35,6 +35,58 @@ enum CaptchaStore {
     }
 }
 
+/// A spare slider challenge, fetched ahead of time (Build 21).
+///
+/// The sheet used to request `captcha_new` only after it had
+/// appeared, so the user stared at an EMPTY track — no notch —
+/// for a full network round-trip. Now the account pages warm a
+/// challenge as soon as they open; the sheet adopts the spare in
+/// `viewDidLoad`, so the notch is part of the very first layout
+/// and simply THERE when the sheet fades in. Challenges live
+/// 120 s server-side; a spare counts as fresh for 60 s, and taking
+/// one immediately warms its replacement.
+enum CaptchaPrefetch {
+    struct Challenge {
+        let cid: String
+        let target: Int
+        let fetchedAt: Date
+    }
+
+    private static var spare: Challenge?
+    private static var fetching = false
+    private static let freshWindow: TimeInterval = 60
+
+    static func warm() {
+        guard !fetching else { return }
+        if let spare, Date().timeIntervalSince(spare.fetchedAt) <= freshWindow { return }
+        spare = nil
+        fetching = true
+        AccountAPI.post("captcha_new", ["device_id": AccountSession.deviceID]) { result in
+            fetching = false
+            guard case .ok(let json) = AccountAPI.outcome(result),
+                  let cid = json["cid"] as? String else { return }
+            spare = Challenge(cid: cid,
+                              target: json["target"] as? Int ?? 0,
+                              fetchedAt: Date())
+        }
+    }
+
+    /// Hands out the spare when it is still fresh (and warms the
+    /// next one behind it); nil when there is nothing usable, in
+    /// which case a refill is already on its way.
+    static func take() -> Challenge? {
+        guard let spare else { warm(); return nil }
+        guard Date().timeIntervalSince(spare.fetchedAt) <= freshWindow else {
+            self.spare = nil
+            warm()
+            return nil
+        }
+        self.spare = nil
+        warm()
+        return spare
+    }
+}
+
 enum CaptchaGate {
     /// Completes true when a valid proof is held afterwards (either
     /// already in memory or freshly verified); false on cancel.
@@ -182,6 +234,16 @@ final class CaptchaViewController: AccountFormBaseViewController {
         cancelButton.setTitleColor(splashHex("#aaacb6"), for: .normal)
         cancelButton.addTarget(self, action: #selector(cancelTapped), for: .touchUpInside)
         whiteView.addSubview(cancelButton)
+
+        // Build 21: adopt a prefetched challenge NOW, before the
+        // first layout pass, so `positionPieces()` renders the
+        // notch in the sheet's very first frame — no empty-track
+        // beat while `captcha_new` is in flight. `viewDidAppear`
+        // still falls back to a live fetch when no spare was ready.
+        if let challenge = CaptchaPrefetch.take() {
+            challengeID = challenge.cid
+            targetPerMille = challenge.target
+        }
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -229,6 +291,16 @@ final class CaptchaViewController: AccountFormBaseViewController {
     // MARK: Challenge lifecycle
 
     private func loadChallenge() {
+        // A spare may have landed since the sheet opened (the
+        // prefetch refills behind every take) — prefer it over a
+        // fresh network round-trip.
+        if let challenge = CaptchaPrefetch.take() {
+            challengeID = challenge.cid
+            targetPerMille = challenge.target
+            handleX = 0
+            positionPieces()
+            return
+        }
         challengeID = nil
         handleX = 0
         positionPieces()
@@ -282,6 +354,9 @@ final class CaptchaViewController: AccountFormBaseViewController {
                 if let proof = json["proof"] as? String {
                     let expires = (json["expires_in"] as? Int).map(TimeInterval.init) ?? 600
                     CaptchaStore.store(proof, expiresIn: expires)
+                    // Keep a spare challenge warm behind this proof
+                    // for the next time verification is needed.
+                    CaptchaPrefetch.warm()
                     setStatus("验证通过", danger: false, success: true)
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                         self.finish(true)
