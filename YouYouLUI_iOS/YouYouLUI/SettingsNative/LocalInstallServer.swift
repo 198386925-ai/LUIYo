@@ -425,7 +425,9 @@ final class LocalInstallServer {
         guard SecPKCS12Import(data as CFData, options as CFDictionary, &rawItems) == errSecSuccess,
               let items = rawItems as? [[String: Any]],
               let item = items.first,
-              let identity = item[kSecImportItemIdentity as String] as? SecIdentity else { return nil }
+              let rawIdentity = item[kSecImportItemIdentity as String],
+              CFGetTypeID(rawIdentity as CFTypeRef) == SecIdentityGetTypeID() else { return nil }
+        let identity = rawIdentity as! SecIdentity
         if let chain = item[kSecImportItemCertChain as String] as? [SecCertificate], !chain.isEmpty,
            let secIdentity = sec_identity_create_with_certificates(identity, chain as CFArray) {
             return secIdentity
