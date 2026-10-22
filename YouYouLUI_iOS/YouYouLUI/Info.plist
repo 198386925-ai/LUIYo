@@ -12,7 +12,7 @@
     <key>CFBundleShortVersionString</key>
 	<string>1.0.8</string>
     <key>CFBundleVersion</key>
-	<string>29</string>
+	<string>30</string>
     <key>LSApplicationQueriesSchemes</key>
     <array><string>loadcontroller</string></array>
     <key>NSSupportsLiveActivities</key><true/>

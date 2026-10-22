@@ -18,4 +18,13 @@ enum AppConfiguration {
     /// 反馈问题 · 联系客服 link and both banned popups' 联系客服
     /// button all open this exact URL.
     static let supportURL = URL(string: "https://qm.qq.com/q/th1QshgzHW")!
+
+    /// Password of the bundled local-install TLS identity
+    /// (`InstallServerCert.p12`, the publicly trusted cert for
+    /// `i.luioe.bbroot.com` that the on-device install server
+    /// presents). Set this when the .p12 is dropped into the app
+    /// target; empty until then — and while the file itself is
+    /// absent the 检查更新 page hides its 安装 action entirely,
+    /// so the value is never read.
+    static let installServerCertPassword = "luiyo-install-local"
 }

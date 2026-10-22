@@ -24,6 +24,20 @@ final class UpdateCheckViewController: UIViewController {
     private var lcSignButton: UIButton!
     private var signButton: UIButton!
     private var signingInProgress = false
+    private var installButton: UIButton!
+    /// The signed IPA from the last successful in-app signing of
+    /// the CURRENT download, and the bookkeeping that keeps the
+    /// post-sign card state (and the auto-sign chain) honest when
+    /// the download changes underneath it.
+    private var signedIPAURL: URL?
+    private var signedForDownloadURL: URL?
+    private var lastSeenDownloadURL: URL?
+    private var autoSignAttemptedFor: URL?
+    private var autoSignFailureText: String?
+    /// The on-device install server while an install hand-off
+    /// is in flight (nil otherwise). Retained here so it keeps
+    /// serving until it reports itself stopped.
+    private var installServer: LocalInstallServer?
 
     // LCSign detection (internal only — it decides the offer
     // card's primary action; it is never displayed on the page)
@@ -115,7 +129,7 @@ final class UpdateCheckViewController: UIViewController {
         stack.addArrangedSubview(certificateCard())
         let certNote = footnoteLabel("同时选择一份 P12 证书和描述文件，再输入密码，验证成功后保存。证书、密码与文件仅保存在本机钥匙串，不会上传。")
         stack.addArrangedSubview(certNote)
-        stack.addArrangedSubview(installNodeCard())
+        stack.addArrangedSubview(lcSignNodeCard())
         let nodeNote = footnoteLabel("安装节点由 LCSign 提供，在 LCSign 中选择；节点不可用时自动切换。")
         stack.addArrangedSubview(nodeNote)
 
@@ -362,6 +376,13 @@ final class UpdateCheckViewController: UIViewController {
         lcSignButton.translatesAutoresizingMaskIntoConstraints = false
         lcSignButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 46).isActive = true
 
+        installButton = UIButton(configuration: filledButtonConfiguration())
+        installButton.configuration?.title = "安装"
+        installButton.addTarget(self, action: #selector(installTapped), for: .touchUpInside)
+        content.addArrangedSubview(installButton)
+        installButton.translatesAutoresizingMaskIntoConstraints = false
+        installButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 46).isActive = true
+
         downloadButton = UIButton(configuration: filledButtonConfiguration())
         downloadButton.addTarget(self, action: #selector(downloadTapped), for: .touchUpInside)
         content.addArrangedSubview(downloadButton)
@@ -508,7 +529,7 @@ final class UpdateCheckViewController: UIViewController {
         return card
     }
 
-    private func installNodeCard() -> UIView {
+    private func lcSignNodeCard() -> UIView {
         let (card, inner) = makeCard()
         // Display only: install nodes live inside LCSign (the
         // hand-off URL carries no node choice), so this row is a
@@ -527,9 +548,23 @@ final class UpdateCheckViewController: UIViewController {
 
         offerCard.isHidden = !updater.updateFound
         lcSignButton.isHidden = true
+        // A signed result belongs to one specific download; when
+        // the downloaded file changes, the signed state (and the
+        // auto-sign attempt marker) starts over.
+        if updater.downloadedFileURL != lastSeenDownloadURL {
+            lastSeenDownloadURL = updater.downloadedFileURL
+            autoSignAttemptedFor = nil
+            autoSignFailureText = nil
+        }
+        if updater.downloadedFileURL != signedForDownloadURL { signedIPAURL = nil }
         // In-app signing is offered only for a finished download
         // with complete certificate material stored.
-        signButton.isHidden = !(updater.phase == .downloaded && UpdateSigner.canSign) || signingInProgress
+        signButton.isHidden = !(updater.phase == .downloaded && UpdateSigner.canSign) || signingInProgress || signedIPAURL != nil
+        // Direct install is offered only once the current download
+        // has actually been signed in-app AND the on-device
+        // install certificate ships in the bundle; without the
+        // cert file the action does not exist at all.
+        installButton.isHidden = !(updater.phase == .downloaded && signedIPAURL != nil && LocalInstallServer.isAvailable)
         guard updater.updateFound else { return }
         offerNotesLabel.text = updater.releaseNotes.isEmpty ? "本次更新：优化体验，修复已知问题。" : updater.releaseNotes
         switch updater.phase {
@@ -546,12 +581,30 @@ final class UpdateCheckViewController: UIViewController {
             downloadButton.isEnabled = true
         case .downloaded:
             progressView.isHidden = false
-            progressView.progress = 1
             progressBytesLabel.isHidden = false
-            progressBytesLabel.text = "下载完成 · \(AppUpdateChecker.formatBytes(updater.totalBytes > 0 ? updater.totalBytes : updater.downloadedBytes))"
-            downloadButton.configuration = filledButtonConfiguration()
-            downloadButton.configuration?.title = "分享 / 安装 IPA"
             downloadButton.isEnabled = true
+            if signingInProgress {
+                progressView.progress = 1
+                progressBytesLabel.text = "正在签名…"
+            } else if signedIPAURL != nil {
+                // Signed in-app: 安装 is the card's primary action
+                // (installButton, above the download button);
+                // sharing the signed IPA stays as the secondary.
+                progressView.progress = 1
+                progressBytesLabel.text = "签名完成 · 已通过签名校验"
+                downloadButton.configuration = secondaryButtonConfiguration()
+                downloadButton.configuration?.title = "分享"
+            } else if let autoSignFailureText {
+                progressView.progress = 1
+                progressBytesLabel.text = autoSignFailureText
+                downloadButton.configuration = filledButtonConfiguration()
+                downloadButton.configuration?.title = "分享 / 安装 IPA"
+            } else {
+                progressView.progress = 1
+                progressBytesLabel.text = "下载完成 · \(AppUpdateChecker.formatBytes(updater.totalBytes > 0 ? updater.totalBytes : updater.downloadedBytes))"
+                downloadButton.configuration = filledButtonConfiguration()
+                downloadButton.configuration?.title = "分享 / 安装 IPA"
+            }
         default:
             progressView.isHidden = true
             progressBytesLabel.isHidden = true
@@ -565,6 +618,19 @@ final class UpdateCheckViewController: UIViewController {
             }
             downloadButton.configuration?.title = "下载更新"
             downloadButton.isEnabled = true
+        }
+
+        // 自动下载并签名 chaining: the toggle (named for both
+        // halves) also carries a finished download straight into
+        // in-app signing when certificate material is stored.
+        // Signing only — starting the on-device install server
+        // and opening the system install prompt always stay
+        // deliberate taps.
+        if updater.phase == .downloaded, UpdateSettings.autoDownload, UpdateSigner.canSign,
+           !signingInProgress, signedIPAURL == nil,
+           let downloaded = updater.downloadedFileURL, autoSignAttemptedFor != downloaded {
+            autoSignAttemptedFor = downloaded
+            startSigning(auto: true)
         }
     }
 
@@ -599,7 +665,14 @@ final class UpdateCheckViewController: UIViewController {
         case .downloading:
             updater.cancelDownload()
         case .downloaded:
-            updater.shareDownloaded()
+            // Once the download has been signed in-app, the
+            // button shares the SIGNED file; before that it keeps
+            // sharing the plain downloaded IPA.
+            if let signedIPAURL {
+                presentShareSheet(fileURL: signedIPAURL)
+            } else {
+                updater.shareDownloaded()
+            }
         default:
             updater.startDownload()
         }
@@ -648,10 +721,18 @@ final class UpdateCheckViewController: UIViewController {
     }
 
     /// Signs the downloaded update in-app with the stored P12 +
-    /// profile (vendored zsign engine), verifies the result, then
-    /// offers the signed IPA through the share sheet. Any failure —
-    /// engine or self-check — is shown with its real reason.
-    @objc private func signTapped() {
+    /// profile (vendored zsign engine) and verifies the result.
+    /// On success the signed file stays on the offer card: 安装
+    /// (served by the on-device install server) becomes the
+    /// primary action when the install certificate is bundled,
+    /// and 分享 stays as the secondary action either way — no
+    /// sheet is thrown up automatically. `auto` marks the
+    /// 自动下载并签名 chain: it never raises an alert and never
+    /// presents anything; its outcome lands on the card's status
+    /// line.
+    @objc private func signTapped() { startSigning(auto: false) }
+
+    private func startSigning(auto: Bool) {
         guard let downloaded = updater.downloadedFileURL, !signingInProgress else { return }
         signingInProgress = true
         signButton.isHidden = true
@@ -664,11 +745,67 @@ final class UpdateCheckViewController: UIViewController {
             self.signingInProgress = false
             switch result {
             case .success(let signedURL):
-                self.progressBytesLabel.text = "签名完成 · 已通过签名校验"
-                self.presentShareSheet(fileURL: signedURL)
-            case .failure(let failure):
+                self.signedIPAURL = signedURL
+                self.signedForDownloadURL = downloaded
+                self.autoSignFailureText = nil
                 self.refresh()
-                self.showMessage(title: "签名失败", message: failure.message)
+            case .failure(let failure):
+                if auto {
+                    self.autoSignFailureText = "自动签名失败：\(failure.message)"
+                    self.refresh()
+                } else {
+                    self.refresh()
+                    self.showMessage(title: "签名失败", message: failure.message)
+                }
+            }
+        }
+    }
+
+    /// Starts the on-device install server with the signed IPA
+    /// and, once it is listening, hands the system's itms-services
+    /// installer a manifest URL whose host resolves (via its DNS
+    /// A record) to this very phone — the whole hand-off stays
+    /// on-device, no server of ours involved. Entirely
+    /// tap-driven: nothing here ever runs from the
+    /// auto-download/auto-sign chain. Any failure keeps the
+    /// share path available.
+    @objc private func installTapped() {
+        guard let signedIPAURL else { return }
+        // One install server at a time: a re-tap replaces the
+        // previous server (which then stops quietly, and its
+        // onStopped is ignored by the identity check below).
+        installServer?.stop()
+        let metadata = LocalInstallServer.metadata(
+            forIPA: signedIPAURL, fallbackVersion: updater.latestVersion)
+        let server = LocalInstallServer()
+        installServer = server
+        server.onReady = { [weak self] port in
+            guard let self else { return }
+            let manifestURL = "https://\(LocalInstallServer.host):\(port)/manifest.plist"
+            self.progressBytesLabel.isHidden = false
+            self.progressBytesLabel.text = "安装已发起，请按系统提示完成。"
+            self.openInstallManifest(manifestURL)
+        }
+        server.onStopped = { [weak self, weak server] reason in
+            guard let self, let server, self.installServer === server else { return }
+            self.installServer = nil
+            if case .failed(let failure) = reason {
+                self.showMessage(title: "安装失败", message: failure.message)
+            }
+        }
+        server.start(ipaURL: signedIPAURL, metadata: metadata)
+    }
+
+    private func openInstallManifest(_ manifestURLString: String) {
+        let allowed = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~")
+        guard let encoded = manifestURLString.addingPercentEncoding(withAllowedCharacters: allowed),
+              let url = URL(string: "itms-services://?action=download-manifest&url=\(encoded)") else {
+            showMessage(title: "安装失败", message: "安装链接无效。")
+            return
+        }
+        UIApplication.shared.open(url, options: [:]) { [weak self] success in
+            if !success {
+                self?.showMessage(title: "安装失败", message: "无法打开系统安装入口，请改用分享安装。")
             }
         }
     }
