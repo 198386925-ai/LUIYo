@@ -1,14 +1,15 @@
 import UIKit
 
-/// Chooses the root controller: gated behind the backend when configured,
-/// otherwise the standalone (always authorized) app.
+/// Builds the app's root shell. Authorization no longer gates the
+/// shell's existence — the entry gate (account door) decides who
+/// gets in at all; the shell is only SEEDED with the account
+/// system's current verdict (`AccountAuthorization`, from the
+/// backend `status` payload), and the entry gate's heartbeat keeps
+/// pushing fresh verdicts into it while it lives.
 enum AppRoot {
     static func makeRootViewController() -> UIViewController {
-        guard let endpoint = AppConfiguration.authorizationEndpoint else {
-            let standalone = MainShellViewController()
-            standalone.setAuthorization(true)
-            return standalone
-        }
-        return ActivationGateViewController(endpoint: endpoint)
+        let shell = MainShellViewController()
+        shell.setAuthorization(AccountAuthorization.isAuthorized)
+        return shell
     }
 }

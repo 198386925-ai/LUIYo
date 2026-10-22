@@ -67,8 +67,6 @@ extension MainShellViewController {
             engine.receiveBatch(engineFiles)
         case .fillImage:
             if let first = engineFiles.first { engine.receiveFillImage(first) }
-        case .heroAvatar:
-            break // avatar picks arrive through imagePicker.onAvatar instead
         }
     }
 
@@ -78,7 +76,7 @@ extension MainShellViewController {
 
     func showAuthorizationRequired() {
         let alert = UIAlertController(title: "尚未激活",
-                                      message: "其他功能都可以正常使用，只有导出 ZIP 需要激活。前往设置输入卡密即可激活。",
+                                      message: "其他功能都可以正常使用，只有导出 ZIP 需要激活。激活来自你的账号：账号绑定卡密且 SVIP 未过期即为已激活。",
                                       preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "知道了", style: .cancel))
         alert.addAction(UIAlertAction(title: "前往设置", style: .default) { [weak self] _ in
@@ -136,43 +134,5 @@ extension MainShellViewController {
     func applyBottomSearch(_ query: String) {
         if activeSearchPage == "home" { homeModel.query = query }
         if activeSearchPage == "rules" { rulesModel.query = query }
-    }
-
-    // MARK: - Settings hero
-
-    func editHeroAvatar() {
-        guard presentedViewController == nil else { return }
-        imagePicker.chooseImage(kind: .heroAvatar, index: nil)
-    }
-
-    func editHeroName() {
-        guard presentedViewController == nil else { return }
-        let alert = UIAlertController(title: "修改名字", message: nil, preferredStyle: .alert)
-        alert.addTextField { field in
-            field.text = self.preferences.heroName
-            field.placeholder = "输入名字"
-        }
-        alert.addAction(UIAlertAction(title: "取消", style: .cancel))
-        alert.addAction(UIAlertAction(title: "保存", style: .default) { [weak self, weak alert] _ in
-            guard let self,
-                  let name = alert?.textFields?.first?.text?.trimmingCharacters(in: .whitespacesAndNewlines),
-                  !name.isEmpty else { return }
-            self.preferences.heroName = String(name.prefix(32))
-            self.refreshHero()
-        })
-        present(alert, animated: true)
-    }
-
-    func saveHeroAvatar(_ data: Data) {
-        switch AvatarStore.saveAvatar(data: data) {
-        case .none:
-            refreshHero()
-        case .unreadable:
-            showNotice("无法读取所选头像。")
-        case .encoding:
-            showNotice("无法保存头像。")
-        case .write:
-            showNotice("头像保存失败，请重试。")
-        }
     }
 }

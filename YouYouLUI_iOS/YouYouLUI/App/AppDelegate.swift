@@ -13,15 +13,10 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         window.backgroundColor = ThemePalette.adaptiveBackground
         #if DEBUG && targetEnvironment(simulator)
         if let scenario = ProcessInfo.processInfo.environment["LUI_SNAPSHOT"] {
-            // Snapshot/debug runs skip the activation backend entirely.
+            // Snapshot/debug runs skip the account backend entirely;
+            // "preview-inline-auth" previews the unauthorized state.
             let shell = MainShellViewController()
             shell.setAuthorization(scenario != "preview-inline-auth")
-            if scenario == "preview-inline-auth" {
-                shell.onLicenseSubmitted = { [weak shell] code in
-                    shell?.setAuthorization(code == "UI-TEST",
-                                            message: code == "UI-TEST" ? nil : "测试卡密无效")
-                }
-            }
             window.rootViewController = shell
             window.makeKeyAndVisible()
             self.window = window

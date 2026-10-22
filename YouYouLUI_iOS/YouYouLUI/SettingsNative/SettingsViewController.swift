@@ -138,9 +138,11 @@ final class FoldView: UIView {
     }
 }
 
-/// Settings page (UIKit): identity hero, activation card, theme / guide /
-/// changelog folds and the update check row — same content and behaviour as
-/// the previous settings page, rendered with UIKit and the UIKit material.
+/// Settings page (UIKit): identity hero, theme / guide / changelog
+/// folds and the update check row — same content and behaviour as
+/// the previous settings page, rendered with UIKit and the UIKit
+/// material. (Authorization lives in the account system now; the
+/// hero card shows its state — there is no activation form here.)
 final class SettingsViewController: UIViewController {
     let model: SettingsNativeModel
     let homeModel: NativeHomeModel
@@ -150,11 +152,6 @@ final class SettingsViewController: UIViewController {
     private let stack = UIStackView()
     private let heroContainer = UIView()
     private var heroView: UIView?
-    private let activationCard = GlassCardView(radius: 26)
-    private let authStatus = UILabel()
-    private let codeField = UITextField()
-    private let activateButton = UIButton(type: .system)
-    private let spinner = UIActivityIndicatorView(style: .medium)
     private var themeFold: FoldView!
     private var guideFold: FoldView!
     private var changelogFold: FoldView!
@@ -167,7 +164,6 @@ final class SettingsViewController: UIViewController {
     private var materialSeg: PillSegmentedControl!
     private var bottomSearchSeg: PillSegmentedControl!
     private var fontSubtitleLabel: UILabel?
-    private var authIconView: UIImageView?
     private var cancellables = Set<AnyCancellable>()
 
 
@@ -220,9 +216,6 @@ final class SettingsViewController: UIViewController {
         heroContainer.heightAnchor.constraint(equalToConstant: 116).isActive = true
         stack.addArrangedSubview(heroContainer)
         rebuildHero()
-
-        buildActivationCard()
-        stack.addArrangedSubview(activationCard)
 
         themeFold = FoldView(icon: "circle.lefthalf.filled", iconImage: luiyoBundledIcon("theme"), title: "外观", subtitle: "卡片材质、背景、按钮与字体")
         themeFold.onToggle = { [weak self] in
@@ -330,9 +323,7 @@ final class SettingsViewController: UIViewController {
                 guard let self else { return }
                 self.model.changelogExpanded.toggle()
                 if self.model.changelogExpanded { self.model.pendingScroll = "changelog" }
-            },
-            { [weak self] in self?.model.onEditAvatar?() },
-            { [weak self] in self?.model.onEditName?() }
+            }
         )
         heroView = hero
         heroContainer.addSubview(hero)
@@ -350,93 +341,6 @@ final class SettingsViewController: UIViewController {
         guard let hero = heroView else { return }
         LUIYoRefreshSettingsHero(hero)
         LUIYoSetSettingsHeroFont(hero, model.fontController?.font)
-    }
-
-    // MARK: - Activation
-
-    private func buildActivationCard() {
-        let inner = UIStackView()
-        inner.axis = .vertical
-        inner.spacing = 10
-        activationCard.content.addSubview(inner)
-        inner.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            inner.leadingAnchor.constraint(equalTo: activationCard.content.leadingAnchor, constant: 15),
-            inner.trailingAnchor.constraint(equalTo: activationCard.content.trailingAnchor, constant: -15),
-            inner.topAnchor.constraint(equalTo: activationCard.content.topAnchor, constant: 14),
-            inner.bottomAnchor.constraint(equalTo: activationCard.content.bottomAnchor, constant: -14),
-        ])
-        let titleRow = UIStackView()
-        titleRow.axis = .horizontal
-        titleRow.spacing = 8
-        titleRow.alignment = .center
-        let shield = UIImageView(image: luiyoBundledIcon(model.isAuthorized ? "auth-yes" : "auth-no"))
-        authIconView = shield
-        shield.tintColor = UIAppColors.inkDynamic
-        shield.contentMode = .scaleAspectFit
-        shield.translatesAutoresizingMaskIntoConstraints = false
-        shield.widthAnchor.constraint(equalToConstant: 19).isActive = true
-        shield.heightAnchor.constraint(equalToConstant: 19).isActive = true
-        let title = UILabel()
-        title.text = "激活授权"
-        title.font = UIFont.systemFont(ofSize: 13, weight: .semibold)
-        title.textColor = UIAppColors.inkDynamic
-        titleRow.addArrangedSubview(shield)
-        titleRow.addArrangedSubview(title)
-        inner.addArrangedSubview(titleRow)
-
-        authStatus.font = UIFont.systemFont(ofSize: 10)
-        authStatus.numberOfLines = 0
-        inner.addArrangedSubview(authStatus)
-
-        let fieldRow = UIStackView()
-        fieldRow.axis = .horizontal
-        fieldRow.spacing = 10
-        fieldRow.alignment = .center
-        codeField.placeholder = "输入卡密"
-        codeField.font = UIFont.systemFont(ofSize: 10)
-        codeField.autocapitalizationType = .allCharacters
-        codeField.autocorrectionType = .no
-        codeField.returnKeyType = .go
-        codeField.backgroundColor = UIColor(red: 120 / 255, green: 120 / 255, blue: 128 / 255, alpha: 0.08)
-        codeField.layer.cornerRadius = 22
-        codeField.layer.borderWidth = 1 / UIScreen.main.scale
-        codeField.layer.borderColor = UIAppColors.dividerStrong.cgColor
-        codeField.leftView = UIView(frame: CGRect(x: 0, y: 0, width: 16, height: 1))
-        codeField.leftViewMode = .always
-        codeField.rightView = UIView(frame: CGRect(x: 0, y: 0, width: 16, height: 1))
-        codeField.rightViewMode = .always
-        codeField.delegate = self
-        codeField.translatesAutoresizingMaskIntoConstraints = false
-        codeField.heightAnchor.constraint(equalToConstant: 44).isActive = true
-        fieldRow.addArrangedSubview(codeField)
-
-        activateButton.setTitle("激活", for: .normal)
-        activateButton.setTitleColor(.white, for: .normal)
-        activateButton.titleLabel?.font = UIFont.systemFont(ofSize: 10)
-        activateButton.backgroundColor = UIAppColors.accentPurple
-        activateButton.layer.cornerRadius = 24
-        activateButton.addTarget(self, action: #selector(submitLicense), for: .touchUpInside)
-        activateButton.translatesAutoresizingMaskIntoConstraints = false
-        activateButton.widthAnchor.constraint(equalToConstant: 48).isActive = true
-        activateButton.heightAnchor.constraint(equalToConstant: 48).isActive = true
-        fieldRow.addArrangedSubview(activateButton)
-        inner.addArrangedSubview(fieldRow)
-
-        spinner.hidesWhenStopped = true
-        activateButton.addSubview(spinner)
-        spinner.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            spinner.centerXAnchor.constraint(equalTo: activateButton.centerXAnchor),
-            spinner.centerYAnchor.constraint(equalTo: activateButton.centerYAnchor),
-        ])
-    }
-
-    @objc private func submitLicense() {
-        let code = (codeField.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !code.isEmpty else { return }
-        codeField.resignFirstResponder()
-        model.onSubmitLicense?(code)
     }
 
     // MARK: - Theme content
@@ -852,18 +756,6 @@ final class SettingsViewController: UIViewController {
     // MARK: - Refresh
 
     private func refreshFromModel() {
-        authStatus.text = model.authMessage
-        authIconView?.image = luiyoBundledIcon(model.isAuthorized ? "auth-yes" : "auth-no")
-        authStatus.textColor = model.isAuthorized
-            ? UIColor(red: 0x24 / 255, green: 0x8A / 255, blue: 0x3D / 255, alpha: 1)
-            : UIAppColors.secondary
-        if model.authBusy {
-            spinner.startAnimating()
-            activateButton.setTitle("", for: .normal)
-        } else {
-            spinner.stopAnimating()
-            activateButton.setTitle("激活", for: .normal)
-        }
         backgroundWell?.selectedColor = UIColor(nativeHex: model.backgroundColorHex)
         minimizeSwitch?.setOn(model.minimizeBottomBar, animated: false)
         appearanceSeg?.setSelectedValue(model.appearanceMode)
@@ -876,20 +768,12 @@ final class SettingsViewController: UIViewController {
     private func refreshTheme() {
         view.backgroundColor = UIColor(nativeHex: homeModel.theme.background)
         let tint = UIColor(nativeHex: homeModel.theme.card)
-        activationCard.configure(useBlur: homeModel.useBlur, tint: tint)
         updateCard.configure(useBlur: homeModel.useBlur, tint: tint)
         appSettingsCard.configure(useBlur: homeModel.useBlur, tint: tint)
         themeFold?.configureGlass(useBlur: homeModel.useBlur, tint: tint)
         guideFold?.configureGlass(useBlur: homeModel.useBlur, tint: tint)
         changelogFold?.configureGlass(useBlur: homeModel.useBlur, tint: tint)
         for card in changelogCards { card.configure(useBlur: homeModel.useBlur, tint: tint) }
-    }
-}
-
-extension SettingsViewController: UITextFieldDelegate {
-    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
-        submitLicense()
-        return true
     }
 }
 

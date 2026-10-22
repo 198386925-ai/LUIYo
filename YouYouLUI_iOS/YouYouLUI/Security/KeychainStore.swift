@@ -1,8 +1,8 @@
 import Foundation
 import Security
 
-/// Keychain-backed secret storage. Used for the activation token, the device
-/// identifier and the registration secret — never UserDefaults.
+/// Keychain-backed secret storage. Used for the account session
+/// (token, email, account device id) — never UserDefaults.
 enum KeychainStore {
     private static let service = "LUIYo.Auth"
 

@@ -2,21 +2,19 @@ import PhotosUI
 import UIKit
 import UniformTypeIdentifiers
 
-/// Photo / file picking for icon uploads, batch import, fill image and the
-/// settings avatar. Results are handed back as base64 PNG payloads.
+/// Photo / file picking for icon uploads, batch import and fill image.
+/// Results are handed back as base64 PNG payloads.
 final class ImagePickerCoordinator: NSObject, PHPickerViewControllerDelegate, UIDocumentPickerDelegate {
     enum Kind: String {
         case upload
         case batch
         case fillImage
-        case heroAvatar
     }
 
     private weak var presenter: UIViewController?
 
     /// Files as `["name":…, "type":…, "base64":…]`, plus the originating request.
     var onFiles: (([[String: String]], Kind, Int?) -> Void)?
-    var onAvatar: ((Data) -> Void)?
     var onFailure: ((String) -> Void)?
 
     private var kind: Kind = .upload
@@ -92,14 +90,6 @@ final class ImagePickerCoordinator: NSObject, PHPickerViewControllerDelegate, UI
             guard let self else { return }
             let file = data.flatMap { Self.pngFile(data: $0, name: provider.suggestedName ?? "图片.png") }
             DispatchQueue.main.async {
-                if requestedKind == .heroAvatar {
-                    guard let data else {
-                        self.onFailure?("无法读取头像，请换一张图片。")
-                        return
-                    }
-                    self.onAvatar?(data)
-                    return
-                }
                 guard let file else {
                     self.onFailure?("无法读取照片，请使用文件选择或换一张图片。")
                     return

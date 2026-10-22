@@ -223,8 +223,6 @@ final class AppSettingsViewController: UIViewController {
         // exists; the behavior is unchanged — confirmation, clear
         // the account session, and the entry gate hears the
         // notification and swaps the app back to splash 03 at once.
-        // (The old device-code activation is a separate system and
-        // is not touched.)
         logoutCard.backgroundColor = UIColor(nativeHex: homeModel.theme.card)
         logoutCard.layer.cornerRadius = 26
         logoutCard.clipsToBounds = true

@@ -60,15 +60,10 @@ void LUIYoSetThemeSwitch(UIControl *view, BOOL enabled) {
     ((LUIYoHeroSwitchHost *)view).sourceSwitch.on = enabled;[view setNeedsLayout];
 }
 static UIView *LUISettingsLiquidWrapSwitch(UISwitch *toggle) { return [[LUIYoHeroSwitchHost alloc] initWithSwitch:toggle]; }
-static NSURL *LUIYoHeroAvatarURL(void) { return [[NSFileManager.defaultManager URLsForDirectory:NSApplicationSupportDirectory inDomains:NSUserDomainMask].firstObject URLByAppendingPathComponent:@"SettingsAvatar.png"]; }
 static UIImage *LUISettingsAvatarImage(void) {
-    UIImage *saved = [UIImage imageWithContentsOfFile:LUIYoHeroAvatarURL().path];
-    if (saved) return saved;
-    UIImage *reference = [UIImage imageNamed:@"BrandReference"];
-    if (!reference.CGImage) return nil;
-    CGImageRef crop = CGImageCreateWithImageInRect(reference.CGImage, CGRectMake(108,88,144,148));
-    if (!crop) return nil;
-    UIImage *avatar = [UIImage imageWithCGImage:crop];CGImageRelease(crop);return avatar;
+    // 头像已固定为内置默认头像（DefaultAvatar）：不再读用户自选的
+    // 头像文件，也不再裁品牌参考图兜底——所有人永远是同一张。
+    return [UIImage imageNamed:@"DefaultAvatar"];
 }
 static BOOL LUIConfigBool(NSString *key, BOOL fallback) { id value = [NSUserDefaults.standardUserDefaults objectForKey:key]; return value ? [value boolValue] : fallback; }
 static void LUIConfigSetBool(NSString *key, BOOL enabled) { [NSUserDefaults.standardUserDefaults setBool:enabled forKey:key]; }
@@ -79,14 +74,6 @@ static void LUISettingsApplyLiquidCardBackground(UITableViewCell *cell) {
     UIView *background = [UIView new];background.backgroundColor = LUISettingsLiquidDynamicColor([UIColor colorWithWhite:.99 alpha:1],[UIColor colorWithWhite:.13 alpha:1]);background.layer.cornerRadius = 24;background.clipsToBounds = YES;cell.backgroundView = background;
 }
 #include "LUISettingsHeroCell.m"
-@interface LUIYoEditableHeroCell : LUISettingsHeroCell
-@property(nonatomic,copy) void (^onAvatar)(void);
-@property(nonatomic,copy) void (^onName)(void);
-@end
-@implementation LUIYoEditableHeroCell
-- (void)editAvatar { if (self.onAvatar) self.onAvatar(); }
-- (void)editName { if (self.onName) self.onName(); }
-@end
 static UIFont *_LUIYoHeroCustomFont = nil;
 static UIFont *LUIYoLoadThemeFontFromDisk(void) {
     NSArray *paths = NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory, NSUserDomainMask, YES);
@@ -116,7 +103,12 @@ void LUIYoRefreshSettingsHero(UIView *view) {
     if (!_LUIYoHeroCustomFont) {
         _LUIYoHeroCustomFont = LUIYoLoadThemeFontFromDisk();
     }
-    NSString *name = [NSUserDefaults.standardUserDefaults stringForKey:@"youyou.hero.name"] ?: @"LUIYo";
+    // 名字 = 账号展示名（服务器分配的「LUI用户+4位数字」，由
+    // AccountAuthorization 镜像到 youyou.account.displayName；
+    // 服务器还没给名时镜像里是本机按账号生成的同格式兜底名）。
+    // 镜像为空只可能是账号状态还没回来过，用品牌名占位一瞬。
+    NSString *name = [NSUserDefaults.standardUserDefaults stringForKey:@"youyou.account.displayName"];
+    if (name.length == 0) name = @"LUIYo";
     NSString *shortVer = [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"] ?: @"1.0.6";
     NSString *buildNum = [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleVersion"] ?: @"";
     NSString *version = [NSString stringWithFormat:@"Version%@ Build%@", shortVer, buildNum];
@@ -198,14 +190,12 @@ void LUIYoSetSettingsHeroFont(UIView *view, UIFont * _Nullable font) {
         LUIYoSetHeroButtonFont(cell.logButton, [UIFont systemFontOfSize:12.0 weight:UIFontWeightSemibold]);
     }
 }
-UIView *LUIYoCreateSettingsHero(void (^onInfo)(void), void (^onChangelog)(void), void (^onAvatar)(void), void (^onName)(void)) {
+UIView *LUIYoCreateSettingsHero(void (^onInfo)(void), void (^onChangelog)(void)) {
     [NSUserDefaults.standardUserDefaults registerDefaults:@{@"luiyo.hero.enabled":@YES}];
-    LUIYoEditableHeroCell *cell = [[LUIYoEditableHeroCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
-    cell.onInfo = onInfo;cell.onChangelog = onChangelog;cell.onAvatar = onAvatar;cell.onName = onName;
-    cell.avatarView.userInteractionEnabled = YES;cell.avatarView.accessibilityLabel = @"更换头像";cell.avatarView.accessibilityTraits = UIAccessibilityTraitButton;cell.avatarView.isAccessibilityElement = YES;
-    [cell.avatarView addGestureRecognizer:[[UITapGestureRecognizer alloc] initWithTarget:cell action:@selector(editAvatar)]];
-    cell.nameLabel.userInteractionEnabled = YES;cell.nameLabel.accessibilityLabel = @"修改名字";cell.nameLabel.accessibilityTraits = UIAccessibilityTraitButton;
-    [cell.nameLabel addGestureRecognizer:[[UITapGestureRecognizer alloc] initWithTarget:cell action:@selector(editName)]];
+    // 头像与名字都已固定（默认头像 + 服务器分配的展示名），
+    // 头像和名字不再挂任何点按编辑手势。
+    LUISettingsHeroCell *cell = [[LUISettingsHeroCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
+    cell.onInfo = onInfo;cell.onChangelog = onChangelog;
     LUIYoRefreshSettingsHero(cell);
     return cell;
 }

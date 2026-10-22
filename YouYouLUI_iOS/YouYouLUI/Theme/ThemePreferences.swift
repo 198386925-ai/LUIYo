@@ -15,9 +15,11 @@ enum PreferenceKey {
     static let bottomSearchLayout = "youyou.bottomSearchLayout"
     static let minimizeBottomBar = "youyou.minimizeBottomBar"
     static let cardMaterialMode = "youyou.cardMaterialMode"
-    static let heroName = "youyou.hero.name"
-    static let deviceCode = "youyou.device.code"
-    static let authTier = "youyou.auth.tier"
+    static let accountSVIP = "youyou.account.svip"
+    static let accountSVIPExpiresAt = "youyou.account.svipExpiresAt"
+    static let accountEmail = "youyou.account.email"
+    static let accountDisplayName = "youyou.account.displayName"
+    static let accountLocalDisplayNames = "youyou.account.localDisplayNames"
     static let nativeIconColors = "luiyo.nativeIconColors"
 
     static func color(_ kind: ThemeColorKind, appearance: String) -> String {
@@ -32,12 +34,11 @@ enum PreferenceKey {
 }
 
 extension Notification.Name {
-    static let luiyoDeviceCodeUpdated = Notification.Name("LUIYoDeviceCodeUpdated")
-    static let luiyoTierUpdated = Notification.Name("LUIYoTierUpdated")
+    static let luiyoAccountAuthUpdated = Notification.Name("LUIYoAccountAuthUpdated")
 }
 
-/// Typed access to persisted preferences. Also broadcasts backend-driven
-/// device-code / tier changes so the settings hero card can refresh.
+/// Typed access to persisted preferences. Also broadcasts account
+/// authorization changes so the settings hero card can refresh.
 final class ThemePreferences {
     static let shared = ThemePreferences()
 
@@ -81,29 +82,75 @@ final class ThemePreferences {
         set { defaults.set(newValue, forKey: PreferenceKey.cardMaterialMode) }
     }
 
-    var heroName: String {
-        get { defaults.string(forKey: PreferenceKey.heroName) ?? "LUIYo" }
-        set { defaults.set(newValue, forKey: PreferenceKey.heroName) }
-    }
-
-    /// Device code assigned by the backend; rendered by the hero cell.
-    var deviceCode: String? {
-        get { defaults.string(forKey: PreferenceKey.deviceCode) }
+    /// Whether the account backend's latest `status` verdict says the
+    /// logged-in account holds SVIP (a card is bound). One of the three
+    /// mirrors the ObjC hero cell reads; kept in sync by
+    /// `AccountAuthorization`, cleared on account logout.
+    var accountSVIP: Bool {
+        get { defaults.bool(forKey: PreferenceKey.accountSVIP) }
         set {
-            guard newValue != deviceCode, let value = newValue else { return }
-            defaults.set(value, forKey: PreferenceKey.deviceCode)
-            NotificationCenter.default.post(name: .luiyoDeviceCodeUpdated, object: value)
+            guard newValue != accountSVIP else { return }
+            defaults.set(newValue, forKey: PreferenceKey.accountSVIP)
+            NotificationCenter.default.post(name: .luiyoAccountAuthUpdated, object: nil)
         }
     }
 
-    /// Membership level: `free`, `vip` or `svip` (lowercase — the hero cell expects that).
-    var authTier: String? {
-        get { defaults.string(forKey: PreferenceKey.authTier) }
+    /// Unix seconds at which the account's SVIP expires (0 = none).
+    var accountSVIPExpiresAt: Int {
+        get { defaults.integer(forKey: PreferenceKey.accountSVIPExpiresAt) }
         set {
-            guard newValue != authTier, let value = newValue else { return }
-            defaults.set(value, forKey: PreferenceKey.authTier)
-            NotificationCenter.default.post(name: .luiyoTierUpdated, object: value)
+            guard newValue != accountSVIPExpiresAt else { return }
+            defaults.set(newValue, forKey: PreferenceKey.accountSVIPExpiresAt)
+            NotificationCenter.default.post(name: .luiyoAccountAuthUpdated, object: nil)
         }
+    }
+
+    /// The logged-in account's email, mirrored for the hero cell.
+    var accountEmail: String? {
+        get { defaults.string(forKey: PreferenceKey.accountEmail) }
+        set {
+            guard newValue != accountEmail else { return }
+            if let value = newValue {
+                defaults.set(value, forKey: PreferenceKey.accountEmail)
+            } else {
+                defaults.removeObject(forKey: PreferenceKey.accountEmail)
+            }
+            NotificationCenter.default.post(name: .luiyoAccountAuthUpdated, object: nil)
+        }
+    }
+
+    /// The EFFECTIVE display name shown on the hero card, mirrored
+    /// for the ObjC hero cell like `accountEmail`. Written only by
+    /// `AccountAuthorization`: the server's `display_name` when the
+    /// backend has issued one, otherwise the per-account local
+    /// fallback (see `localDisplayName(for:)`), so the hero always
+    /// has one stable name to show. Cleared on account logout.
+    var accountDisplayName: String? {
+        get { defaults.string(forKey: PreferenceKey.accountDisplayName) }
+        set {
+            guard newValue != accountDisplayName else { return }
+            if let value = newValue {
+                defaults.set(value, forKey: PreferenceKey.accountDisplayName)
+            } else {
+                defaults.removeObject(forKey: PreferenceKey.accountDisplayName)
+            }
+            NotificationCenter.default.post(name: .luiyoAccountAuthUpdated, object: nil)
+        }
+    }
+
+    /// Per-account locally generated fallback display names
+    /// (email → `LUI用户XXXX`), in the same format as the server's.
+    /// Minted once per account and kept, so until the server's own
+    /// name arrives the same account always shows the same name on
+    /// this device. The map deliberately survives logout: it is
+    /// keyed by account, and a different account gets its own entry.
+    func localDisplayName(for email: String) -> String {
+        var map = defaults.dictionary(forKey: PreferenceKey.accountLocalDisplayNames) as? [String: String] ?? [:]
+        if let existing = map[email], !existing.isEmpty { return existing }
+        let name = "LUI用户" + String(format: "%04d", Int.random(in: 0...9999))
+        map[email] = name
+        defaults.set(map, forKey: PreferenceKey.accountLocalDisplayNames)
+        return name
     }
 
     var nativeIconColors: [String: Any] {

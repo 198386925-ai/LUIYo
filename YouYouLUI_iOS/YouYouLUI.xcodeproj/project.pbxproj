@@ -34,10 +34,6 @@
 		AA2700000000000000000101 /* Shell/ShellNativePages.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2700000000000000000001 /* Shell/ShellNativePages.swift */; };
 		AA2700000000000000000104 /* SettingsNative/SettingsNativeModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2700000000000000000004 /* SettingsNative/SettingsNativeModel.swift */; };
 		AA2700000000000000000106 /* RulesNative/NamingRulesData.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2700000000000000000006 /* RulesNative/NamingRulesData.swift */; };
-		FA2961FB5633FC10E2AF92FF /* Activation/ActivationSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = FABB56384934C201D01ADE15 /* Activation/ActivationSession.swift */; };
-		FA50B0034834700E2E4CC499 /* Activation/ActivationClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = FACD8C46F898050E42BF7744 /* Activation/ActivationClient.swift */; };
-		FAC1D9BB473106800C85707D /* Activation/ActivationGateViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAE564ABA9BE31FCCE5518B9 /* Activation/ActivationGateViewController.swift */; };
-		FA5925C69EA9D6830202EF81 /* Activation/DeviceIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAA990653CF8682B4A704B9A /* Activation/DeviceIdentity.swift */; };
 		FADCB0C8100B87AE3402EBD7 /* Security/KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FADF1C2C059C0960FC3D796C /* Security/KeychainStore.swift */; };
 		FA7618FE4D3C5D317D4C706D /* Shell/MainShellViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA8F34A714C9BD2EBFD270E6 /* Shell/MainShellViewController.swift */; };
 		FACA21DCC6C883036B3295CC /* Shell/ShellPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = FACA65EBD8293017FF474553 /* Shell/ShellPage.swift */; };
@@ -64,7 +60,6 @@
 		FAB88770138095FADCA478E4 /* Theme/ThemePalette.swift in Sources */ = {isa = PBXBuildFile; fileRef = FADCB3D1A5D1D28DEBCEA31F /* Theme/ThemePalette.swift */; };
 		FAE4F527C5465693276BE754 /* Theme/ThemeFontController.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA6F31695F5A172407A567B7 /* Theme/ThemeFontController.swift */; };
 		FA3200738243F84693660ADB /* Media/ImagePickerCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA357A306A9798A5599CF755 /* Media/ImagePickerCoordinator.swift */; };
-		FA971017D1B57A9DFFB3EC53 /* Media/AvatarStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA6860AC2000CCEA19E77B9F /* Media/AvatarStore.swift */; };
 		FAAB0163EDB48A291B3F613A /* Export/ZipExportCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = FACE449EFB76EEF520FBFC40 /* Export/ZipExportCoordinator.swift */; };
 		FA6D0ED3956689722DF6A2F7 /* Support/ColorHex.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA15BD58CEC136F3AF897F08 /* Support/ColorHex.swift */; };
 		FA955A8A8DD9AB978DFBC9FD /* Support/LayerShadowCleanup.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA2668F5F110B7112A36605C /* Support/LayerShadowCleanup.swift */; };
@@ -149,10 +144,6 @@
 		AA2700000000000000000001 /* Shell/ShellNativePages.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "YouYouLUI/Shell/ShellNativePages.swift"; sourceTree = SOURCE_ROOT; };
 		AA2700000000000000000004 /* SettingsNative/SettingsNativeModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "YouYouLUI/SettingsNative/SettingsNativeModel.swift"; sourceTree = SOURCE_ROOT; };
 		AA2700000000000000000006 /* RulesNative/NamingRulesData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "YouYouLUI/RulesNative/NamingRulesData.swift"; sourceTree = SOURCE_ROOT; };
-		FABB56384934C201D01ADE15 /* Activation/ActivationSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivationSession.swift; sourceTree = "<group>"; };
-		FACD8C46F898050E42BF7744 /* Activation/ActivationClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivationClient.swift; sourceTree = "<group>"; };
-		FAE564ABA9BE31FCCE5518B9 /* Activation/ActivationGateViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivationGateViewController.swift; sourceTree = "<group>"; };
-		FAA990653CF8682B4A704B9A /* Activation/DeviceIdentity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceIdentity.swift; sourceTree = "<group>"; };
 		FADF1C2C059C0960FC3D796C /* Security/KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
 		FA8F34A714C9BD2EBFD270E6 /* Shell/MainShellViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainShellViewController.swift; sourceTree = "<group>"; };
 		FACA65EBD8293017FF474553 /* Shell/ShellPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellPage.swift; sourceTree = "<group>"; };
@@ -179,7 +170,6 @@
 		FADCB3D1A5D1D28DEBCEA31F /* Theme/ThemePalette.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemePalette.swift; sourceTree = "<group>"; };
 		FA6F31695F5A172407A567B7 /* Theme/ThemeFontController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeFontController.swift; sourceTree = "<group>"; };
 		FA357A306A9798A5599CF755 /* Media/ImagePickerCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImagePickerCoordinator.swift; sourceTree = "<group>"; };
-		FA6860AC2000CCEA19E77B9F /* Media/AvatarStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AvatarStore.swift; sourceTree = "<group>"; };
 		FACE449EFB76EEF520FBFC40 /* Export/ZipExportCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZipExportCoordinator.swift; sourceTree = "<group>"; };
 		FA15BD58CEC136F3AF897F08 /* Support/ColorHex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorHex.swift; sourceTree = "<group>"; };
 		FA2668F5F110B7112A36605C /* Support/LayerShadowCleanup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LayerShadowCleanup.swift; sourceTree = "<group>"; };
@@ -268,7 +258,6 @@
 			isa = PBXGroup;
 			children = (
 				FA1C48CE29E4E135EE62951B /* App */,
-				FAF6042FB16305D735797F6F /* Activation */,
 				FAE7592F3E5067AA74E2DD06 /* Security */,
 				FA72B4D395CBFFB3EEC69CDE /* Shell */,
 				FA05E1B6709B573B6A023CF5 /* Bridge */,
@@ -297,17 +286,6 @@
 				FAC27303F1BB572179545909 /* AppConfiguration.swift */,
 			);
 			path = App;
-			sourceTree = "<group>";
-		};
-		FAF6042FB16305D735797F6F /* Activation */ = {
-			isa = PBXGroup;
-			children = (
-				FABB56384934C201D01ADE15 /* ActivationSession.swift */,
-				FACD8C46F898050E42BF7744 /* ActivationClient.swift */,
-				FAE564ABA9BE31FCCE5518B9 /* ActivationGateViewController.swift */,
-				FAA990653CF8682B4A704B9A /* DeviceIdentity.swift */,
-			);
-			path = Activation;
 			sourceTree = "<group>";
 		};
 		FAE7592F3E5067AA74E2DD06 /* Security */ = {
@@ -379,7 +357,6 @@
 			isa = PBXGroup;
 			children = (
 				FA357A306A9798A5599CF755 /* ImagePickerCoordinator.swift */,
-				FA6860AC2000CCEA19E77B9F /* AvatarStore.swift */,
 			);
 			path = Media;
 			sourceTree = "<group>";
@@ -634,10 +611,6 @@
 				AA2700000000000000000101 /* Shell/ShellNativePages.swift in Sources */,
 				AA2700000000000000000104 /* SettingsNative/SettingsNativeModel.swift in Sources */,
 				AA2700000000000000000106 /* RulesNative/NamingRulesData.swift in Sources */,
-				FA2961FB5633FC10E2AF92FF /* Activation/ActivationSession.swift in Sources */,
-				FA50B0034834700E2E4CC499 /* Activation/ActivationClient.swift in Sources */,
-				FAC1D9BB473106800C85707D /* Activation/ActivationGateViewController.swift in Sources */,
-				FA5925C69EA9D6830202EF81 /* Activation/DeviceIdentity.swift in Sources */,
 				FADCB0C8100B87AE3402EBD7 /* Security/KeychainStore.swift in Sources */,
 				FA7618FE4D3C5D317D4C706D /* Shell/MainShellViewController.swift in Sources */,
 				FACA21DCC6C883036B3295CC /* Shell/ShellPage.swift in Sources */,
@@ -658,7 +631,6 @@
 				FAB88770138095FADCA478E4 /* Theme/ThemePalette.swift in Sources */,
 				FAE4F527C5465693276BE754 /* Theme/ThemeFontController.swift in Sources */,
 				FA3200738243F84693660ADB /* Media/ImagePickerCoordinator.swift in Sources */,
-				FA971017D1B57A9DFFB3EC53 /* Media/AvatarStore.swift in Sources */,
 				FAAB0163EDB48A291B3F613A /* Export/ZipExportCoordinator.swift in Sources */,
 				FA6D0ED3956689722DF6A2F7 /* Support/ColorHex.swift in Sources */,
 				FA955A8A8DD9AB978DFBC9FD /* Support/LayerShadowCleanup.swift in Sources */,

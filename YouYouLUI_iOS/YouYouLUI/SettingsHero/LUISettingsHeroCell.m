@@ -1,6 +1,6 @@
 // ============================================================================
 // LUISettingsHeroCell.m — 一级页品牌卡（v3 墨玉 · 2026-09-20 用户拍板）
-// 116pt · r24：左 48 圆头像（当前微信账号头像，LUISettingsAvatarImage；取不到时回落石墨底「L」字标，深色反转雾白）+ 3pt 外环；中 名字 20/700 + 两枚胶囊（等宽版本号、
+// 116pt · r24：左 48 圆头像（内置默认头像 DefaultAvatar，LUISettingsAvatarImage 恒定返回它；取不到时回落石墨底「L」字标，深色反转雾白）+ 3pt 外环；中 名字（账号展示名）20/700 + 两枚胶囊（登录邮箱、
 // 砂金点「已启用」）；右 总开关（TUTKeyPluginEnabled，同 SwitchCell 落盘口径）；底部两枚 28pt 玻璃按钮
 // 「插件信息 ›」「更新日志 ›」——把此前 profile 行的点按目标与顶栏感叹号都收进来。
 // 装饰：右上一组墨色同心水纹（1pt · 9%）+ 左上到右下一道白 55%→0 斜向高光，尾端极淡砂金。
@@ -181,8 +181,7 @@ static UILabel *LUISettingsHeroMakeChipLabel(UIFont *font) {
     [self.contentView addSubview:_logButton];
 
     [self lui_refreshDecorColors];
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(lui_deviceCodeUpdated:) name:@"LUIYoDeviceCodeUpdated" object:nil];
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(lui_tierUpdated:) name:@"LUIYoTierUpdated" object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(lui_accountAuthUpdated:) name:@"LUIYoAccountAuthUpdated" object:nil];
     return self;
 }
 
@@ -190,12 +189,21 @@ static UILabel *LUISettingsHeroMakeChipLabel(UIFont *font) {
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
-- (void)lui_deviceCodeUpdated:(NSNotification *)note {
+- (void)lui_accountAuthUpdated:(NSNotification *)note {
     [self lui_refreshTierChip];
+    [self lui_refreshDisplayName];
 }
 
-- (void)lui_tierUpdated:(NSNotification *)note {
-    [self lui_refreshTierChip];
+/// 名字 = 账号展示名（服务器分配、本机只展示）：随账号镜像
+/// youyou.account.displayName 刷新；服务器的名字第一次到达时
+/// 正在看的页面也能立刻换上，不用等下次进页面。
+- (void)lui_refreshDisplayName {
+    NSString *_name = [NSUserDefaults.standardUserDefaults stringForKey:@"youyou.account.displayName"];
+    if (_name.length == 0) return;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        self.nameLabel.text = _name;
+        [self setNeedsLayout];
+    });
 }
 
 - (void)lui_refreshDecorColors {
@@ -217,26 +225,27 @@ static UILabel *LUISettingsHeroMakeChipLabel(UIFont *font) {
                                            : [UIColor colorWithRed:0.12 green:0.13 blue:0.15 alpha:1.0];
 }
 
+/// 资料卡胶囊只显示登录邮箱本身，不带任何等级前缀。配色沿用
+/// 改版前免费/SVIP 两套胶囊方案、按账号授权状态切换：已授权 =
+/// 砂金底白字，未授权 = 免费用户的中性灰。数据源是账号系统：
+/// `AccountAuthorization` 把 status 结论镜像到 youyou.account.*
+/// 三键（svip / 到期时间 / 邮箱）并广播 LUIYoAccountAuthUpdated；
+/// 退出登录时三键已被清空，不会残留上一个账号的邮箱。
 - (void)lui_refreshTierChip {
-    NSString *_tier = [NSUserDefaults.standardUserDefaults stringForKey:@"youyou.auth.tier"] ?: @"free";
-    NSString *_tname = @"免费用户";
-    if ([_tier isEqualToString:@"vip"]) _tname = @"普通会员";
-    else if ([_tier isEqualToString:@"svip"]) _tname = @"SVIP会员";
-    NSString *_dcode = [NSUserDefaults.standardUserDefaults stringForKey:@"youyou.device.code"];
-    if (!_dcode || _dcode.length == 0) {
-        NSString *_uuid = [[[UIDevice currentDevice] identifierForVendor] UUIDString];
-        NSString *_sid = [[_uuid stringByReplacingOccurrencesOfString:@"-" withString:@""] substringToIndex:6];
-        _dcode = [NSString stringWithFormat:@"D-%@", [_sid uppercaseString]];
-    }
+    NSUserDefaults *_defaults = NSUserDefaults.standardUserDefaults;
+    BOOL _svip = [_defaults boolForKey:@"youyou.account.svip"];
+    NSTimeInterval _expires = [_defaults doubleForKey:@"youyou.account.svipExpiresAt"];
+    BOOL _authorized = _svip && _expires > NSDate.date.timeIntervalSince1970;
+    NSString *_email = [_defaults stringForKey:@"youyou.account.email"] ?: @"";
     dispatch_async(dispatch_get_main_queue(), ^{
-        self.versionChip.text = [NSString stringWithFormat:@"%@ · %@", _tname, _dcode];
+        self.versionChip.text = _email;
         self.versionChip.hidden = NO;
-        if ([_tier isEqualToString:@"free"]) {
-            self.versionChip.backgroundColor = [UIColor colorWithRed:0.92 green:0.92 blue:0.94 alpha:1.0];
-            self.versionChip.textColor = [UIColor colorWithRed:0.45 green:0.45 blue:0.48 alpha:1.0];
-        } else {
+        if (_authorized) {
             self.versionChip.backgroundColor = [UIColor colorWithRed:0.78 green:0.60 blue:0.23 alpha:1.0];
             self.versionChip.textColor = [UIColor whiteColor];
+        } else {
+            self.versionChip.backgroundColor = [UIColor colorWithRed:0.92 green:0.92 blue:0.94 alpha:1.0];
+            self.versionChip.textColor = [UIColor colorWithRed:0.45 green:0.45 blue:0.48 alpha:1.0];
         }
         [self setNeedsLayout];
     });
@@ -256,14 +265,15 @@ static UILabel *LUISettingsHeroMakeChipLabel(UIFont *font) {
     LUISettingsApplyLiquidCardBackground(self);
     self.contentView.backgroundColor = UIColor.clearColor;
     self.key = key;
-    self.nameLabel.text = @"LUIYo";
+    NSString *_dn = [NSUserDefaults.standardUserDefaults stringForKey:@"youyou.account.displayName"];
+    self.nameLabel.text = _dn.length ? _dn : @"LUIYo";
     [self lui_refreshTierChip];
     [self lui_refreshAvatar];
     [self lui_refreshStatus];
     [self setNeedsLayout];
 }
 
-/// 头像：当前微信账号头像（2026-09-21 用户：「顶部的 L 图像要改成显示用户的头像」）；取不到就露出石墨底「L」字标。
+/// 头像：内置默认头像（所有人同一张，不可更换）；万一资源缺失才露出石墨底「L」字标。
 - (void)lui_refreshAvatar {
     UIImage *avatar = LUISettingsAvatarImage();
     self.avatarImageView.image = avatar;

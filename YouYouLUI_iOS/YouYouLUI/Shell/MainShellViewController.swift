@@ -19,12 +19,11 @@ import UniformTypeIdentifiers
 final class MainShellViewController: UITabBarController {
     // MARK: - Authorization
 
-    var onActivationRequested: (() -> Void)?
-    var onLicenseSubmitted: ((String) -> Void)?
-    var onPageChanged: ((String) -> Void)?
+    /// The account system's verdict, pushed in by the entry gate
+    /// (`AccountAuthorization`): logged in + SVIP bound + unexpired.
+    /// It gates exactly one thing — exporting the ZIP; everything
+    /// else in the app works regardless (standing rule).
     var isAuthorized = false
-    var authorizationMessage = "未激活 · 仅可浏览"
-    var authorizationBusy = false
 
     // MARK: - Collaborators
 
@@ -176,7 +175,6 @@ final class MainShellViewController: UITabBarController {
 
         imagePicker = ImagePickerCoordinator(presenter: self)
         imagePicker.onFiles = { [weak self] files, kind, index in self?.receiveFiles(files, kind: kind, index: index) }
-        imagePicker.onAvatar = { [weak self] data in self?.saveHeroAvatar(data) }
         imagePicker.onFailure = { [weak self] text in self?.showNotice(text) }
         zipExport = ZipExportCoordinator(presenter: self)
         zipExport.onNameChosen = { [weak self] name in self?.engine.finishExport(name: name) }
@@ -233,12 +231,9 @@ final class MainShellViewController: UITabBarController {
         homeModel.importedFont = fontController.font(for: .home)
     }
 
-    func setAuthorization(_ allowed: Bool, message: String? = nil, busy: Bool = false) {
-        homeModel.authorized = allowed
+    func setAuthorization(_ allowed: Bool) {
         isAuthorized = allowed
-        authorizationMessage = message ?? (allowed ? "已授权" : "未激活 · 仅可浏览")
-        authorizationBusy = busy
-        syncNativeSettingsAuth()
+        homeModel.authorized = allowed
         if nativeHomeReady { engine.colorsUpdated() }
     }
 }

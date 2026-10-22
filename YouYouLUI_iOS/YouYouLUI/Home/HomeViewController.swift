@@ -418,6 +418,9 @@ final class HomeHeaderCell: UICollectionViewCell {
         authIcon.image = UIImage(systemName: model.authorized ? "checkmark.seal.fill" : "lock.fill",
                                  withConfiguration: UIImage.SymbolConfiguration(pointSize: 14, weight: .medium))
         authIcon.tintColor = model.authorized ? .systemGreen : UIAppColors.secondary
+        // Wording exactly as designed （已授权/未授权）; what changed
+        // is only the source — `authorized` is now the account
+        // authorization verdict pushed by the shell.
         authLabel.text = model.authorized ? "已授权" : "未授权"
         authLabel.textColor = model.authorized ? .systemGreen : UIAppColors.secondary
         authLabel.font = hfont(12, .medium)

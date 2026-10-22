@@ -13,12 +13,6 @@ extension MainShellViewController {
         model.fontController = self.fontController
         model.hasCustomFont = self.fontController.library.hasAnyCustomSelection
         model.customFontName = self.fontController.library.summary()
-        model.isAuthorized = isAuthorized
-        model.authMessage = authorizationMessage
-        model.authBusy = authorizationBusy
-        model.onSubmitLicense = { [weak self] code in self?.onLicenseSubmitted?(code) }
-        model.onEditAvatar = { [weak self] in self?.editHeroAvatar() }
-        model.onEditName = { [weak self] in self?.editHeroName() }
         model.onAppearanceChanged = { [weak self] mode in self?.applyAppearance(mode) }
         model.onCardMaterialChanged = { [weak self] mode in self?.setCardMaterialMode(mode) }
         model.onColorsChanged = { [weak self] in self?.applyStoredPalette() }
@@ -91,15 +85,6 @@ extension MainShellViewController {
     /// The Rules host if it has been created already (never creates it).
     var existingRulesHost: RulesViewController? {
         objc_getAssociatedObject(self, &AssociatedKeys.rulesHost) as? RulesViewController
-    }
-
-    /// Pushes the shell's current authorization state into the native
-    /// Settings model (called from setAuthorization).
-    func syncNativeSettingsAuth() {
-        guard let model = objc_getAssociatedObject(self, &AssociatedKeys.settingsModel) as? SettingsNativeModel else { return }
-        model.isAuthorized = isAuthorized
-        model.authMessage = authorizationMessage
-        model.authBusy = authorizationBusy
     }
 
     /// Re-renders the native hero card after name/avatar changes.

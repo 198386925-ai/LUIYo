@@ -22,9 +22,12 @@ import UIKit
 ///   mid-session gets the same red popup without waiting for the
 ///   next launch — and a kicked token drops back to the 03 gate.
 ///
-/// The OLD device-code activation system is untouched by this build:
-/// it lives inside `AppRoot`'s controller exactly as before, and the
-/// account gate is purely the door in front of it.
+/// The account system is the app's only authorization system: every
+/// `status` verdict also feeds `AccountAuthorization` (SVIP state
+/// from the same payload), which the gate pushes into the installed
+/// shell — the launch check, the post-login refresh and the 30 s
+/// heartbeat all keep the home status row, the hero chip and the
+/// export-ZIP gate in sync.
 final class EntryGateViewController: UIViewController {
     private var contentViewController: UIViewController?
     private var splash03: Splash03ViewController?
@@ -101,8 +104,8 @@ final class EntryGateViewController: UIViewController {
     /// The account session was cleared in settings: tear everything
     /// down — presented pages, the installed app, any splash — and
     /// put the 03 register gate back up. The next launch lands here
-    /// too (no token). The OLD device-code activation inside the app
-    /// is untouched: only the account door closed.
+    /// too (no token). The session clear has already reset the
+    /// authorization mirrors (see `AccountSession.clear()`).
     @objc private func accountLoggedOut() {
         tearDownToGate()
     }
@@ -110,7 +113,9 @@ final class EntryGateViewController: UIViewController {
     /// Tears everything down — presented pages, the installed app,
     /// any splash, the ban popup, the heartbeat — and puts the 03
     /// register gate back up. Shared by the settings logout, the
-    /// ban popup's 退出 and a mid-session kicked verdict.
+    /// ban popup's 退出 and a mid-session kicked verdict. (Callers
+    /// clear the account session first, which also resets
+    /// `AccountAuthorization` — see `AccountSession.clear()`.)
     private func tearDownToGate() {
         stopHeartbeat()
         if presentedViewController != nil {
@@ -145,7 +150,10 @@ final class EntryGateViewController: UIViewController {
     private func applyVerdict() {
         guard let splash = splash04, let verdict = statusVerdict else { return }
         switch verdict {
-        case .ok, .unreachable:
+        case .ok(let email, let svip, let svipExpiresAt, let displayName):
+            AccountAuthorization.update(email: email, svip: svip, svipExpiresAt: svipExpiresAt, displayName: displayName)
+            fallthrough
+        case .unreachable:
             // Build 21: the home shell is installed UNDER the
             // splash first, fully rendered, and finish() then
             // dissolves the splash into it in one monotonic fade;
@@ -245,7 +253,11 @@ final class EntryGateViewController: UIViewController {
             case .invalid:
                 AccountSession.clear()
                 tearDownToGate()
-            case .ok, .unreachable:
+            case .ok(let email, let svip, let svipExpiresAt, let displayName):
+                // SVIP grants / expiries land here within ~30 s,
+                // same cadence as bans and kicks.
+                applyAccountAuthorization(email: email, svip: svip, svipExpiresAt: svipExpiresAt, displayName: displayName)
+            case .unreachable:
                 break
             }
         }
@@ -261,6 +273,10 @@ final class EntryGateViewController: UIViewController {
     /// the splash's own finish() own the single exit fade.)
     private func installContent() {
         guard addContentView() else { return }
+        // Fresh login/register: the shell was seeded from the cached
+        // verdict, so pull a live one — a card bound during register
+        // grants SVIP the moment the home screen appears.
+        refreshAccountAuthorization()
         splash03?.shutdown()
         let splash = splash03 ?? splash04
         splash03 = nil
@@ -271,6 +287,35 @@ final class EntryGateViewController: UIViewController {
         }, completion: { _ in
             self.remove(splash)
         })
+    }
+
+    // MARK: Account authorization
+
+    /// Records a `status` verdict in `AccountAuthorization` and
+    /// pushes the computed state into the installed shell. Called by
+    /// the launch verdict, the post-login refresh and every
+    /// heartbeat tick that hears back from the server.
+    private func applyAccountAuthorization(email: String, svip: Bool, svipExpiresAt: Int, displayName: String) {
+        AccountAuthorization.update(email: email, svip: svip, svipExpiresAt: svipExpiresAt, displayName: displayName)
+        pushAuthorizationToShell()
+    }
+
+    private func pushAuthorizationToShell() {
+        guard let shell = contentViewController as? MainShellViewController else { return }
+        shell.setAuthorization(AccountAuthorization.isAuthorized)
+    }
+
+    /// One-shot `status` fetch whose only job is the authorization
+    /// verdict (used right after a fresh login/register; the launch
+    /// path and the heartbeat have their own flows). Banned/invalid
+    /// verdicts are left for the heartbeat to surface.
+    private func refreshAccountAuthorization() {
+        AccountAPI.fetchStatus { [weak self] status in
+            guard let self else { return }
+            if case .ok(let email, let svip, let svipExpiresAt, let displayName) = status {
+                applyAccountAuthorization(email: email, svip: svip, svipExpiresAt: svipExpiresAt, displayName: displayName)
+            }
+        }
     }
 
     /// Adds `AppRoot` under any splash currently up and starts the
