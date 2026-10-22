@@ -4,8 +4,10 @@ import UniformTypeIdentifiers
 
 /// The 检查更新 page, rebuilt after the reference update page: the
 /// current version and a manual check with its status line share
-/// one card — and, once a check finds one, the update offer (notes
-/// + in-app download with progress) folds into that same card —
+/// one card — the card always carries a collapsible 更新日志
+/// section (the current version's bundled changelog, or the new
+/// build's feed notes once a check finds one), and the update
+/// offer (in-app download with progress) folds in below it —
 /// then the install-method row heading the behaviour switches
 /// card, and the certificate card (UDID entry, 导入证书， and the
 /// install-node row as its last row). The feed is the luioe
@@ -21,17 +23,26 @@ final class UpdateCheckViewController: UIViewController {
     private var offerDivider: UIView!
     private var offerNotesLabel: UILabel!
     private var offerChevron: UIImageView!
-    /// 更新内容 starts collapsed; the header row toggles it. A
+    /// 更新日志 starts collapsed; the header row toggles it. A
     /// newly discovered build resets it to collapsed.
     private var notesExpanded = false
     private var lastOfferBuild = 0
     private var progressView: UIProgressView!
     private var progressBytesLabel: UILabel!
     private var downloadButton: UIButton!
-    private var lcSignButton: UIButton!
-    private var signButton: UIButton!
     private var signingInProgress = false
-    private var installButton: UIButton!
+    /// Marks a chain started by tapping 立即下载 (its failures
+    /// alert, like the old manual signing), as opposed to the
+    /// 自动下载并签名 switch's silent chain, whose failures land
+    /// on the status line only.
+    private var manualChain = false
+    /// The signed IPA the on-device install was already handed
+    /// to (the auto-install trigger fires once per signed
+    /// download), and the one whose install hand-off failed (no
+    /// auto-retry — the button falls back to sharing the signed
+    /// file instead).
+    private var installAttemptedFor: URL?
+    private var installFailedFor: URL?
     /// The signed IPA from the last successful in-app signing of
     /// the CURRENT download, and the bookkeeping that keeps the
     /// post-sign card state (and the auto-sign chain) honest when
@@ -46,9 +57,7 @@ final class UpdateCheckViewController: UIViewController {
     /// serving until it reports itself stopped.
     private var installServer: LocalInstallServer?
 
-    // LCSign detection (internal only — it decides the offer
-    // card's primary action; it is never displayed on the page)
-    private var lcSignDetected = false
+
 
     // Status line
     private var statusLabel: UILabel!
@@ -57,13 +66,6 @@ final class UpdateCheckViewController: UIViewController {
     // Certificate section
     private var certUDIDRow: UIControl!
     private var certUDIDValueLabel: UILabel!
-    private var certUDIDCopyButton: UIButton!
-    /// The UDID the cert-card entry row currently shows (nil
-    /// while the row reads 请导入证书 / 未包含 — no copy button
-    /// is shown in those states).
-    private var certUDIDCopyText: String?
-    private var certUDIDCopyFeedbackToken = 0
-
     init(updater: AppUpdateChecker, homeModel: NativeHomeModel) {
         self.updater = updater
         self.homeModel = homeModel
@@ -149,15 +151,11 @@ final class UpdateCheckViewController: UIViewController {
             .store(in: &cancellables)
         refresh()
         refreshCertificate()
-        refreshLCSignDetection()
         PageFontApplier.apply(pageFont, to: view)
     }
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        // LCSign may have been installed or removed since the page
-        // was last shown — re-probe on every appearance.
-        refreshLCSignDetection()
         // Opening this page never starts a check on its own: the
         // status line simply shows the updater's last known state
         // (the background auto-check keeps that state fresh, and
@@ -171,7 +169,7 @@ final class UpdateCheckViewController: UIViewController {
     private func makeCard() -> (card: UIView, inner: UIStackView) {
         let card = UIView()
         card.backgroundColor = UIColor(nativeHex: homeModel.theme.card)
-        card.layer.cornerRadius = 18
+        card.layer.cornerRadius = 22
         card.clipsToBounds = true
         let inner = UIStackView()
         inner.axis = .vertical
@@ -318,18 +316,22 @@ final class UpdateCheckViewController: UIViewController {
             statusLabel.bottomAnchor.constraint(equalTo: statusRow.bottomAnchor, constant: -10),
         ])
         inner.addArrangedSubview(statusRow)
-        // The update offer folds into this same card, below the
-        // status line, whenever a check has found a newer build.
+        // The 更新日志 section lives in this same card, below the
+        // status line; the offer UI folds in under it whenever a
+        // check has found a newer build.
         offerDivider = divider()
         inner.addArrangedSubview(offerDivider)
         inner.addArrangedSubview(buildOfferSection())
         return card
     }
 
-    /// The offer UI as a section of the version-check card (it was
-    /// a standalone card before): 更新内容 header + notes, the
-    /// download progress, then the phase buttons. The header row
-    /// folds the notes — collapsed by default, tap to expand.
+    /// The 更新日志 + offer UI as a section of the version-check
+    /// card (it was a standalone card before): 更新日志 header +
+    /// notes, the download progress, then the one action button.
+    /// The header row folds the notes — collapsed by default, tap
+    /// to expand. The header and notes are always present; the
+    /// progress and button join them only while an update is on
+    /// offer.
     private func buildOfferSection() -> UIView {
         let content = UIStackView()
         content.axis = .vertical
@@ -339,7 +341,7 @@ final class UpdateCheckViewController: UIViewController {
 
         let headerRow = UIControl()
         headerRow.addTarget(self, action: #selector(offerHeaderTapped), for: .touchUpInside)
-        let headerTitle = rowLabel("更新内容", size: 13, weight: .semibold)
+        let headerTitle = rowLabel("更新日志", size: 13, weight: .semibold)
         headerTitle.isUserInteractionEnabled = false
         headerRow.addSubview(headerTitle)
         offerChevron = UIImageView(image: UIImage(systemName: "chevron.right", withConfiguration: UIImage.SymbolConfiguration(pointSize: 12, weight: .semibold)))
@@ -370,32 +372,14 @@ final class UpdateCheckViewController: UIViewController {
         progressBytesLabel = rowLabel("", size: 12, color: UIAppColors.secondary)
         content.addArrangedSubview(progressBytesLabel)
 
-        lcSignButton = UIButton(configuration: filledButtonConfiguration())
-        lcSignButton.configuration?.title = "用 LCSign 签装"
-        lcSignButton.addTarget(self, action: #selector(lcSignTapped), for: .touchUpInside)
-        content.addArrangedSubview(lcSignButton)
-        lcSignButton.translatesAutoresizingMaskIntoConstraints = false
-        lcSignButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 46).isActive = true
-
-        installButton = UIButton(configuration: filledButtonConfiguration())
-        installButton.configuration?.title = "安装"
-        installButton.addTarget(self, action: #selector(installTapped), for: .touchUpInside)
-        content.addArrangedSubview(installButton)
-        installButton.translatesAutoresizingMaskIntoConstraints = false
-        installButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 46).isActive = true
-
+        // Exactly one action button for the whole offer: its
+        // title and role follow the phase (立即下载 / 取消下载 /
+        // 分享 fallback), driven from refresh().
         downloadButton = UIButton(configuration: filledButtonConfiguration())
         downloadButton.addTarget(self, action: #selector(downloadTapped), for: .touchUpInside)
         content.addArrangedSubview(downloadButton)
         downloadButton.translatesAutoresizingMaskIntoConstraints = false
         downloadButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 46).isActive = true
-
-        signButton = UIButton(configuration: secondaryButtonConfiguration())
-        signButton.configuration?.title = "签名此更新"
-        signButton.addTarget(self, action: #selector(signTapped), for: .touchUpInside)
-        content.addArrangedSubview(signButton)
-        signButton.translatesAutoresizingMaskIntoConstraints = false
-        signButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 46).isActive = true
 
         offerSection = content
         return content
@@ -406,6 +390,20 @@ final class UpdateCheckViewController: UIViewController {
         offerNotesLabel.isHidden = !notesExpanded
         offerChevron.image = UIImage(systemName: notesExpanded ? "chevron.down" : "chevron.right",
                                      withConfiguration: UIImage.SymbolConfiguration(pointSize: 12, weight: .semibold))
+    }
+
+    /// The current version's bundled changelog as plain lines,
+    /// rendered in the same label style as the feed notes. Reads
+    /// the very model the settings changelog UI renders
+    /// (SettingsContent.changelog) — no second copy of the text.
+    private static var currentVersionChangelogText: String {
+        let version = SettingsContent.changelog.first(where: { $0.isCurrent })
+            ?? SettingsContent.changelog.first
+        guard let version else { return "" }
+        return version.entries.map { entry in
+            guard let tag = entry.tag, !entry.text.hasPrefix(tag) else { return entry.text }
+            return "\(tag) \(entry.text)"
+        }.joined(separator: "\n")
     }
 
     /// Configuration buttons render their title from the
@@ -439,19 +437,6 @@ final class UpdateCheckViewController: UIViewController {
         config.cornerStyle = .capsule
         config.titleTextAttributesTransformer = buttonTitleTransformer
         return config
-    }
-
-    /// Probes the LCSign URL scheme (declared in
-    /// LSApplicationQueriesSchemes). The result stays internal:
-    /// it decides whether the offer card's primary action is the
-    /// LCSign hand-off or the in-app download.
-    private func refreshLCSignDetection() {
-        if let probe = URL(string: "loadcontroller://") {
-            lcSignDetected = UIApplication.shared.canOpenURL(probe)
-        } else {
-            lcSignDetected = false
-        }
-        refresh()
     }
 
     private func togglesCard() -> UIView {
@@ -492,19 +477,8 @@ final class UpdateCheckViewController: UIViewController {
         udidChevron.contentMode = .scaleAspectFit
         udidChevron.isUserInteractionEnabled = false
         certUDIDRow.addSubview(udidChevron)
-        // Copy button for the shown UDID, sitting ahead of the
-        // chevron. As its own control it takes its taps itself —
-        // the row's navigation target never sees them. Hidden
-        // until a real UDID is on the row (refreshCertificate).
-        certUDIDCopyButton = UIButton(type: .system)
-        certUDIDCopyButton.setImage(UIImage(systemName: "doc.on.doc", withConfiguration: UIImage.SymbolConfiguration(pointSize: 14, weight: .regular)), for: .normal)
-        certUDIDCopyButton.tintColor = UIAppColors.secondary
-        certUDIDCopyButton.addTarget(self, action: #selector(copyUDIDTapped), for: .touchUpInside)
-        certUDIDCopyButton.isHidden = true
-        certUDIDRow.addSubview(certUDIDCopyButton)
         certUDIDValueLabel.translatesAutoresizingMaskIntoConstraints = false
         udidChevron.translatesAutoresizingMaskIntoConstraints = false
-        certUDIDCopyButton.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             certUDIDRow.heightAnchor.constraint(greaterThanOrEqualToConstant: 44),
             certUDIDValueLabel.leadingAnchor.constraint(equalTo: certUDIDRow.leadingAnchor, constant: 16),
@@ -512,11 +486,7 @@ final class UpdateCheckViewController: UIViewController {
             certUDIDValueLabel.bottomAnchor.constraint(equalTo: certUDIDRow.bottomAnchor, constant: -12),
             udidChevron.trailingAnchor.constraint(equalTo: certUDIDRow.trailingAnchor, constant: -16),
             udidChevron.centerYAnchor.constraint(equalTo: certUDIDRow.centerYAnchor),
-            certUDIDCopyButton.widthAnchor.constraint(equalToConstant: 30),
-            certUDIDCopyButton.heightAnchor.constraint(equalToConstant: 30),
-            certUDIDCopyButton.trailingAnchor.constraint(equalTo: udidChevron.leadingAnchor, constant: -8),
-            certUDIDCopyButton.centerYAnchor.constraint(equalTo: certUDIDRow.centerYAnchor),
-            certUDIDValueLabel.trailingAnchor.constraint(lessThanOrEqualTo: certUDIDCopyButton.leadingAnchor, constant: -8),
+            certUDIDValueLabel.trailingAnchor.constraint(lessThanOrEqualTo: udidChevron.leadingAnchor, constant: -8),
         ])
         inner.addArrangedSubview(certUDIDRow)
         inner.addArrangedSubview(divider())
@@ -537,36 +507,48 @@ final class UpdateCheckViewController: UIViewController {
         statusLabel.isHidden = updater.statusText.isEmpty
         checkRow.isEnabled = updater.phase != .checking && updater.phase != .downloading
 
-        offerSection.isHidden = !updater.updateFound
-        offerDivider.isHidden = !updater.updateFound
+        // The 更新日志 section never hides: with an update on
+        // offer its notes are the new build's feed notes; in every
+        // other state (up to date, not yet checked, check failed)
+        // they are the current version's bundled changelog.
         // A newly discovered build starts with its notes folded.
         if updater.latestBuild != lastOfferBuild {
             lastOfferBuild = updater.latestBuild
             notesExpanded = false
+            manualChain = false
         }
         offerNotesLabel.isHidden = !notesExpanded
+        if updater.updateFound {
+            offerNotesLabel.text = updater.releaseNotes.isEmpty ? "本次更新：优化体验，修复已知问题。" : updater.releaseNotes
+        } else {
+            offerNotesLabel.text = Self.currentVersionChangelogText
+        }
         offerChevron.image = UIImage(systemName: notesExpanded ? "chevron.down" : "chevron.right",
                                      withConfiguration: UIImage.SymbolConfiguration(pointSize: 12, weight: .semibold))
-        lcSignButton.isHidden = true
         // A signed result belongs to one specific download; when
         // the downloaded file changes, the signed state (and the
-        // auto-sign attempt marker) starts over.
+        // chain bookkeeping) starts over.
         if updater.downloadedFileURL != lastSeenDownloadURL {
             lastSeenDownloadURL = updater.downloadedFileURL
             autoSignAttemptedFor = nil
             autoSignFailureText = nil
+            installAttemptedFor = nil
+            installFailedFor = nil
         }
+        // manualChain is NOT reset here: this very refresh may
+        // be the one that has to carry a tap-started chain into
+        // signing. It resets when a new build is discovered
+        // (above) instead.
         if updater.downloadedFileURL != signedForDownloadURL { signedIPAURL = nil }
-        // In-app signing is offered only for a finished download
-        // with complete certificate material stored.
-        signButton.isHidden = !(updater.phase == .downloaded && UpdateSigner.canSign) || signingInProgress || signedIPAURL != nil
-        // Direct install is offered only once the current download
-        // has actually been signed in-app AND the on-device
-        // install certificate ships in the bundle; without the
-        // cert file the action does not exist at all.
-        installButton.isHidden = !(updater.phase == .downloaded && signedIPAURL != nil && LocalInstallServer.isAvailable)
-        guard updater.updateFound else { return }
-        offerNotesLabel.text = updater.releaseNotes.isEmpty ? "本次更新：优化体验，修复已知问题。" : updater.releaseNotes
+        guard updater.updateFound else {
+            // No offer: the progress + action button stay out of
+            // the card; only the 更新日志 section above shows.
+            progressView.isHidden = true
+            progressBytesLabel.isHidden = true
+            downloadButton.isHidden = true
+            return
+        }
+        downloadButton.isHidden = false
         switch updater.phase {
         case .downloading:
             progressView.isHidden = false
@@ -581,56 +563,102 @@ final class UpdateCheckViewController: UIViewController {
             downloadButton.isEnabled = true
         case .downloaded:
             progressView.isHidden = false
+            progressView.progress = 1
             progressBytesLabel.isHidden = false
-            downloadButton.isEnabled = true
             if signingInProgress {
-                progressView.progress = 1
                 progressBytesLabel.text = "正在签名…"
-            } else if signedIPAURL != nil {
-                // Signed in-app: 安装 is the card's primary action
-                // (installButton, above the download button);
-                // sharing the signed IPA stays as the secondary.
-                progressView.progress = 1
-                progressBytesLabel.text = "签名完成 · 已通过签名校验"
+                downloadButton.configuration = filledButtonConfiguration()
+                downloadButton.configuration?.title = "立即下载"
+                downloadButton.isEnabled = false
+            } else if let signedIPAURL {
+                if installFailedFor == signedIPAURL {
+                    // The install hand-off failed (its alert has
+                    // already been shown): no auto-retry — the
+                    // signed file stays reachable through 分享.
+                    progressBytesLabel.text = "签名完成 · 已通过签名校验"
+                    downloadButton.configuration = secondaryButtonConfiguration()
+                    downloadButton.configuration?.title = "分享"
+                    downloadButton.isEnabled = true
+                } else if installAttemptedFor == signedIPAURL {
+                    // The chain already handed this file to the
+                    // on-device install. While its server is up
+                    // the install flow owns the bytes line
+                    // （安装已发起…); before it is ready, the
+                    // signed line stands.
+                    if installServer == nil {
+                        progressBytesLabel.text = "签名完成 · 已通过签名校验"
+                    }
+                    downloadButton.configuration = filledButtonConfiguration()
+                    downloadButton.configuration?.title = "安装"
+                    downloadButton.isEnabled = false
+                } else {
+                    // Signed, and no chain carried it into the
+                    // install (e.g. the install cert is not
+                    // bundled): sharing the signed IPA it is.
+                    progressBytesLabel.text = "签名完成 · 已通过签名校验"
+                    downloadButton.configuration = secondaryButtonConfiguration()
+                    downloadButton.configuration?.title = "分享"
+                    downloadButton.isEnabled = true
+                }
+            } else if let autoSignFailureText {
+                progressBytesLabel.text = autoSignFailureText
                 downloadButton.configuration = secondaryButtonConfiguration()
                 downloadButton.configuration?.title = "分享"
-            } else if let autoSignFailureText {
-                progressView.progress = 1
-                progressBytesLabel.text = autoSignFailureText
-                downloadButton.configuration = filledButtonConfiguration()
-                downloadButton.configuration?.title = "分享 / 安装 IPA"
+                downloadButton.isEnabled = true
+            } else if !UpdateSigner.canSign {
+                // The chain stops here: without usable cert
+                // material there is nothing to sign with. The
+                // downloaded IPA is not stranded — 分享 hands
+                // it out unsigned.
+                progressBytesLabel.text = "下载完成 · 请先导入证书"
+                downloadButton.configuration = secondaryButtonConfiguration()
+                downloadButton.configuration?.title = "分享"
+                downloadButton.isEnabled = true
+            } else if updater.downloadedFileURL == autoSignAttemptedFor {
+                // A chain attempt already ran for this download
+                // and produced no signed file (its failure was
+                // surfaced then): rest on the 分享 fallback.
+                progressBytesLabel.text = "下载完成 · \(AppUpdateChecker.formatBytes(updater.totalBytes > 0 ? updater.totalBytes : updater.downloadedBytes))"
+                downloadButton.configuration = secondaryButtonConfiguration()
+                downloadButton.configuration?.title = "分享"
+                downloadButton.isEnabled = true
             } else {
-                progressView.progress = 1
+                // A chain (switch or tap) is about to carry this
+                // download into signing — the chaining block at
+                // the end of refresh() fires it. The button
+                // rests disabled meanwhile.
                 progressBytesLabel.text = "下载完成 · \(AppUpdateChecker.formatBytes(updater.totalBytes > 0 ? updater.totalBytes : updater.downloadedBytes))"
                 downloadButton.configuration = filledButtonConfiguration()
-                downloadButton.configuration?.title = "分享 / 安装 IPA"
+                downloadButton.configuration?.title = "立即下载"
+                downloadButton.isEnabled = false
             }
         default:
             progressView.isHidden = true
             progressBytesLabel.isHidden = true
-            if lcSignDetected {
-                // The hand-off is the primary action; the in-app
-                // download stays as the secondary one.
-                lcSignButton.isHidden = false
-                downloadButton.configuration = secondaryButtonConfiguration()
-            } else {
-                downloadButton.configuration = filledButtonConfiguration()
-            }
-            downloadButton.configuration?.title = "下载更新"
+            downloadButton.configuration = filledButtonConfiguration()
+            downloadButton.configuration?.title = "立即下载"
             downloadButton.isEnabled = true
         }
 
-        // 自动下载并签名 chaining: the toggle (named for both
-        // halves) also carries a finished download straight into
-        // in-app signing when certificate material is stored.
-        // Signing only — starting the on-device install server
-        // and opening the system install prompt always stay
-        // deliberate taps.
-        if updater.phase == .downloaded, UpdateSettings.autoDownload, UpdateSigner.canSign,
+        // The chain: with the 自动下载并签名 switch on, or after
+        // a tap on 立即下载 (manualChain), a finished download
+        // goes straight into in-app signing, and a successful
+        // sign straight into the on-device install — the only
+        // prompt left is the system's own install confirmation.
+        // Without usable cert material the chain stops at the
+        // downloaded state （请先导入证书 + 分享）, rendered above.
+        let chainEngaged = UpdateSettings.autoDownload || manualChain
+        if updater.phase == .downloaded, chainEngaged, UpdateSigner.canSign,
            !signingInProgress, signedIPAURL == nil,
            let downloaded = updater.downloadedFileURL, autoSignAttemptedFor != downloaded {
             autoSignAttemptedFor = downloaded
-            startSigning(auto: true)
+            startSigning(auto: !manualChain)
+        }
+        if updater.phase == .downloaded, chainEngaged,
+           let signed = signedIPAURL, LocalInstallServer.isAvailable,
+           installAttemptedFor != signed, installFailedFor != signed {
+            installAttemptedFor = signed
+            beginInstall()
         }
     }
 
@@ -643,14 +671,12 @@ final class UpdateCheckViewController: UIViewController {
         // device list); with an empty store, the import prompt.
         if material.isEmpty {
             certUDIDValueLabel.text = "当前设备UDID：请导入证书"
-            certUDIDCopyText = nil
         } else {
             let udids = material.profiles.last.map { UpdateCertificateStore.provisionedDevices(in: $0.data) } ?? []
             certUDIDValueLabel.text = "当前设备UDID：\(udids.first ?? "未包含")"
-            certUDIDCopyText = udids.first
         }
-        certUDIDCopyButton.isHidden = certUDIDCopyText == nil
-        // Freshly imported material may unlock the 签名此更新 action.
+        // Freshly imported material may unblock the chain's
+        // sign step, so re-render the offer state too.
         refresh()
     }
 
@@ -665,77 +691,39 @@ final class UpdateCheckViewController: UIViewController {
         case .downloading:
             updater.cancelDownload()
         case .downloaded:
-            // Once the download has been signed in-app, the
-            // button shares the SIGNED file; before that it keeps
-            // sharing the plain downloaded IPA.
+            // In the downloaded state the button rests as 分享:
+            // it shares the SIGNED file once one exists, and the
+            // plain downloaded IPA before that (the no-cert and
+            // sign-failure fallbacks — the file is never
+            // stranded).
             if let signedIPAURL {
                 presentShareSheet(fileURL: signedIPAURL)
             } else {
                 updater.shareDownloaded()
             }
         default:
+            // 立即下载: start the chain — download, then signing,
+            // then the install hand-off, all driven from
+            // refresh(). A tap-started chain surfaces failures
+            // with an alert, like the old manual signing did.
+            manualChain = true
             updater.startDownload()
-        }
-    }
-
-    /// Hands the offered IPA to LCSign through its import scheme:
-    /// LCSign downloads the file itself and imports it as a project,
-    /// ready to sign and install with the user's own certificate
-    /// (managed inside LCSign). If the open fails, the in-app
-    /// download takes over, exactly like the plain download action.
-    @objc private func lcSignTapped() {
-        let rawURL = updater.latestDownloadURLString
-        // Every parameter value is percent-encoded on its own
-        // (RFC 3986 unreserved set) before joining: the download
-        // URL, the feed's SHA-256 (so LCSign can verify what it
-        // downloads; omitted when the feed has no digest), and
-        // the same file name the in-app download uses (so the
-        // imported project in LCSign is named properly).
-        let allowed = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~")
-        guard !rawURL.isEmpty,
-              let encodedURL = rawURL.addingPercentEncoding(withAllowedCharacters: allowed) else {
-            updater.startDownload()
-            return
-        }
-        var handoff = "loadcontroller://import?url=\(encodedURL)"
-        let sha256 = updater.latestSHA256
-        if !sha256.isEmpty, let encodedSHA = sha256.addingPercentEncoding(withAllowedCharacters: allowed) {
-            handoff += "&sha256=\(encodedSHA)"
-        }
-        let fileName = "LUIYo-\(updater.latestVersion)-Build(\(updater.latestBuild)).ipa"
-        if let encodedName = fileName.addingPercentEncoding(withAllowedCharacters: allowed) {
-            handoff += "&filename=\(encodedName)"
-        }
-        guard let handoffURL = URL(string: handoff) else {
-            updater.startDownload()
-            return
-        }
-        UIApplication.shared.open(handoffURL, options: [:]) { [weak self] success in
-            guard let self else { return }
-            if success {
-                self.updater.markLCSignHandoffCompleted()
-            } else {
-                self.updater.startDownload()
-            }
         }
     }
 
     /// Signs the downloaded update in-app with the stored P12 +
     /// profile (vendored zsign engine) and verifies the result.
-    /// On success the signed file stays on the offer card: 安装
-    /// (served by the on-device install server) becomes the
-    /// primary action when the install certificate is bundled,
-    /// and 分享 stays as the secondary action either way — no
-    /// sheet is thrown up automatically. `auto` marks the
-    /// 自动下载并签名 chain: it never raises an alert and never
-    /// presents anything; its outcome lands on the card's status
-    /// line.
-    @objc private func signTapped() { startSigning(auto: false) }
-
+    /// Runs only as part of a chain (the 自动下载并签名 switch,
+    /// or a tap on 立即下载): on success the chain carries the
+    /// signed file into the on-device install from refresh();
+    /// if the install cannot run, the card rests on 分享 for
+    /// the signed file. `auto` marks the switch's chain: it
+    /// never raises an alert and never presents anything; its
+    /// outcome lands on the card's status line. A tap-started
+    /// chain (auto == false) alerts on failure instead.
     private func startSigning(auto: Bool) {
         guard let downloaded = updater.downloadedFileURL, !signingInProgress else { return }
         signingInProgress = true
-        signButton.isHidden = true
         progressBytesLabel.isHidden = false
         progressBytesLabel.text = "正在签名…"
         UpdateSigner.signDownloadedUpdate(
@@ -765,15 +753,17 @@ final class UpdateCheckViewController: UIViewController {
     /// and, once it is listening, hands the system's itms-services
     /// installer a manifest URL whose host resolves (via its DNS
     /// A record) to this very phone — the whole hand-off stays
-    /// on-device, no server of ours involved. Entirely
-    /// tap-driven: nothing here ever runs from the
-    /// auto-download/auto-sign chain. Any failure keeps the
-    /// share path available.
-    @objc private func installTapped() {
+    /// on-device, no server of ours involved. The chain calls
+    /// this once signing succeeds, so the system's own install
+    /// confirmation is the only prompt the user ever sees. A
+    /// failure alerts and leaves the signed file reachable via
+    /// 分享.
+    private func beginInstall() {
         guard let signedIPAURL else { return }
-        // One install server at a time: a re-tap replaces the
-        // previous server (which then stops quietly, and its
-        // onStopped is ignored by the identity check below).
+        let signedURL = signedIPAURL
+        // One install server at a time: a previous server is
+        // stopped first (its onStopped is then ignored by the
+        // identity check below).
         installServer?.stop()
         let metadata = LocalInstallServer.metadata(
             forIPA: signedIPAURL, fallbackVersion: updater.latestVersion)
@@ -784,12 +774,20 @@ final class UpdateCheckViewController: UIViewController {
             let manifestURL = "https://\(LocalInstallServer.host):\(port)/manifest.plist"
             self.progressBytesLabel.isHidden = false
             self.progressBytesLabel.text = "安装已发起，请按系统提示完成。"
+            self.downloadButton.configuration = self.filledButtonConfiguration()
+            self.downloadButton.configuration?.title = "安装"
+            self.downloadButton.isEnabled = false
             self.openInstallManifest(manifestURL)
         }
         server.onStopped = { [weak self, weak server] reason in
             guard let self, let server, self.installServer === server else { return }
             self.installServer = nil
             if case .failed(let failure) = reason {
+                // No auto-retry: the card falls back to sharing
+                // the signed file.
+                self.installFailedFor = signedURL
+                self.installAttemptedFor = nil
+                self.refresh()
                 self.showMessage(title: "安装失败", message: failure.message)
             }
         }
@@ -853,25 +851,6 @@ final class UpdateCheckViewController: UIViewController {
         detail.applyPageFont(pageFont)
         detail.onMaterialChanged = { [weak self] in self?.refreshCertificate() }
         present(detail, animated: true)
-    }
-
-    /// Copies the UDID shown on the cert-card entry row. The
-    /// glyph flips to a checkmark for ~1.2s as the confirmation
-    /// (the tap itself already ticks via the global AppFeedback
-    /// swizzle); a token keeps a quick second tap from being
-    /// reverted by the first tap's timer.
-    @objc private func copyUDIDTapped() {
-        guard let udid = certUDIDCopyText else { return }
-        UIPasteboard.general.string = udid
-        certUDIDCopyFeedbackToken += 1
-        let token = certUDIDCopyFeedbackToken
-        certUDIDCopyButton.setImage(UIImage(systemName: "checkmark", withConfiguration: UIImage.SymbolConfiguration(pointSize: 14, weight: .semibold)), for: .normal)
-        certUDIDCopyButton.tintColor = .systemGreen
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
-            guard let self, self.certUDIDCopyFeedbackToken == token else { return }
-            self.certUDIDCopyButton.setImage(UIImage(systemName: "doc.on.doc", withConfiguration: UIImage.SymbolConfiguration(pointSize: 14, weight: .regular)), for: .normal)
-            self.certUDIDCopyButton.tintColor = UIAppColors.secondary
-        }
     }
 
     /// Validates everything first, then saves in one write: a parse
@@ -1035,7 +1014,7 @@ final class CertMaterialViewController: UIViewController {
     private func makeCard() -> (card: UIView, inner: UIStackView) {
         let card = UIView()
         card.backgroundColor = UIColor(nativeHex: homeModel.theme.card)
-        card.layer.cornerRadius = 18
+        card.layer.cornerRadius = 22
         card.clipsToBounds = true
         let inner = UIStackView()
         inner.axis = .vertical
@@ -1298,7 +1277,7 @@ final class CertMaterialViewController: UIViewController {
 /// the harmless one), mirroring a table row's full swipe. A tap
 /// fires `onTap` while closed, and just closes the row while
 /// open. Built by hand (not a table row) so the surrounding
-/// card's 12pt radius and the page-font walk apply unchanged.
+/// card's 22pt radius and the page-font walk apply unchanged.
 private final class SwipeRevealRow: UIView {
     var onTap: (() -> Void)?
     var onExport: (() -> Void)?
@@ -1561,7 +1540,7 @@ final class CertDetailViewController: UIViewController {
     private func makeCard() -> (card: UIView, inner: UIStackView) {
         let card = UIView()
         card.backgroundColor = UIColor(nativeHex: homeModel.theme.card)
-        card.layer.cornerRadius = 18
+        card.layer.cornerRadius = 22
         card.clipsToBounds = true
         let inner = UIStackView()
         inner.axis = .vertical
