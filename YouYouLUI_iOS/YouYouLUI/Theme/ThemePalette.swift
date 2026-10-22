@@ -2,22 +2,21 @@ import UIKit
 
 /// Resolves stored preferences into the dynamic colours the native shells paint.
 enum ThemePalette {
-    /// Light factory background. While no custom colour is stored the
-    /// shell actually paints the bundled `DefaultWallpaper` image;
-    /// this hex is the sampled average of that image (#FAFBFE) and is
-    /// the fallback for surfaces that can only take a solid colour.
-    static let lightBackground = "#FAFBFE"
+    /// Light factory background: the flat colour #EFEFF3 (Build 24 —
+    /// it replaced the earlier wallpaper-image default; the bundled
+    /// `DefaultWallpaper` asset remains in the catalog, unused).
+    /// Surfaces that can only take a solid colour use the same hex.
+    static let lightBackground = "#EFEFF3"
     static let darkBackground = "#121214"
     static let lightCard = "#FFFFFF"
     static let darkCard = "#1C1C1E"
 
     /// Background used by every page before any custom colour is applied.
-    /// Light = the DefaultWallpaper image's sampled average (#FAFBFE),
-    /// dark keeps its own #121214.
+    /// Light = #EFEFF3, dark keeps its own #121214.
     static let adaptiveBackground = UIColor { traits in
         traits.userInterfaceStyle == .dark
             ? UIColor(red: 18.0 / 255.0, green: 18.0 / 255.0, blue: 20.0 / 255.0, alpha: 1)
-            : UIColor(red: 250.0 / 255.0, green: 251.0 / 255.0, blue: 254.0 / 255.0, alpha: 1)
+            : UIColor(red: 239.0 / 255.0, green: 239.0 / 255.0, blue: 243.0 / 255.0, alpha: 1)
     }
 
     /// A stored light/dark pair, falling back to the supplied defaults.

@@ -167,8 +167,8 @@ final class ThemePreferences {
     }
 
     /// Removes a stored colour so the factory default applies again
-    /// (for the background: the bundled DefaultWallpaper image in
-    /// light appearance, the dark solid in dark appearance).
+    /// (for the background: the flat #EFEFF3 in light appearance,
+    /// the dark solid in dark appearance).
     func removeColorHex(_ kind: ThemeColorKind, appearance: String) {
         defaults.removeObject(forKey: PreferenceKey.color(kind, appearance: appearance))
     }

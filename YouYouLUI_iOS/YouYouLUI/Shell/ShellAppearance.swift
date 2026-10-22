@@ -34,25 +34,20 @@ extension MainShellViewController {
         }
     }
 
-    /// The factory-default wallpaper: while no custom background
-    /// colour is stored for the current appearance, the shell
-    /// background IS the bundled `DefaultWallpaper` image itself
-    /// (light appearance only — dark keeps its own solid default).
-    /// A stored custom colour always wins: the image clears and the
-    /// palette paints the colour instead. `homeModel.backgroundImage`
-    /// mirrors the image so Home (clear over an image) and the search
-    /// overlay (handed the image by the shell) follow the same state.
+    /// The factory default background is now a flat colour
+    /// (#EFEFF3 light / #121214 dark — see ThemePalette); there is
+    /// no default wallpaper image anymore. This pass only guarantees
+    /// the seat stays empty: any image a previous build placed here
+    /// (or mirrored into `homeModel.backgroundImage` for Home / the
+    /// rules page / the search overlay) is cleared, so every page
+    /// paints the solid palette colour. A stored custom colour
+    /// always wins via `applyStoredPalette()`. (The bundled
+    /// `DefaultWallpaper` asset stays in the catalog, unused.)
     func refreshDefaultWallpaper() {
-        let dark = traitCollection.userInterfaceStyle == .dark
-        let hasCustomColor = preferences.colorHex(.background, appearance: dark ? "dark" : "light") != nil
-        if !dark && !hasCustomColor {
-            if backgroundImageView.image == nil {
-                let image = UIImage(named: "DefaultWallpaper")
-                backgroundImageView.image = image
-                homeModel.backgroundImage = image
-            }
-        } else if backgroundImageView.image != nil {
+        if backgroundImageView.image != nil {
             backgroundImageView.image = nil
+        }
+        if homeModel.backgroundImage != nil {
             homeModel.backgroundImage = nil
         }
     }
@@ -60,17 +55,77 @@ extension MainShellViewController {
     /// Re-resolves every stored colour after an appearance change.
     func applyStoredPalette() {
         refreshDefaultWallpaper()
-        // Keep solid palette only when no custom background image is active.
-        if backgroundImageView.image == nil {
-            view.backgroundColor = ThemePalette.stored(.background,
-                                                      lightDefault: ThemePalette.lightBackground,
-                                                      darkDefault: ThemePalette.darkBackground)
-        } else {
-            view.backgroundColor = .clear
-        }
-        nativeHomeHost?.view.backgroundColor = backgroundImageView.image == nil ? view.backgroundColor : .clear
+        view.backgroundColor = ThemePalette.stored(.background,
+                                                  lightDefault: ThemePalette.lightBackground,
+                                                  darkDefault: ThemePalette.darkBackground)
+        nativeHomeHost?.view.backgroundColor = view.backgroundColor
         refreshHero()
         refreshHomeTheme()
+    }
+
+    // MARK: - Update progress pill
+
+    /// Builds the floating download-progress pill and subscribes it
+    /// to the shared update checker. This is the implementation of
+    /// the 检查更新 page's "show update progress" switch: while a
+    /// download runs, the pill floats above the tab bar in the
+    /// shell, so progress stays visible after the user leaves the
+    /// page. (The project ships no Live Activity extension — the
+    /// pill is an in-app presentation, not a fake Live Activity.)
+    func installUpdateProgressPill() {
+        let pill = UIView()
+        pill.backgroundColor = UIColor.black.withAlphaComponent(0.82)
+        pill.layer.cornerRadius = 17
+        pill.isUserInteractionEnabled = false
+        pill.alpha = 0
+        let label = UILabel()
+        label.font = UIFont.systemFont(ofSize: 12, weight: .semibold)
+        label.textColor = .white
+        let bar = UIProgressView(progressViewStyle: .default)
+        bar.tintColor = .white
+        bar.trackTintColor = UIColor.white.withAlphaComponent(0.3)
+        let stack = UIStackView(arrangedSubviews: [label, bar])
+        stack.axis = .vertical
+        stack.spacing = 4
+        stack.alignment = .center
+        pill.addSubview(stack)
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        bar.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            stack.leadingAnchor.constraint(equalTo: pill.leadingAnchor, constant: 16),
+            stack.trailingAnchor.constraint(equalTo: pill.trailingAnchor, constant: -16),
+            stack.topAnchor.constraint(equalTo: pill.topAnchor, constant: 7),
+            stack.bottomAnchor.constraint(equalTo: pill.bottomAnchor, constant: -7),
+            bar.widthAnchor.constraint(equalToConstant: 130),
+        ])
+        view.addSubview(pill)
+        pill.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            pill.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            pill.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -76),
+        ])
+        updateProgressPill = pill
+        updateProgressLabel = label
+        updateProgressBar = bar
+        updateProgressCancellable = AppUpdateChecker.shared.objectWillChange
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                DispatchQueue.main.async { self?.refreshUpdateProgressPill() }
+            }
+        refreshUpdateProgressPill()
+    }
+
+    func refreshUpdateProgressPill() {
+        guard let pill = updateProgressPill else { return }
+        let updater = AppUpdateChecker.shared
+        let visible = UpdateSettings.showProgress && updater.phase == .downloading
+        if visible {
+            updateProgressLabel?.text = "正在下载更新 \(Int(updater.downloadProgress * 100))%"
+            updateProgressBar?.progress = Float(updater.downloadProgress)
+        }
+        let shown = pill.alpha > 0
+        guard shown != visible else { return }
+        UIView.animate(withDuration: 0.25) { pill.alpha = visible ? 1 : 0 }
     }
 
     /// Re-renders the settings hero card (name, version, tier, avatar, colours, font).

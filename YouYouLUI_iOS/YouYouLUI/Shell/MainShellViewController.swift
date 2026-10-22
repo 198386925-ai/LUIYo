@@ -1,3 +1,4 @@
+import Combine
 import PhotosUI
 import UIKit
 import UniformTypeIdentifiers
@@ -71,6 +72,19 @@ final class MainShellViewController: UITabBarController {
 
     let backgroundImageView = UIImageView()
     var settingsHero: UIView?
+
+    // MARK: - Update progress pill
+
+    /// Floating download-progress presentation owned by
+    /// `ShellAppearance.installUpdateProgressPill()`: while an
+    /// update download runs (and the 设置 switch allows it) the pill
+    /// stays visible above the tab bar, even after the user leaves
+    /// the 检查更新 page.
+    var updateProgressPill: UIView?
+    var updateProgressLabel: UILabel?
+    var updateProgressBar: UIProgressView?
+    var updateProgressCancellable: AnyCancellable?
+    var didRunLaunchUpdateCheck = false
     var scrollMinimizeEnabled = false
     var restoredNativeFont = false
     let originalTabLabelFonts = NSMapTable<UILabel, UIFont>(keyOptions: .weakMemory, valueOptions: .strongMemory)
@@ -100,6 +114,7 @@ final class MainShellViewController: UITabBarController {
         separateSearch = preferences.isSeparateSearch
         setBottomSearchEnabled(preferences.bottomSearchEnabled)
         applyAppearance(preferences.appearanceMode)
+        installUpdateProgressPill()
         nativeHomeReady = true
         refreshHomeTheme()
         engine.start()
@@ -114,6 +129,13 @@ final class MainShellViewController: UITabBarController {
         // baked images / gradient layers uncommitted (a ghost render
         // that only heals after a background→foreground cycle).
         VersionPopup.noteHomeShellDidAppear()
+        // The 检查更新 auto-check (switch + 6-hour throttle live in
+        // AppUpdateChecker); a separate fetch from the version
+        // popup's — the popup's version_states behaviour is untouched.
+        if !didRunLaunchUpdateCheck {
+            didRunLaunchUpdateCheck = true
+            AppUpdateChecker.runLaunchAutoCheckIfNeeded()
+        }
     }
 
     deinit {
@@ -157,9 +179,10 @@ final class MainShellViewController: UITabBarController {
             backgroundImageView.trailingAnchor.constraint(equalTo: rootView.trailingAnchor)
         ])
         // The old user-picked background image feature stays removed
-        // (clear any legacy stored file); the background image is now
-        // the factory-default wallpaper, resolved by
-        // refreshDefaultWallpaper() here and on every palette pass.
+        // (clear any legacy stored file); the background is the flat
+        // factory colour (#EFEFF3 light / #121214 dark) or the user's
+        // stored colour — refreshDefaultWallpaper() just guarantees
+        // no wallpaper image is ever seated here.
         try? FileManager.default.removeItem(at: AppPaths.legacyBackgroundImage)
         refreshDefaultWallpaper()
     }

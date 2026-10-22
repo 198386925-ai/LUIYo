@@ -2,7 +2,7 @@ import Foundation
 
 /// Palette + flags the bundled HTML reports for the native homepage.
 struct NativeHomeTheme: Equatable {
-    var background = "#FAFBFE"
+    var background = "#EFEFF3"
     var card = "#FFFFFF"
     var button = "#FFFFFF"
     var actionText = "#202832"

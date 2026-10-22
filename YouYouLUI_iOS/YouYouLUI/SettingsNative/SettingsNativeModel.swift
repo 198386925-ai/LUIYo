@@ -31,11 +31,10 @@ final class SettingsNativeModel: ObservableObject {
     }
 
     // MARK: - Colors (hex strings)
-    /// Display value for the background colour well. The factory
-    /// default itself is the bundled DefaultWallpaper image; this
-    /// hex is its sampled average, shown while no custom colour is
-    /// stored for the current appearance.
-    @Published var backgroundColorHex: String = "#FAFBFE"
+    /// Display value for the background colour well: the factory
+    /// default flat colour (#EFEFF3), shown while no custom colour
+    /// is stored for the current appearance.
+    @Published var backgroundColorHex: String = "#EFEFF3"
     @Published var cardColorHex: String = "#FFFFFF"
     @Published var buttonColorHex: String = "#FFFFFF"
 
@@ -78,10 +77,10 @@ final class SettingsNativeModel: ObservableObject {
 
     func resetBackgroundColor() {
         // Back to factory: drop the stored colour entirely so the
-        // default applies again (the DefaultWallpaper image in light
-        // appearance, the dark solid in dark). The well keeps showing
-        // the image's sampled average as the "default" swatch.
-        backgroundColorHex = "#FAFBFE"
+        // flat default applies again (#EFEFF3 in light appearance,
+        // the dark solid in dark). The well shows the same hex as
+        // the "default" swatch.
+        backgroundColorHex = "#EFEFF3"
         let appearance = prefs.appearanceMode == "dark" ? "dark" : "light"
         prefs.removeColorHex(.background, appearance: appearance)
         onColorsChanged?()

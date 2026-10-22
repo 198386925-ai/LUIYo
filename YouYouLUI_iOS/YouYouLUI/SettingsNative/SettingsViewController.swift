@@ -146,7 +146,7 @@ final class FoldView: UIView {
 final class SettingsViewController: UIViewController {
     let model: SettingsNativeModel
     let homeModel: NativeHomeModel
-    private let updater = AppUpdateChecker()
+    private let updater = AppUpdateChecker.shared
 
     private let scrollView = UIScrollView()
     private let stack = UIStackView()
@@ -156,6 +156,7 @@ final class SettingsViewController: UIViewController {
     private var guideFold: FoldView!
     private var changelogFold: FoldView!
     private let updateCard = GlassCardView(radius: 26)
+    private var updateBadge: UIView?
     private let appSettingsCard = GlassCardView(radius: 26)
     private var changelogCards: [GlassCardView] = []
     private var backgroundWell: UIColorWell!
@@ -301,6 +302,10 @@ final class SettingsViewController: UIViewController {
         homeModel.objectWillChange
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in self?.refreshTheme() }
+            .store(in: &cancellables)
+        updater.$updateFound
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] found in self?.updateBadge?.isHidden = !found }
             .store(in: &cancellables)
         refreshTheme()
         refreshFromModel()
@@ -670,12 +675,21 @@ final class SettingsViewController: UIViewController {
         title.textColor = UIAppColors.inkDynamic
         let chevron = UIImageView(image: UIImage(systemName: "chevron.right", withConfiguration: UIImage.SymbolConfiguration(pointSize: 13, weight: .semibold)))
         chevron.tintColor = UIAppColors.inkDynamic
+        // Red dot shown while the shared update checker knows a
+        // newer build exists (launch auto-check / manual check).
+        let badge = UIView()
+        badge.backgroundColor = .systemRed
+        badge.layer.cornerRadius = 5
+        badge.isHidden = !updater.updateFound
+        updateBadge = badge
         tap.addSubview(icon)
         tap.addSubview(title)
         tap.addSubview(chevron)
+        tap.addSubview(badge)
         icon.translatesAutoresizingMaskIntoConstraints = false
         title.translatesAutoresizingMaskIntoConstraints = false
         chevron.translatesAutoresizingMaskIntoConstraints = false
+        badge.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             icon.leadingAnchor.constraint(equalTo: tap.leadingAnchor, constant: 16),
             icon.centerYAnchor.constraint(equalTo: tap.centerYAnchor),
@@ -685,6 +699,10 @@ final class SettingsViewController: UIViewController {
             title.centerYAnchor.constraint(equalTo: tap.centerYAnchor),
             chevron.trailingAnchor.constraint(equalTo: tap.trailingAnchor, constant: -16),
             chevron.centerYAnchor.constraint(equalTo: tap.centerYAnchor),
+            badge.leadingAnchor.constraint(equalTo: title.trailingAnchor, constant: 8),
+            badge.centerYAnchor.constraint(equalTo: tap.centerYAnchor),
+            badge.widthAnchor.constraint(equalToConstant: 10),
+            badge.heightAnchor.constraint(equalToConstant: 10),
         ])
     }
 
