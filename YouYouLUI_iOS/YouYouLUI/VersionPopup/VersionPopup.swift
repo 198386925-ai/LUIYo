@@ -22,7 +22,8 @@ import CoreImage
 ///   - soft   → the blue-purple popup （取消 dismisses, 更新 opens the
 ///              latest IPA's download URL in Safari)
 ///   - banned → the red-orange popup, not dismissible （退出 exits the app,
-///              联系客服 is wired but has no destination yet — no-op)
+///              联系客服 opens AppConfiguration.supportURL — the same
+///              link as the home page's 反馈问题 · 联系客服）
 /// The fetch starts immediately at launch, but presentation is gated:
 /// the popup is presented only once the app is `.active` AND the home
 /// shell has completed its first appearance. If the answer arrives
@@ -321,6 +322,16 @@ final class VersionPopupViewController: UIViewController {
     /// and returns to the register gate. Nil (the version popup)
     /// keeps the original behaviour: 退出 exits the app.
     var onBannedExit: (() -> Void)?
+
+    /// Vends the user's per-area custom fonts for the popup. The
+    /// popup can be presented before the shell exists (account ban
+    /// at the gate), so it restores the persisted selections itself
+    /// — the same store the shell's controller reads.
+    private static let fontVendor: ThemeFontController = {
+        let controller = ThemeFontController()
+        _ = controller.restore()
+        return controller
+    }()
 
     private let payload: VersionPopup.Payload
     private var palette: PopupPalette
@@ -654,12 +665,16 @@ final class VersionPopupViewController: UIViewController {
             }
         }
         // Design type: texts 27px (line 1 semibold, lines 2-3 regular),
-        // buttons 30px (cancel medium, primary semibold).
-        let textFont = UIFont.systemFont(ofSize: 27 * s)
+        // buttons 30px (cancel medium, primary semibold). The user's
+        // custom font （设置页 area) reaches the popup too: the face
+        // swaps, the design sizes — and the line-box maths below,
+        // which reads textFont.lineHeight — stay consistent.
+        let customFont = Self.fontVendor.font(for: .settings)
+        let textFont = customFont?.withSize(27 * s) ?? UIFont.systemFont(ofSize: 27 * s)
         line2.font = textFont
         line3.font = textFont
-        leftButton.titleLabel?.font = .systemFont(ofSize: 30 * s, weight: .medium)
-        rightButton.titleLabel?.font = .systemFont(ofSize: 30 * s, weight: .semibold)
+        leftButton.titleLabel?.font = customFont?.withSize(30 * s) ?? .systemFont(ofSize: 30 * s, weight: .medium)
+        rightButton.titleLabel?.font = customFont?.withSize(30 * s) ?? .systemFont(ofSize: 30 * s, weight: .semibold)
         // Each text line box is 27 design px tall (line-height: 1); center
         // the font's own line box on the design line box.
         setConstant(line2Top, (467 + 13.5) * s - textFont.lineHeight / 2)
@@ -841,9 +856,11 @@ final class VersionPopupViewController: UIViewController {
 
     @objc private func rightTapped() {
         if payload.banned {
-            // 联系客服：no destination exists yet — intentionally a no-op
-            // (button press feedback only). Wire a URL here once the user
-            // provides one.
+            // 联系客服：the same destination as the home page's
+            // 反馈问题 · 联系客服 link (AppConfiguration.supportURL).
+            // Shared by the version-ban popup and the account-ban
+            // popup — both render through this controller.
+            UIApplication.shared.open(AppConfiguration.supportURL, options: [:], completionHandler: nil)
             return
         }
         if let url = payload.downloadURL {

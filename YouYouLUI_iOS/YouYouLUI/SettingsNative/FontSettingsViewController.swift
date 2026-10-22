@@ -212,6 +212,20 @@ final class FontSettingsViewController: UIViewController {
         rebuildList()
         refreshPreview()
         refreshStorage()
+        applyChromeFont()
+    }
+
+    /// This page's own chrome （标题/说明/存储卡等） follows the
+    /// 设置页 area font like every other settings sub-page; the
+    /// preview card and the catalog rows are specimens and are
+    /// exempted from the rewrite (see PageFontApplier).
+    private func applyChromeFont() {
+        PageFontApplier.apply(fontController.font(for: .settings), to: view)
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        applyChromeFont()
     }
 
     @objc private func backTapped() { dismiss(animated: true) }
@@ -228,6 +242,9 @@ final class FontSettingsViewController: UIViewController {
 
     private func previewCard() -> UIView {
         let card = configuredCard(radius: 26)
+        // The preview shows the candidate faces themselves — the
+        // page-font applier must never rewrite this subtree.
+        card.accessibilityIdentifier = "luiyo.fontExempt"
         let inner = UIStackView()
         inner.axis = .vertical
         inner.spacing = 8
@@ -424,6 +441,8 @@ final class FontSettingsViewController: UIViewController {
             }
         }
         listStack.addArrangedSubview(importCard())
+        // Freshly built chrome rows pick up the page font too.
+        if isViewLoaded { applyChromeFont() }
     }
 
     private func groupHeader(_ text: String) -> UILabel {
@@ -436,6 +455,8 @@ final class FontSettingsViewController: UIViewController {
 
     private func fontRowCard(name: String, preview: String?, previewFont: UIFont?, selected: Bool, value: String, fileKey: String?) -> UIView {
         let card = configuredCard(radius: 20)
+        // Each row is a specimen of one candidate face.
+        card.accessibilityIdentifier = "luiyo.fontExempt"
         let tap = UIControl()
         tap.accessibilityIdentifier = value
         tap.addTarget(self, action: #selector(fontRowTapped(_:)), for: .touchUpInside)

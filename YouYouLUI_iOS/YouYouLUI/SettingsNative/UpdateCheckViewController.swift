@@ -21,6 +21,8 @@ final class UpdateCheckViewController: UIViewController {
     private var progressBytesLabel: UILabel!
     private var downloadButton: UIButton!
     private var lcSignButton: UIButton!
+    private var signButton: UIButton!
+    private var signingInProgress = false
 
     // Install method / LCSign detection
     private var installMethodStateLabel: UILabel!
@@ -43,6 +45,24 @@ final class UpdateCheckViewController: UIViewController {
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    // MARK: - Page font
+
+    private var pageFont: UIFont?
+
+    /// The 设置页 area's chosen font, handed over by the presenting
+    /// settings page (nil = system font). Applied through the same
+    /// PageFontApplier the settings page itself uses: faces swap,
+    /// each element's own point size stays.
+    func applyPageFont(_ font: UIFont?) {
+        pageFont = font
+        if isViewLoaded { PageFontApplier.apply(font, to: view) }
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        PageFontApplier.apply(pageFont, to: view)
+    }
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -108,6 +128,7 @@ final class UpdateCheckViewController: UIViewController {
         refresh()
         refreshCertificate()
         refreshLCSignDetection()
+        PageFontApplier.apply(pageFont, to: view)
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -179,12 +200,16 @@ final class UpdateCheckViewController: UIViewController {
         row.addSubview(valueLabel)
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         valueLabel.translatesAutoresizingMaskIntoConstraints = false
+        // Minimum 44 tall; the row GROWS when a wider custom font
+        // wraps text onto another line instead of clipping it.
         NSLayoutConstraint.activate([
-            row.heightAnchor.constraint(equalToConstant: 44),
+            row.heightAnchor.constraint(greaterThanOrEqualToConstant: 44),
             titleLabel.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: 16),
-            titleLabel.centerYAnchor.constraint(equalTo: row.centerYAnchor),
+            titleLabel.topAnchor.constraint(equalTo: row.topAnchor, constant: 12),
+            titleLabel.bottomAnchor.constraint(equalTo: row.bottomAnchor, constant: -12),
             valueLabel.trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -16),
-            valueLabel.centerYAnchor.constraint(equalTo: row.centerYAnchor),
+            valueLabel.topAnchor.constraint(equalTo: row.topAnchor, constant: 12),
+            valueLabel.bottomAnchor.constraint(equalTo: row.bottomAnchor, constant: -12),
             valueLabel.leadingAnchor.constraint(greaterThanOrEqualTo: titleLabel.trailingAnchor, constant: 12),
         ])
         return row
@@ -198,10 +223,11 @@ final class UpdateCheckViewController: UIViewController {
         control.addSubview(label)
         label.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            control.heightAnchor.constraint(equalToConstant: 44),
+            control.heightAnchor.constraint(greaterThanOrEqualToConstant: 44),
             label.leadingAnchor.constraint(equalTo: control.leadingAnchor, constant: 16),
             label.trailingAnchor.constraint(equalTo: control.trailingAnchor, constant: -16),
-            label.centerYAnchor.constraint(equalTo: control.centerYAnchor),
+            label.topAnchor.constraint(equalTo: control.topAnchor, constant: 12),
+            label.bottomAnchor.constraint(equalTo: control.bottomAnchor, constant: -12),
         ])
         return control
     }
@@ -226,13 +252,15 @@ final class UpdateCheckViewController: UIViewController {
         valueLabel.translatesAutoresizingMaskIntoConstraints = false
         glyph.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            row.heightAnchor.constraint(equalToConstant: 44),
+            row.heightAnchor.constraint(greaterThanOrEqualToConstant: 44),
             titleLabel.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: 16),
-            titleLabel.centerYAnchor.constraint(equalTo: row.centerYAnchor),
+            titleLabel.topAnchor.constraint(equalTo: row.topAnchor, constant: 12),
+            titleLabel.bottomAnchor.constraint(equalTo: row.bottomAnchor, constant: -12),
             glyph.trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -16),
             glyph.centerYAnchor.constraint(equalTo: row.centerYAnchor),
             valueLabel.trailingAnchor.constraint(equalTo: glyph.leadingAnchor, constant: -6),
-            valueLabel.centerYAnchor.constraint(equalTo: row.centerYAnchor),
+            valueLabel.topAnchor.constraint(equalTo: row.topAnchor, constant: 12),
+            valueLabel.bottomAnchor.constraint(equalTo: row.bottomAnchor, constant: -12),
         ])
         return row
     }
@@ -248,9 +276,10 @@ final class UpdateCheckViewController: UIViewController {
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         toggle.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            row.heightAnchor.constraint(equalToConstant: 44),
+            row.heightAnchor.constraint(greaterThanOrEqualToConstant: 44),
             titleLabel.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: 16),
-            titleLabel.centerYAnchor.constraint(equalTo: row.centerYAnchor),
+            titleLabel.topAnchor.constraint(equalTo: row.topAnchor, constant: 12),
+            titleLabel.bottomAnchor.constraint(equalTo: row.bottomAnchor, constant: -12),
             toggle.trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -16),
             toggle.centerYAnchor.constraint(equalTo: row.centerYAnchor),
             toggle.leadingAnchor.constraint(greaterThanOrEqualTo: titleLabel.trailingAnchor, constant: 12),
@@ -330,22 +359,36 @@ final class UpdateCheckViewController: UIViewController {
         lcSignButton.addTarget(self, action: #selector(lcSignTapped), for: .touchUpInside)
         content.addArrangedSubview(lcSignButton)
         lcSignButton.translatesAutoresizingMaskIntoConstraints = false
-        lcSignButton.heightAnchor.constraint(equalToConstant: 46).isActive = true
+        lcSignButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 46).isActive = true
 
         downloadButton = UIButton(configuration: filledButtonConfiguration())
         downloadButton.addTarget(self, action: #selector(downloadTapped), for: .touchUpInside)
         content.addArrangedSubview(downloadButton)
         downloadButton.translatesAutoresizingMaskIntoConstraints = false
-        downloadButton.heightAnchor.constraint(equalToConstant: 46).isActive = true
+        downloadButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 46).isActive = true
+
+        signButton = UIButton(configuration: secondaryButtonConfiguration())
+        signButton.configuration?.title = "签名此更新"
+        signButton.addTarget(self, action: #selector(signTapped), for: .touchUpInside)
+        content.addArrangedSubview(signButton)
+        signButton.translatesAutoresizingMaskIntoConstraints = false
+        signButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 46).isActive = true
 
         offerCard = card
         return card
     }
 
-    private static let buttonTitleTransformer = UIConfigurationTextAttributesTransformer { attributes in
-        var attributes = attributes
-        attributes.font = UIFont.systemFont(ofSize: 15, weight: .semibold)
-        return attributes
+    /// Configuration buttons render their title from the
+    /// configuration's own attributes (PageFontApplier's titleLabel
+    /// write does not reach them), so the transformer reads the
+    /// page font lazily — every refresh() rebuild picks up the
+    /// current face at the design size.
+    private var buttonTitleTransformer: UIConfigurationTextAttributesTransformer {
+        UIConfigurationTextAttributesTransformer { [weak self] attributes in
+            var attributes = attributes
+            attributes.font = self?.pageFont?.withSize(15) ?? UIFont.systemFont(ofSize: 15, weight: .semibold)
+            return attributes
+        }
     }
 
     private func filledButtonConfiguration() -> UIButton.Configuration {
@@ -353,7 +396,7 @@ final class UpdateCheckViewController: UIViewController {
         config.baseBackgroundColor = UIAppColors.accentPurple
         config.baseForegroundColor = .white
         config.cornerStyle = .capsule
-        config.titleTextAttributesTransformer = Self.buttonTitleTransformer
+        config.titleTextAttributesTransformer = buttonTitleTransformer
         return config
     }
 
@@ -364,7 +407,7 @@ final class UpdateCheckViewController: UIViewController {
         config.baseBackgroundColor = UIAppColors.accentPurple
         config.baseForegroundColor = UIAppColors.accentPurple
         config.cornerStyle = .capsule
-        config.titleTextAttributesTransformer = Self.buttonTitleTransformer
+        config.titleTextAttributesTransformer = buttonTitleTransformer
         return config
     }
 
@@ -386,13 +429,15 @@ final class UpdateCheckViewController: UIViewController {
         valueLabel.translatesAutoresizingMaskIntoConstraints = false
         glyph.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            row.heightAnchor.constraint(equalToConstant: 58),
+            row.heightAnchor.constraint(greaterThanOrEqualToConstant: 58),
             leftStack.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: 16),
-            leftStack.centerYAnchor.constraint(equalTo: row.centerYAnchor),
+            leftStack.topAnchor.constraint(equalTo: row.topAnchor, constant: 12),
+            leftStack.bottomAnchor.constraint(equalTo: row.bottomAnchor, constant: -12),
             glyph.trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -16),
             glyph.centerYAnchor.constraint(equalTo: row.centerYAnchor),
             valueLabel.trailingAnchor.constraint(equalTo: glyph.leadingAnchor, constant: -6),
-            valueLabel.centerYAnchor.constraint(equalTo: row.centerYAnchor),
+            valueLabel.topAnchor.constraint(equalTo: row.topAnchor, constant: 12),
+            valueLabel.bottomAnchor.constraint(equalTo: row.bottomAnchor, constant: -12),
             valueLabel.leadingAnchor.constraint(greaterThanOrEqualTo: leftStack.trailingAnchor, constant: 12),
         ])
         inner.addArrangedSubview(row)
@@ -433,10 +478,11 @@ final class UpdateCheckViewController: UIViewController {
         headerRow.addSubview(certIdentityLabel)
         certIdentityLabel.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            headerRow.heightAnchor.constraint(equalToConstant: 46),
+            headerRow.heightAnchor.constraint(greaterThanOrEqualToConstant: 46),
             certIdentityLabel.leadingAnchor.constraint(equalTo: headerRow.leadingAnchor, constant: 16),
             certIdentityLabel.trailingAnchor.constraint(equalTo: headerRow.trailingAnchor, constant: -16),
-            certIdentityLabel.centerYAnchor.constraint(equalTo: headerRow.centerYAnchor),
+            certIdentityLabel.topAnchor.constraint(equalTo: headerRow.topAnchor, constant: 12),
+            certIdentityLabel.bottomAnchor.constraint(equalTo: headerRow.bottomAnchor, constant: -12),
         ])
         inner.addArrangedSubview(headerRow)
         inner.addArrangedSubview(divider())
@@ -445,10 +491,11 @@ final class UpdateCheckViewController: UIViewController {
         savedRow.addSubview(certSavedLabel)
         certSavedLabel.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            savedRow.heightAnchor.constraint(equalToConstant: 38),
+            savedRow.heightAnchor.constraint(greaterThanOrEqualToConstant: 38),
             certSavedLabel.leadingAnchor.constraint(equalTo: savedRow.leadingAnchor, constant: 16),
             certSavedLabel.trailingAnchor.constraint(equalTo: savedRow.trailingAnchor, constant: -16),
-            certSavedLabel.centerYAnchor.constraint(equalTo: savedRow.centerYAnchor),
+            certSavedLabel.topAnchor.constraint(equalTo: savedRow.topAnchor, constant: 9),
+            certSavedLabel.bottomAnchor.constraint(equalTo: savedRow.bottomAnchor, constant: -9),
         ])
         inner.addArrangedSubview(savedRow)
         inner.addArrangedSubview(divider())
@@ -476,6 +523,9 @@ final class UpdateCheckViewController: UIViewController {
 
         offerCard.isHidden = !updater.updateFound
         lcSignButton.isHidden = true
+        // In-app signing is offered only for a finished download
+        // with complete certificate material stored.
+        signButton.isHidden = !(updater.phase == .downloaded && UpdateSigner.canSign) || signingInProgress
         guard updater.updateFound else { return }
         offerNotesLabel.text = updater.releaseNotes.isEmpty ? "本次更新：优化体验，修复已知问题。" : updater.releaseNotes
         switch updater.phase {
@@ -519,6 +569,8 @@ final class UpdateCheckViewController: UIViewController {
         let material = UpdateCertificateStore.load()
         certIdentityLabel.text = UpdateCertificateStore.identityLine ?? "未导入证书"
         certSavedLabel.text = "已保存 \(material.profiles.count) 份描述文件"
+        // Freshly imported material may unlock the 签名此更新 action.
+        refresh()
     }
 
     // MARK: - Actions
@@ -560,6 +612,41 @@ final class UpdateCheckViewController: UIViewController {
                 self.updater.startDownload()
             }
         }
+    }
+
+    /// Signs the downloaded update in-app with the stored P12 +
+    /// profile (vendored zsign engine), verifies the result, then
+    /// offers the signed IPA through the share sheet. Any failure —
+    /// engine or self-check — is shown with its real reason.
+    @objc private func signTapped() {
+        guard let downloaded = updater.downloadedFileURL, !signingInProgress else { return }
+        signingInProgress = true
+        signButton.isHidden = true
+        progressBytesLabel.isHidden = false
+        progressBytesLabel.text = "正在签名…"
+        UpdateSigner.signDownloadedUpdate(
+            ipa: downloaded, version: updater.latestVersion, build: updater.latestBuild
+        ) { [weak self] result in
+            guard let self else { return }
+            self.signingInProgress = false
+            switch result {
+            case .success(let signedURL):
+                self.progressBytesLabel.text = "签名完成 · 已通过签名校验"
+                self.presentShareSheet(fileURL: signedURL)
+            case .failure(let failure):
+                self.refresh()
+                self.showMessage(title: "签名失败", message: failure.message)
+            }
+        }
+    }
+
+    private func presentShareSheet(fileURL: URL) {
+        let activity = UIActivityViewController(activityItems: [fileURL], applicationActivities: nil)
+        if let popover = activity.popoverPresentationController {
+            popover.sourceView = view
+            popover.sourceRect = CGRect(x: view.bounds.midX, y: view.bounds.maxY - 40, width: 1, height: 1)
+        }
+        present(activity, animated: true)
     }
 
     @objc private func showProgressChanged(_ sender: UISwitch) { UpdateSettings.showProgress = sender.isOn }

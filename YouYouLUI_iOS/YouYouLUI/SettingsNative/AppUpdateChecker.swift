@@ -185,12 +185,14 @@ final class AppUpdateChecker: NSObject, ObservableObject {
         statusText = "发现新版 \(latestVersion) (Build \(latestBuild))"
         downloadTask = downloadSession.downloadTask(with: url)
         downloadTask?.resume()
+        UpdateLiveActivity.downloadStarted(versionLabel: "\(latestVersion) (Build \(latestBuild))")
     }
 
     func cancelDownload() {
         userCancelledDownload = true
         downloadTask?.cancel()
         downloadTask = nil
+        UpdateLiveActivity.downloadCancelled()
         downloadProgress = 0
         downloadedBytes = 0
         phase = .updateAvailable
@@ -256,6 +258,10 @@ extension AppUpdateChecker: URLSessionDownloadDelegate {
             if self.totalBytes > 0 {
                 self.downloadProgress = min(1, Double(totalBytesWritten) / Double(self.totalBytes))
             }
+            let bytesLine = self.totalBytes > 0
+                ? "\(Self.formatBytes(totalBytesWritten)) / \(Self.formatBytes(self.totalBytes))"
+                : "已下载 \(Self.formatBytes(totalBytesWritten))"
+            UpdateLiveActivity.downloadProgressed(progress: self.downloadProgress, bytesLine: bytesLine)
         }
     }
 
@@ -275,10 +281,12 @@ extension AppUpdateChecker: URLSessionDownloadDelegate {
                 self.downloadProgress = 1
                 self.phase = .downloaded
                 self.statusText = "下载完成，确认后即可安装"
+                UpdateLiveActivity.downloadEnded(statusText: "完成", succeeded: true)
                 self.presentShareSheet(fileURL: destination)
             } else {
                 self.phase = .failed
                 self.statusText = Self.failureText
+                UpdateLiveActivity.downloadEnded(statusText: "失败", succeeded: false)
             }
         }
     }
@@ -295,9 +303,11 @@ extension AppUpdateChecker: URLSessionDownloadDelegate {
                 self.downloadedBytes = 0
                 self.phase = .updateAvailable
                 self.statusText = "发现新版 \(self.latestVersion) (Build \(self.latestBuild))"
+                UpdateLiveActivity.downloadCancelled()
             } else {
                 self.phase = .failed
                 self.statusText = Self.failureText
+                UpdateLiveActivity.downloadEnded(statusText: "失败", succeeded: false)
             }
         }
     }

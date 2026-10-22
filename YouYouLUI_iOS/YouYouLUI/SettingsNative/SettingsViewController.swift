@@ -708,6 +708,7 @@ final class SettingsViewController: UIViewController {
 
     @objc private func updateTapped() {
         let page = UpdateCheckViewController(updater: updater, homeModel: homeModel)
+        page.applyPageFont(pageFont)
         present(page, animated: true)
     }
 
@@ -752,6 +753,7 @@ final class SettingsViewController: UIViewController {
 
     @objc private func appSettingsTapped() {
         let page = AppSettingsViewController(homeModel: homeModel)
+        page.applyPageFont(pageFont)
         present(page, animated: true)
     }
 
@@ -760,6 +762,7 @@ final class SettingsViewController: UIViewController {
     /// the other sub-pages from here （设置 / 检查更新）.
     private func openAccountInfo() {
         let page = AccountInfoViewController(homeModel: homeModel)
+        page.applyPageFont(pageFont)
         present(page, animated: true)
     }
 

@@ -427,6 +427,10 @@ enum PageFontApplier {
 
     private static func walk(_ view: UIView, font: UIFont?) {
         if view is PillSegmentedControl { return }
+        // Font specimens (the 更改字体 page's previews and catalog
+        // rows) render each candidate face itself — never rewrite
+        // a subtree the owner marked exempt.
+        if view.accessibilityIdentifier == "luiyo.fontExempt" { return }
         var target: UIFont?
         var setFont: ((UIFont) -> Void)?
         if let label = view as? UILabel {

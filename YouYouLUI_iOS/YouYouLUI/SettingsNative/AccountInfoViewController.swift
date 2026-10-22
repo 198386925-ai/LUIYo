@@ -111,6 +111,17 @@ final class AccountInfoViewController: UIViewController {
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
+    // MARK: - Page font
+
+    private var pageFont: UIFont?
+
+    /// The 设置页 area's chosen font, handed over by the presenting
+    /// settings page — same mechanism as the settings page itself.
+    func applyPageFont(_ font: UIFont?) {
+        pageFont = font
+        if isViewLoaded { PageFontApplier.apply(font, to: view) }
+    }
+
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = UIColor(nativeHex: homeModel.theme.background)
@@ -216,11 +227,13 @@ final class AccountInfoViewController: UIViewController {
             self, selector: #selector(accountAuthUpdated),
             name: .luiyoAccountAuthUpdated, object: nil)
         refreshAccount()
+        PageFontApplier.apply(pageFont, to: view)
     }
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         refreshAccount()
+        PageFontApplier.apply(pageFont, to: view)
     }
 
     @objc private func accountAuthUpdated() {

@@ -191,8 +191,8 @@ final class EntryGateViewController: UIViewController {
     /// the version popup is hosted in the main window. Texts come
     /// from the status payload's ban fields. 退出 clears the
     /// account session and returns to the 03 gate (it does NOT
-    /// terminate the app); 联系客服 is a no-op, same as the
-    /// version popup.
+    /// terminate the app); 联系客服 opens the shared support
+    /// link, same as the version popup.
     private func showAccountBanned(title: String, subtitle: String, reason: String) {
         guard accountBanController == nil else { return }
         if presentedViewController != nil {

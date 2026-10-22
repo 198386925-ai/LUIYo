@@ -129,6 +129,51 @@
 		AA5000000000000000002003 /* SettingsNative/AppSettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA5000000000000000001003 /* SettingsNative/AppSettingsViewController.swift */; };
 		AA5000000000000000002004 /* SettingsNative/AccountInfoViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA5000000000000000001004 /* SettingsNative/AccountInfoViewController.swift */; };
 		AA5000000000000000002005 /* SettingsNative/UpdateCertificateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA5000000000000000001005 /* SettingsNative/UpdateCertificateStore.swift */; };
+
+		CA2600000000000000000101 /* LUIYoLiveActivity.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = CA2600000000000000000001 /* LUIYoLiveActivity.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		CA2600000000000000000102 /* LUIYoLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA2600000000000000000002 /* LUIYoLiveActivity/LUIYoLiveActivity.swift */; };
+		CA2600000000000000000103 /* UpdateActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA2600000000000000000004 /* UpdateActivityAttributes.swift */; };
+		CA2600000000000000000104 /* UpdateActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA2600000000000000000004 /* UpdateActivityAttributes.swift */; };
+		CA2600000000000000000105 /* UpdateLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA2600000000000000000005 /* UpdateLiveActivity.swift */; };
+
+		CB2600000000000000002000 /* archo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CB2600000000000000001000 /* YouYouLUI/Vendor/zsign-src/archo.cpp */; };
+		CB2600000000000000002001 /* bundle.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CB2600000000000000001001 /* YouYouLUI/Vendor/zsign-src/bundle.cpp */; };
+		CB2600000000000000002002 /* certcheck.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CB2600000000000000001002 /* YouYouLUI/Vendor/zsign-src/certcheck.cpp */; };
+		CB2600000000000000002003 /* macho.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CB2600000000000000001003 /* YouYouLUI/Vendor/zsign-src/macho.cpp */; };
+		CB2600000000000000002004 /* metadata.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CB2600000000000000001004 /* YouYouLUI/Vendor/zsign-src/metadata.cpp */; };
+		CB2600000000000000002005 /* openssl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CB2600000000000000001005 /* YouYouLUI/Vendor/zsign-src/openssl.cpp */; };
+		CB2600000000000000002006 /* signing.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CB2600000000000000001006 /* YouYouLUI/Vendor/zsign-src/signing.cpp */; };
+		CB2600000000000000002007 /* archive.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CB2600000000000000001007 /* YouYouLUI/Vendor/zsign-src/common/archive.cpp */; };
+		CB2600000000000000002008 /* fs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CB2600000000000000001008 /* YouYouLUI/Vendor/zsign-src/common/fs.cpp */; };
+		CB2600000000000000002009 /* json.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CB2600000000000000001009 /* YouYouLUI/Vendor/zsign-src/common/json.cpp */; };
+		CB2600000000000000002010 /* log.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CB2600000000000000001010 /* YouYouLUI/Vendor/zsign-src/common/log.cpp */; };
+		CB2600000000000000002011 /* sha.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CB2600000000000000001011 /* YouYouLUI/Vendor/zsign-src/common/sha.cpp */; };
+		CB2600000000000000002012 /* timer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CB2600000000000000001012 /* YouYouLUI/Vendor/zsign-src/common/timer.cpp */; };
+		CB2600000000000000002013 /* util.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CB2600000000000000001013 /* YouYouLUI/Vendor/zsign-src/common/util.cpp */; };
+		CB2600000000000000002014 /* ioapi.c in Sources */ = {isa = PBXBuildFile; fileRef = CB2600000000000000001014 /* YouYouLUI/Vendor/zsign-src/third-party/minizip/ioapi.c */; };
+		CB2600000000000000002015 /* zip.c in Sources */ = {isa = PBXBuildFile; fileRef = CB2600000000000000001015 /* YouYouLUI/Vendor/zsign-src/third-party/minizip/zip.c */; };
+		CB2600000000000000002016 /* unzip.c in Sources */ = {isa = PBXBuildFile; fileRef = CB2600000000000000001016 /* YouYouLUI/Vendor/zsign-src/third-party/minizip/unzip.c */; };
+		CB2600000000000000002017 /* adler32.c in Sources */ = {isa = PBXBuildFile; fileRef = CB2600000000000000001017 /* YouYouLUI/Vendor/zsign-src/third-party/zlib/adler32.c */; };
+		CB2600000000000000002018 /* compress.c in Sources */ = {isa = PBXBuildFile; fileRef = CB2600000000000000001018 /* YouYouLUI/Vendor/zsign-src/third-party/zlib/compress.c */; };
+		CB2600000000000000002019 /* crc32.c in Sources */ = {isa = PBXBuildFile; fileRef = CB2600000000000000001019 /* YouYouLUI/Vendor/zsign-src/third-party/zlib/crc32.c */; };
+		CB2600000000000000002020 /* deflate.c in Sources */ = {isa = PBXBuildFile; fileRef = CB2600000000000000001020 /* YouYouLUI/Vendor/zsign-src/third-party/zlib/deflate.c */; };
+		CB2600000000000000002021 /* gzclose.c in Sources */ = {isa = PBXBuildFile; fileRef = CB2600000000000000001021 /* YouYouLUI/Vendor/zsign-src/third-party/zlib/gzclose.c */; };
+		CB2600000000000000002022 /* gzlib.c in Sources */ = {isa = PBXBuildFile; fileRef = CB2600000000000000001022 /* YouYouLUI/Vendor/zsign-src/third-party/zlib/gzlib.c */; };
+		CB2600000000000000002023 /* gzread.c in Sources */ = {isa = PBXBuildFile; fileRef = CB2600000000000000001023 /* YouYouLUI/Vendor/zsign-src/third-party/zlib/gzread.c */; };
+		CB2600000000000000002024 /* gzwrite.c in Sources */ = {isa = PBXBuildFile; fileRef = CB2600000000000000001024 /* YouYouLUI/Vendor/zsign-src/third-party/zlib/gzwrite.c */; };
+		CB2600000000000000002025 /* infback.c in Sources */ = {isa = PBXBuildFile; fileRef = CB2600000000000000001025 /* YouYouLUI/Vendor/zsign-src/third-party/zlib/infback.c */; };
+		CB2600000000000000002026 /* inffast.c in Sources */ = {isa = PBXBuildFile; fileRef = CB2600000000000000001026 /* YouYouLUI/Vendor/zsign-src/third-party/zlib/inffast.c */; };
+		CB2600000000000000002027 /* inflate.c in Sources */ = {isa = PBXBuildFile; fileRef = CB2600000000000000001027 /* YouYouLUI/Vendor/zsign-src/third-party/zlib/inflate.c */; };
+		CB2600000000000000002028 /* inftrees.c in Sources */ = {isa = PBXBuildFile; fileRef = CB2600000000000000001028 /* YouYouLUI/Vendor/zsign-src/third-party/zlib/inftrees.c */; };
+		CB2600000000000000002029 /* trees.c in Sources */ = {isa = PBXBuildFile; fileRef = CB2600000000000000001029 /* YouYouLUI/Vendor/zsign-src/third-party/zlib/trees.c */; };
+		CB2600000000000000002030 /* uncompr.c in Sources */ = {isa = PBXBuildFile; fileRef = CB2600000000000000001030 /* YouYouLUI/Vendor/zsign-src/third-party/zlib/uncompr.c */; };
+		CB2600000000000000002031 /* zutil.c in Sources */ = {isa = PBXBuildFile; fileRef = CB2600000000000000001031 /* YouYouLUI/Vendor/zsign-src/third-party/zlib/zutil.c */; };
+		CB2600000000000000002032 /* luiyo_zsign_bridge.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CB2600000000000000001032 /* YouYouLUI/Vendor/zsign/luiyo_zsign_bridge.cpp */; };
+		CB2600000000000000002033 /* UpdateSigner.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB2600000000000000001033 /* YouYouLUI/SettingsNative/UpdateSigner.swift */; };
+		CB2600000000000000002034 /* SignedIPACheck.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB2600000000000000001034 /* YouYouLUI/SettingsNative/SignedIPACheck.swift */; };
+
+		CB2600000000000000000902 /* OpenSSL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CB2600000000000000000901 /* OpenSSL.framework */; };
+		CB2600000000000000000903 /* OpenSSL.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = CB2600000000000000000901 /* OpenSSL.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -246,6 +291,50 @@
 		AA5000000000000000001003 /* SettingsNative/AppSettingsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "YouYouLUI/SettingsNative/AppSettingsViewController.swift"; sourceTree = SOURCE_ROOT; };
 		AA5000000000000000001004 /* SettingsNative/AccountInfoViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "YouYouLUI/SettingsNative/AccountInfoViewController.swift"; sourceTree = SOURCE_ROOT; };
 		AA5000000000000000001005 /* SettingsNative/UpdateCertificateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "YouYouLUI/SettingsNative/UpdateCertificateStore.swift"; sourceTree = SOURCE_ROOT; };
+
+		CA2600000000000000000001 /* LUIYoLiveActivity.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = LUIYoLiveActivity.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		CA2600000000000000000002 /* LUIYoLiveActivity/LUIYoLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LUIYoLiveActivity/LUIYoLiveActivity.swift"; sourceTree = SOURCE_ROOT; };
+		CA2600000000000000000003 /* LUIYoLiveActivity/Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "LUIYoLiveActivity/Info.plist"; sourceTree = SOURCE_ROOT; };
+		CA2600000000000000000004 /* UpdateActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "YouYouLUI/SettingsNative/UpdateActivityAttributes.swift"; sourceTree = SOURCE_ROOT; };
+		CA2600000000000000000005 /* UpdateLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "YouYouLUI/SettingsNative/UpdateLiveActivity.swift"; sourceTree = SOURCE_ROOT; };
+
+		CB2600000000000000001000 /* YouYouLUI/Vendor/zsign-src/archo.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "YouYouLUI/Vendor/zsign-src/archo.cpp"; sourceTree = SOURCE_ROOT; };
+		CB2600000000000000001001 /* YouYouLUI/Vendor/zsign-src/bundle.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "YouYouLUI/Vendor/zsign-src/bundle.cpp"; sourceTree = SOURCE_ROOT; };
+		CB2600000000000000001002 /* YouYouLUI/Vendor/zsign-src/certcheck.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "YouYouLUI/Vendor/zsign-src/certcheck.cpp"; sourceTree = SOURCE_ROOT; };
+		CB2600000000000000001003 /* YouYouLUI/Vendor/zsign-src/macho.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "YouYouLUI/Vendor/zsign-src/macho.cpp"; sourceTree = SOURCE_ROOT; };
+		CB2600000000000000001004 /* YouYouLUI/Vendor/zsign-src/metadata.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "YouYouLUI/Vendor/zsign-src/metadata.cpp"; sourceTree = SOURCE_ROOT; };
+		CB2600000000000000001005 /* YouYouLUI/Vendor/zsign-src/openssl.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "YouYouLUI/Vendor/zsign-src/openssl.cpp"; sourceTree = SOURCE_ROOT; };
+		CB2600000000000000001006 /* YouYouLUI/Vendor/zsign-src/signing.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "YouYouLUI/Vendor/zsign-src/signing.cpp"; sourceTree = SOURCE_ROOT; };
+		CB2600000000000000001007 /* YouYouLUI/Vendor/zsign-src/common/archive.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "YouYouLUI/Vendor/zsign-src/common/archive.cpp"; sourceTree = SOURCE_ROOT; };
+		CB2600000000000000001008 /* YouYouLUI/Vendor/zsign-src/common/fs.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "YouYouLUI/Vendor/zsign-src/common/fs.cpp"; sourceTree = SOURCE_ROOT; };
+		CB2600000000000000001009 /* YouYouLUI/Vendor/zsign-src/common/json.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "YouYouLUI/Vendor/zsign-src/common/json.cpp"; sourceTree = SOURCE_ROOT; };
+		CB2600000000000000001010 /* YouYouLUI/Vendor/zsign-src/common/log.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "YouYouLUI/Vendor/zsign-src/common/log.cpp"; sourceTree = SOURCE_ROOT; };
+		CB2600000000000000001011 /* YouYouLUI/Vendor/zsign-src/common/sha.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "YouYouLUI/Vendor/zsign-src/common/sha.cpp"; sourceTree = SOURCE_ROOT; };
+		CB2600000000000000001012 /* YouYouLUI/Vendor/zsign-src/common/timer.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "YouYouLUI/Vendor/zsign-src/common/timer.cpp"; sourceTree = SOURCE_ROOT; };
+		CB2600000000000000001013 /* YouYouLUI/Vendor/zsign-src/common/util.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "YouYouLUI/Vendor/zsign-src/common/util.cpp"; sourceTree = SOURCE_ROOT; };
+		CB2600000000000000001014 /* YouYouLUI/Vendor/zsign-src/third-party/minizip/ioapi.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "YouYouLUI/Vendor/zsign-src/third-party/minizip/ioapi.c"; sourceTree = SOURCE_ROOT; };
+		CB2600000000000000001015 /* YouYouLUI/Vendor/zsign-src/third-party/minizip/zip.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "YouYouLUI/Vendor/zsign-src/third-party/minizip/zip.c"; sourceTree = SOURCE_ROOT; };
+		CB2600000000000000001016 /* YouYouLUI/Vendor/zsign-src/third-party/minizip/unzip.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "YouYouLUI/Vendor/zsign-src/third-party/minizip/unzip.c"; sourceTree = SOURCE_ROOT; };
+		CB2600000000000000001017 /* YouYouLUI/Vendor/zsign-src/third-party/zlib/adler32.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "YouYouLUI/Vendor/zsign-src/third-party/zlib/adler32.c"; sourceTree = SOURCE_ROOT; };
+		CB2600000000000000001018 /* YouYouLUI/Vendor/zsign-src/third-party/zlib/compress.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "YouYouLUI/Vendor/zsign-src/third-party/zlib/compress.c"; sourceTree = SOURCE_ROOT; };
+		CB2600000000000000001019 /* YouYouLUI/Vendor/zsign-src/third-party/zlib/crc32.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "YouYouLUI/Vendor/zsign-src/third-party/zlib/crc32.c"; sourceTree = SOURCE_ROOT; };
+		CB2600000000000000001020 /* YouYouLUI/Vendor/zsign-src/third-party/zlib/deflate.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "YouYouLUI/Vendor/zsign-src/third-party/zlib/deflate.c"; sourceTree = SOURCE_ROOT; };
+		CB2600000000000000001021 /* YouYouLUI/Vendor/zsign-src/third-party/zlib/gzclose.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "YouYouLUI/Vendor/zsign-src/third-party/zlib/gzclose.c"; sourceTree = SOURCE_ROOT; };
+		CB2600000000000000001022 /* YouYouLUI/Vendor/zsign-src/third-party/zlib/gzlib.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "YouYouLUI/Vendor/zsign-src/third-party/zlib/gzlib.c"; sourceTree = SOURCE_ROOT; };
+		CB2600000000000000001023 /* YouYouLUI/Vendor/zsign-src/third-party/zlib/gzread.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "YouYouLUI/Vendor/zsign-src/third-party/zlib/gzread.c"; sourceTree = SOURCE_ROOT; };
+		CB2600000000000000001024 /* YouYouLUI/Vendor/zsign-src/third-party/zlib/gzwrite.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "YouYouLUI/Vendor/zsign-src/third-party/zlib/gzwrite.c"; sourceTree = SOURCE_ROOT; };
+		CB2600000000000000001025 /* YouYouLUI/Vendor/zsign-src/third-party/zlib/infback.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "YouYouLUI/Vendor/zsign-src/third-party/zlib/infback.c"; sourceTree = SOURCE_ROOT; };
+		CB2600000000000000001026 /* YouYouLUI/Vendor/zsign-src/third-party/zlib/inffast.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "YouYouLUI/Vendor/zsign-src/third-party/zlib/inffast.c"; sourceTree = SOURCE_ROOT; };
+		CB2600000000000000001027 /* YouYouLUI/Vendor/zsign-src/third-party/zlib/inflate.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "YouYouLUI/Vendor/zsign-src/third-party/zlib/inflate.c"; sourceTree = SOURCE_ROOT; };
+		CB2600000000000000001028 /* YouYouLUI/Vendor/zsign-src/third-party/zlib/inftrees.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "YouYouLUI/Vendor/zsign-src/third-party/zlib/inftrees.c"; sourceTree = SOURCE_ROOT; };
+		CB2600000000000000001029 /* YouYouLUI/Vendor/zsign-src/third-party/zlib/trees.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "YouYouLUI/Vendor/zsign-src/third-party/zlib/trees.c"; sourceTree = SOURCE_ROOT; };
+		CB2600000000000000001030 /* YouYouLUI/Vendor/zsign-src/third-party/zlib/uncompr.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "YouYouLUI/Vendor/zsign-src/third-party/zlib/uncompr.c"; sourceTree = SOURCE_ROOT; };
+		CB2600000000000000001031 /* YouYouLUI/Vendor/zsign-src/third-party/zlib/zutil.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = "YouYouLUI/Vendor/zsign-src/third-party/zlib/zutil.c"; sourceTree = SOURCE_ROOT; };
+		CB2600000000000000001032 /* YouYouLUI/Vendor/zsign/luiyo_zsign_bridge.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "YouYouLUI/Vendor/zsign/luiyo_zsign_bridge.cpp"; sourceTree = SOURCE_ROOT; };
+		CB2600000000000000001033 /* YouYouLUI/SettingsNative/UpdateSigner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "YouYouLUI/SettingsNative/UpdateSigner.swift"; sourceTree = SOURCE_ROOT; };
+		CB2600000000000000001034 /* YouYouLUI/SettingsNative/SignedIPACheck.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "YouYouLUI/SettingsNative/SignedIPACheck.swift"; sourceTree = SOURCE_ROOT; };
+
+		CB2600000000000000000901 /* OpenSSL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = "YouYouLUI/Vendor/OpenSSL/OpenSSL.framework"; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -254,6 +343,7 @@
 			children = (
 				D10000000000000000000002 /* YouYouLUI */,
 				DD1600000000000000000001 /* LUIYoUITests */,
+				CA2600000000000000000307 /* LUIYoLiveActivity */,
 				D10000000000000000000003 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -396,7 +486,7 @@
 		};
 		D10000000000000000000003 /* Products */ = {
 			isa = PBXGroup;
-			children = (B10000000000000000000006 /* YouYouLUI.app */, BB1600000000000000000002,);
+			children = (B10000000000000000000006 /* YouYouLUI.app */, BB1600000000000000000002, CA2600000000000000000001 /* LUIYoLiveActivity.appex */,);
 			name = Products;
 			sourceTree = "<group>";
 		};
@@ -473,15 +563,73 @@
 			path = Icons;
 			sourceTree = "<group>";
 		};
+
+		CA2600000000000000000307 /* LUIYoLiveActivity */ = {
+			isa = PBXGroup;
+			children = (
+				CA2600000000000000000002 /* LUIYoLiveActivity.swift */,
+				CA2600000000000000000003 /* Info.plist */,
+				CA2600000000000000000004 /* UpdateActivityAttributes.swift */,
+				CA2600000000000000000005 /* UpdateLiveActivity.swift */,
+			);
+			name = LUIYoLiveActivity;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 		C10000000000000000000001 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
-			files = ();
+			files = (
+				CB2600000000000000000902 /* OpenSSL.framework in Frameworks */,
+			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-/* Begin PBXNativeTarget section */
+/* Begin PBXNativeTarget section *//* Begin PBXCopyFilesBuildPhase section */
+		CA2600000000000000000204 /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				CA2600000000000000000101 /* LUIYoLiveActivity.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+		CB2600000000000000000301 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				CB2600000000000000000903 /* OpenSSL.framework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+
+
+/* Begin PBXContainerItemProxy section */
+		CA2600000000000000000302 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = E10000000000000000000002 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = CA2600000000000000000301;
+			remoteInfo = LUIYoLiveActivity;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXTargetDependency section */
+		CA2600000000000000000303 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = CA2600000000000000000301 /* LUIYoLiveActivity */;
+			targetProxy = CA2600000000000000000302 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+
 		E10000000000000000000001 /* YouYouLUI */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = F10000000000000000000002 /* Build configuration list for PBXNativeTarget "YouYouLUI" */;
@@ -489,13 +637,32 @@
 				C10000000000000000000002 /* Sources */,
 				C10000000000000000000001 /* Frameworks */,
 				C10000000000000000000003 /* Resources */,
+				CA2600000000000000000204 /* Embed App Extensions */,
+				CB2600000000000000000301 /* Embed Frameworks */,
 			);
 			buildRules = ();
-			dependencies = ();
+			dependencies = (
+				CA2600000000000000000303 /* PBXTargetDependency */,
+			);
 			name = YouYouLUI;
 			productName = YouYouLUI;
 			productReference = B10000000000000000000006 /* YouYouLUI.app */;
 			productType = "com.apple.product-type.application";
+		};
+		CA2600000000000000000301 /* LUIYoLiveActivity */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CA2600000000000000000304 /* Build configuration list for PBXNativeTarget "LUIYoLiveActivity" */;
+			buildPhases = (
+				CA2600000000000000000201 /* Sources */,
+				CA2600000000000000000202 /* Frameworks */,
+				CA2600000000000000000203 /* Resources */,
+			);
+			buildRules = ();
+			dependencies = ();
+			name = LUIYoLiveActivity;
+			productName = LUIYoLiveActivity;
+			productReference = CA2600000000000000000001 /* LUIYoLiveActivity.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -505,7 +672,7 @@
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1600;
 				LastUpgradeCheck = 1600;
-				TargetAttributes = { E10000000000000000000001 = { CreatedOnToolsVersion = 16.0; }; };
+				TargetAttributes = { E10000000000000000000001 = { CreatedOnToolsVersion = 16.0; }; CA2600000000000000000301 = { CreatedOnToolsVersion = 26.0; }; };
 			};
 			buildConfigurationList = F10000000000000000000001 /* Build configuration list for PBXProject "YouYouLUI" */;
 			compatibilityVersion = "Xcode 14.0";
@@ -516,7 +683,7 @@
 			productRefGroup = D10000000000000000000003 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
-			targets = (E10000000000000000000001 /* YouYouLUI */, EE1600000000000000000001,);
+			targets = (E10000000000000000000001 /* YouYouLUI */, CA2600000000000000000301 /* LUIYoLiveActivity */, EE1600000000000000000001,);
 		};
 
 /* Begin PBXResourcesBuildPhase section */
@@ -579,7 +746,28 @@
 		};
 /* End PBXResourcesBuildPhase section */
 
-/* Begin PBXSourcesBuildPhase section */
+/* Begin PBXSourcesBuildPhase section */		CA2600000000000000000201 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				CA2600000000000000000102 /* LUIYoLiveActivity.swift in Sources */,
+				CA2600000000000000000103 /* UpdateActivityAttributes.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CA2600000000000000000202 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = ();
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CA2600000000000000000203 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = ();
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+
 		C10000000000000000000002 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -611,6 +799,43 @@
 				AA5000000000000000002003 /* SettingsNative/AppSettingsViewController.swift in Sources */,
 				AA5000000000000000002004 /* SettingsNative/AccountInfoViewController.swift in Sources */,
 				AA5000000000000000002005 /* SettingsNative/UpdateCertificateStore.swift in Sources */,
+				CA2600000000000000000104 /* UpdateActivityAttributes.swift in Sources */,
+				CA2600000000000000000105 /* UpdateLiveActivity.swift in Sources */,
+				CB2600000000000000002000 /* archo.cpp in Sources */,
+				CB2600000000000000002001 /* bundle.cpp in Sources */,
+				CB2600000000000000002002 /* certcheck.cpp in Sources */,
+				CB2600000000000000002003 /* macho.cpp in Sources */,
+				CB2600000000000000002004 /* metadata.cpp in Sources */,
+				CB2600000000000000002005 /* openssl.cpp in Sources */,
+				CB2600000000000000002006 /* signing.cpp in Sources */,
+				CB2600000000000000002007 /* archive.cpp in Sources */,
+				CB2600000000000000002008 /* fs.cpp in Sources */,
+				CB2600000000000000002009 /* json.cpp in Sources */,
+				CB2600000000000000002010 /* log.cpp in Sources */,
+				CB2600000000000000002011 /* sha.cpp in Sources */,
+				CB2600000000000000002012 /* timer.cpp in Sources */,
+				CB2600000000000000002013 /* util.cpp in Sources */,
+				CB2600000000000000002014 /* ioapi.c in Sources */,
+				CB2600000000000000002015 /* zip.c in Sources */,
+				CB2600000000000000002016 /* unzip.c in Sources */,
+				CB2600000000000000002017 /* adler32.c in Sources */,
+				CB2600000000000000002018 /* compress.c in Sources */,
+				CB2600000000000000002019 /* crc32.c in Sources */,
+				CB2600000000000000002020 /* deflate.c in Sources */,
+				CB2600000000000000002021 /* gzclose.c in Sources */,
+				CB2600000000000000002022 /* gzlib.c in Sources */,
+				CB2600000000000000002023 /* gzread.c in Sources */,
+				CB2600000000000000002024 /* gzwrite.c in Sources */,
+				CB2600000000000000002025 /* infback.c in Sources */,
+				CB2600000000000000002026 /* inffast.c in Sources */,
+				CB2600000000000000002027 /* inflate.c in Sources */,
+				CB2600000000000000002028 /* inftrees.c in Sources */,
+				CB2600000000000000002029 /* trees.c in Sources */,
+				CB2600000000000000002030 /* uncompr.c in Sources */,
+				CB2600000000000000002031 /* zutil.c in Sources */,
+				CB2600000000000000002032 /* luiyo_zsign_bridge.cpp in Sources */,
+				CB2600000000000000002033 /* UpdateSigner.swift in Sources */,
+				CB2600000000000000002034 /* SignedIPACheck.swift in Sources */,
 				AA2900000000000000000105 /* SettingsNative/SettingsContent.swift in Sources */,
 				AA2900000000000000000106 /* Home/HomeViewController.swift in Sources */,
 				AA2900000000000000000107 /* Home/ColorSettingsViewController.swift in Sources */,
@@ -684,7 +909,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 40;
+				CURRENT_PROJECT_VERSION = 40; HEADER_SEARCH_PATHS = ("$(SRCROOT)/YouYouLUI/Vendor/OpenSSL/include", "$(SRCROOT)/YouYouLUI/Vendor/zsign-src", "$(SRCROOT)/YouYouLUI/Vendor/zsign-src/common", "$(SRCROOT)/YouYouLUI/Vendor/zsign-src/third-party/zlib"); 
 				GENERATE_INFOPLIST_FILE = NO;
 				CODE_SIGN_ENTITLEMENTS = YouYouLUI/LUIYo.entitlements;
 				INFOPLIST_FILE = YouYouLUI/Info.plist;
@@ -705,7 +930,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 39;
+				CURRENT_PROJECT_VERSION = 39; HEADER_SEARCH_PATHS = ("$(SRCROOT)/YouYouLUI/Vendor/OpenSSL/include", "$(SRCROOT)/YouYouLUI/Vendor/zsign-src", "$(SRCROOT)/YouYouLUI/Vendor/zsign-src/common", "$(SRCROOT)/YouYouLUI/Vendor/zsign-src/third-party/zlib"); 
 				GENERATE_INFOPLIST_FILE = NO;
 				CODE_SIGN_ENTITLEMENTS = YouYouLUI/LUIYo.entitlements;
 				INFOPLIST_FILE = YouYouLUI/Info.plist;
@@ -724,6 +949,14 @@
 		F10000000000000000000001 /* Build configuration list for PBXProject "YouYouLUI" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (F20000000000000000000001 /* Debug */, F20000000000000000000002 /* Release */);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		CA2600000000000000000305 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 26; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = LUIYoLiveActivity/Info.plist; IPHONEOS_DEPLOYMENT_TARGET = 16.1; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@executable_path/../../Frameworks"); MARKETING_VERSION = 1.0.8; PRODUCT_BUNDLE_IDENTIFIER = com.youyou.lui.liveactivity; PRODUCT_BUNDLE_PACKAGE_TYPE = XPC!; PRODUCT_NAME = "$(TARGET_NAME)"; SKIP_INSTALL = YES; SUPPORTED_PLATFORMS = "iphoneos iphonesimulator"; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = "1,2";}; name = Debug; };
+		CA2600000000000000000306 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 26; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = LUIYoLiveActivity/Info.plist; IPHONEOS_DEPLOYMENT_TARGET = 16.1; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@executable_path/../../Frameworks"); MARKETING_VERSION = 1.0.8; PRODUCT_BUNDLE_IDENTIFIER = com.youyou.lui.liveactivity; PRODUCT_BUNDLE_PACKAGE_TYPE = XPC!; PRODUCT_NAME = "$(TARGET_NAME)"; SKIP_INSTALL = YES; SUPPORTED_PLATFORMS = "iphoneos iphonesimulator"; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = "1,2";}; name = Release; };
+		CA2600000000000000000304 /* Build configuration list for PBXNativeTarget "LUIYoLiveActivity" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (CA2600000000000000000305 /* Debug */, CA2600000000000000000306 /* Release */);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};

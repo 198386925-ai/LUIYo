@@ -407,9 +407,7 @@ final class HomeHeaderCell: UICollectionViewCell {
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
     @objc private func openFeedback() {
-        if let url = URL(string: "https://qm.qq.com/q/th1QshgzHW") {
-            UIApplication.shared.open(url)
-        }
+        UIApplication.shared.open(AppConfiguration.supportURL)
     }
 
     func configure(model: NativeHomeModel, hfont: (CGFloat, UIFont.Weight) -> UIFont) {

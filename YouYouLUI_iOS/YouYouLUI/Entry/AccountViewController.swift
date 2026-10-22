@@ -1716,7 +1716,8 @@ extension AccountViewController {
     /// page. It is hosted as a child covering this page — the same
     /// in-window hosting the version popup uses. 退出 clears the
     /// account session and dismisses the whole account page, back
-    /// to the gate's 03 splash; 联系客服 stays a no-op.
+    /// to the gate's 03 splash; 联系客服 opens the shared support
+    /// link (AppConfiguration.supportURL).
     func presentBanned(title: String, subtitle: String, reason: String) {
         guard banPopupController == nil else { return }
         let popup = VersionPopupViewController(
