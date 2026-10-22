@@ -3,10 +3,11 @@ import UIKit
 import UniformTypeIdentifiers
 
 /// The 检查更新 page, rebuilt after the reference update page: the
-/// current version, a manual check with a status line, the update
-/// offer (notes + in-app download with progress), the install-method
-/// row, the behaviour switches, the LCSign certificate section and
-/// the install-node row. The feed is the luioe `updates/latest.json`
+/// current version and a manual check with its status line share
+/// one card, then the update offer (notes + in-app download with
+/// progress), then the install-method row heading the behaviour
+/// switches card, the LCSign certificate section and the
+/// install-node row. The feed is the luioe `updates/latest.json`
 /// and nothing else — no external release pages are linked.
 final class UpdateCheckViewController: UIViewController {
     private let updater: AppUpdateChecker
@@ -106,10 +107,8 @@ final class UpdateCheckViewController: UIViewController {
             stack.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor, constant: -28),
         ])
 
-        stack.addArrangedSubview(currentVersionCard())
-        stack.addArrangedSubview(checkCard())
+        stack.addArrangedSubview(versionCheckCard())
         stack.addArrangedSubview(buildOfferCard())
-        stack.addArrangedSubview(installMethodCard())
         stack.addArrangedSubview(togglesCard())
         let togglesNote = footnoteLabel("打开 LUIYo 时检查更新服务，每六小时最多一次。开启自动下载后，发现新版会在后台下载，准备完成后再次确认安装。")
         stack.addArrangedSubview(togglesNote)
@@ -310,15 +309,14 @@ final class UpdateCheckViewController: UIViewController {
 
     // MARK: - Sections
 
-    private func currentVersionCard() -> UIView {
+    /// Current version, the manual check and its status line in
+    /// one card: version row — divider — check action — divider —
+    /// status line.
+    private func versionCheckCard() -> UIView {
         let (card, inner) = makeCard()
         let value = "\(AppConfiguration.marketingVersion) (Build \(AppConfiguration.buildNumber))"
         inner.addArrangedSubview(infoRow(title: "当前版本", value: value))
-        return card
-    }
-
-    private func checkCard() -> UIView {
-        let (card, inner) = makeCard()
+        inner.addArrangedSubview(divider())
         checkRow = actionRow(title: "检查更新", color: UIAppColors.accentPurple, action: #selector(checkTapped))
         inner.addArrangedSubview(checkRow)
         inner.addArrangedSubview(divider())
@@ -414,16 +412,6 @@ final class UpdateCheckViewController: UIViewController {
         return config
     }
 
-    private func installMethodCard() -> UIView {
-        let (card, inner) = makeCard()
-        // Single line, like every other row: title + value +
-        // chevron. Whether LCSign is installed is probed
-        // internally (it picks the offer card's primary action)
-        // and deliberately not shown here.
-        inner.addArrangedSubview(selectorRow(title: "安装方式", value: "证书签名 (LCSign)"))
-        return card
-    }
-
     /// Probes the LCSign URL scheme (declared in
     /// LSApplicationQueriesSchemes). The result stays internal:
     /// it decides whether the offer card's primary action is the
@@ -439,6 +427,13 @@ final class UpdateCheckViewController: UIViewController {
 
     private func togglesCard() -> UIView {
         let (card, inner) = makeCard()
+        // The install-method row heads this card: single line,
+        // like every other row — title + value + chevron. Whether
+        // LCSign is installed is probed internally (it picks the
+        // offer card's primary action) and deliberately not shown
+        // here.
+        inner.addArrangedSubview(selectorRow(title: "安装方式", value: "证书签名 (LCSign)"))
+        inner.addArrangedSubview(divider())
         inner.addArrangedSubview(toggleRow(title: "在灵动岛与锁屏显示更新进度", isOn: UpdateSettings.showProgress, action: #selector(showProgressChanged(_:))))
         inner.addArrangedSubview(divider())
         inner.addArrangedSubview(toggleRow(title: "自动检查更新", isOn: UpdateSettings.autoCheck, action: #selector(autoCheckChanged(_:))))
