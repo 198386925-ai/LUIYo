@@ -1,3 +1,4 @@
+import Compression
 import Foundation
 import Security
 
@@ -148,6 +149,30 @@ enum UpdateCertificateStore {
         return devices.filter { !$0.isEmpty }
     }
 
+    /// Pulls certificate material out of a zip archive (the format
+    /// the 设备 UDID page's 导出 produces: a `.p12` and one or more
+    /// `.mobileprovision` files, possibly inside one level of
+    /// folder). Returns the first P12 (`.p12` / `.pfx`) and the
+    /// first provisioning profile found, or nil when the archive
+    /// holds neither. Entry names are matched by suffix, so folder
+    /// prefixes need no special handling.
+    static func certFiles(fromZipData data: Data) -> (p12: Data?, profile: Data?) {
+        guard let entries = ZipEntryReader.entries(in: data) else { return nil }
+        var p12: Data?
+        var profile: Data?
+        for entry in entries {
+            let lower = entry.name.lowercased()
+            if p12 == nil, lower.hasSuffix(".p12") || lower.hasSuffix(".pfx") {
+                p12 = ZipEntryReader.entryData(entry, in: data)
+            } else if profile == nil, lower.hasSuffix(".mobileprovision") {
+                profile = ZipEntryReader.entryData(entry, in: data)
+            }
+            if p12 != nil && profile != nil { break }
+        }
+        guard p12 != nil || profile != nil else { return nil }
+        return (p12, profile)
+    }
+
     /// Validates that `data` is a PKCS12 archive that actually opens
     /// with `password`. Returns the certificate's subject summary as
     /// the identity label on success, nil on any failure (wrong
@@ -170,5 +195,114 @@ enum UpdateCertificateStore {
             return summary
         }
         return "已导入证书"
+    }
+}
+
+// MARK: - Minimal ZIP reader (central directory)
+//
+// Self-contained copy of the reader in LocalInstallServer (its
+// helpers are private to that enum): just enough to pull the
+// certificate files out of an imported zip. The uncompressed
+// size from the central directory sizes the inflate buffer, so
+// entries larger than the compressed heuristic still decode.
+
+private enum ZipEntryReader {
+    struct Entry {
+        let name: String
+        let method: UInt16
+        let compressedSize: Int
+        let uncompressedSize: Int
+        let localHeaderOffset: Int
+    }
+
+    static func entries(in data: Data) -> [Entry]? {
+        let bytes = [UInt8](data)
+        guard bytes.count >= 22 else { return nil }
+        func le16(_ offset: Int) -> Int {
+            Int(bytes[offset]) | Int(bytes[offset + 1]) << 8
+        }
+        func le32(_ offset: Int) -> Int {
+            Int(bytes[offset]) | Int(bytes[offset + 1]) << 8
+                | Int(bytes[offset + 2]) << 16 | Int(bytes[offset + 3]) << 24
+        }
+        var eocd = -1
+        let scanStart = max(0, bytes.count - 22 - 0xFFFF)
+        var i = bytes.count - 22
+        while i >= scanStart {
+            if le32(i) == 0x06054b50 { eocd = i; break }
+            i -= 1
+        }
+        guard eocd >= 0 else { return nil }
+        let total = le16(eocd + 10)
+        var offset = le32(eocd + 16)
+        var entries: [Entry] = []
+        for _ in 0..<total {
+            guard offset + 46 <= bytes.count, le32(offset) == 0x02014b50 else { return nil }
+            let method = UInt16(le16(offset + 10))
+            let compressedSize = le32(offset + 20)
+            let uncompressedSize = le32(offset + 24)
+            let nameLength = le16(offset + 28)
+            let extraLength = le16(offset + 30)
+            let commentLength = le16(offset + 32)
+            let localHeaderOffset = le32(offset + 42)
+            let nameStart = offset + 46
+            guard nameStart + nameLength <= bytes.count else { return nil }
+            let name = String(decoding: bytes[nameStart..<(nameStart + nameLength)], as: UTF8.self)
+            entries.append(Entry(name: name, method: method,
+                                 compressedSize: compressedSize,
+                                 uncompressedSize: uncompressedSize,
+                                 localHeaderOffset: localHeaderOffset))
+            offset = nameStart + nameLength + extraLength + commentLength
+        }
+        return entries
+    }
+
+    static func entryData(_ entry: Entry, in archive: Data) -> Data? {
+        let bytes = [UInt8](archive)
+        let offset = entry.localHeaderOffset
+        guard offset + 30 <= bytes.count else { return nil }
+        func le16(_ o: Int) -> Int { Int(bytes[o]) | Int(bytes[o + 1]) << 8 }
+        func le32(_ o: Int) -> Int {
+            Int(bytes[o]) | Int(bytes[o + 1]) << 8 | Int(bytes[o + 2]) << 16 | Int(bytes[o + 3]) << 24
+        }
+        guard le32(offset) == 0x04034b50 else { return nil }
+        let dataStart = offset + 30 + le16(offset + 26) + le16(offset + 28)
+        let dataEnd = dataStart + entry.compressedSize
+        guard dataEnd <= bytes.count else { return nil }
+        let raw = Data(bytes[dataStart..<dataEnd])
+        switch entry.method {
+        case 0:
+            return raw
+        case 8:
+            return inflate(raw, uncompressedSize: entry.uncompressedSize)
+        default:
+            return nil
+        }
+    }
+
+    /// Raw DEFLATE (ZIP method 8) via the Compression framework —
+    /// its COMPRESSION_ZLIB format is exactly the raw stream ZIP
+    /// stores. (Same reader as SignedIPACheck / LocalInstallServer,
+    /// including the Int32 flags conversion the Build 27 CI fix
+    /// established.)
+    private static func inflate(_ data: Data, uncompressedSize: Int) -> Data? {
+        let capacity = max(uncompressedSize, max(data.count * 4, 1 << 16))
+        let destination = UnsafeMutablePointer<UInt8>.allocate(capacity: capacity)
+        defer { destination.deallocate() }
+        return data.withUnsafeBytes { source -> Data? in
+            guard let base = source.baseAddress?.assumingMemoryBound(to: UInt8.self) else { return nil }
+            let streamPointer = UnsafeMutablePointer<compression_stream>.allocate(capacity: 1)
+            defer { streamPointer.deallocate() }
+            var status = compression_stream_init(streamPointer, COMPRESSION_STREAM_DECODE, COMPRESSION_ZLIB)
+            guard status == COMPRESSION_STATUS_OK else { return nil }
+            defer { compression_stream_destroy(streamPointer) }
+            streamPointer.pointee.src_ptr = base
+            streamPointer.pointee.src_size = data.count
+            streamPointer.pointee.dst_ptr = destination
+            streamPointer.pointee.dst_size = capacity
+            status = compression_stream_process(streamPointer, Int32(COMPRESSION_STREAM_FINALIZE.rawValue))
+            guard status == COMPRESSION_STATUS_END else { return nil }
+            return Data(bytes: destination, count: capacity - streamPointer.pointee.dst_size)
+        }
     }
 }

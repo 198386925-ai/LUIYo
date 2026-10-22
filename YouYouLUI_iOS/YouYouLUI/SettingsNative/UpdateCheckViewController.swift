@@ -4,20 +4,27 @@ import UniformTypeIdentifiers
 
 /// The 检查更新 page, rebuilt after the reference update page: the
 /// current version and a manual check with its status line share
-/// one card, then the update offer (notes + in-app download with
-/// progress), then the install-method row heading the behaviour
-/// switches card, the LCSign certificate section and the
-/// install-node row. The feed is the luioe `updates/latest.json`
-/// and nothing else — no external release pages are linked.
+/// one card — and, once a check finds one, the update offer (notes
+/// + in-app download with progress) folds into that same card —
+/// then the install-method row heading the behaviour switches
+/// card, and the certificate card (UDID entry, 导入证书， and the
+/// install-node row as its last row). The feed is the luioe
+/// `updates/latest.json` and nothing else — no external release
+/// pages are linked.
 final class UpdateCheckViewController: UIViewController {
     private let updater: AppUpdateChecker
     private let homeModel: NativeHomeModel
     private var cancellables: Set<AnyCancellable> = []
-    private var didAutoCheck = false
 
-    // Offer card
-    private var offerCard: UIView!
+    // Offer section (inside the version-check card)
+    private var offerSection: UIView!
+    private var offerDivider: UIView!
     private var offerNotesLabel: UILabel!
+    private var offerChevron: UIImageView!
+    /// 更新内容 starts collapsed; the header row toggles it. A
+    /// newly discovered build resets it to collapsed.
+    private var notesExpanded = false
+    private var lastOfferBuild = 0
     private var progressView: UIProgressView!
     private var progressBytesLabel: UILabel!
     private var downloadButton: UIButton!
@@ -48,9 +55,7 @@ final class UpdateCheckViewController: UIViewController {
     private var checkRow: UIControl!
 
     // Certificate section
-    private var certIdentityLabel: UILabel!
     private var certUDIDRow: UIControl!
-    private var certUDIDDivider: UIView!
     private var certUDIDValueLabel: UILabel!
 
     init(updater: AppUpdateChecker, homeModel: NativeHomeModel) {
@@ -121,16 +126,12 @@ final class UpdateCheckViewController: UIViewController {
         ])
 
         stack.addArrangedSubview(versionCheckCard())
-        stack.addArrangedSubview(buildOfferCard())
         stack.addArrangedSubview(togglesCard())
         let togglesNote = footnoteLabel("打开 LUIYo 时检查更新服务，每六小时最多一次。开启自动下载后，发现新版会在后台下载，准备完成后再次确认安装。")
         stack.addArrangedSubview(togglesNote)
         stack.addArrangedSubview(certificateCard())
-        let certNote = footnoteLabel("同时选择一份 P12 证书和描述文件，再输入密码，验证成功后保存。证书、密码与文件仅保存在本机钥匙串，不会上传。")
+        let certNote = footnoteLabel("选择证书 zip 压缩包，或同时选择一份 P12 证书和描述文件，再输入密码，验证成功后保存。证书、密码与文件仅保存在本机钥匙串，不会上传。")
         stack.addArrangedSubview(certNote)
-        stack.addArrangedSubview(lcSignNodeCard())
-        let nodeNote = footnoteLabel("安装节点由 LCSign 提供，在 LCSign 中选择；节点不可用时自动切换。")
-        stack.addArrangedSubview(nodeNote)
 
         updater.objectWillChange
             .receive(on: DispatchQueue.main)
@@ -151,10 +152,10 @@ final class UpdateCheckViewController: UIViewController {
         // LCSign may have been installed or removed since the page
         // was last shown — re-probe on every appearance.
         refreshLCSignDetection()
-        if !didAutoCheck {
-            didAutoCheck = true
-            if case .idle = updater.phase { updater.checkForUpdate() }
-        }
+        // Opening this page never starts a check on its own: the
+        // status line simply shows the updater's last known state
+        // (the background auto-check keeps that state fresh, and
+        // the 检查更新 row is the manual trigger).
     }
 
     @objc private func backTapped() { dismiss(animated: true) }
@@ -164,7 +165,7 @@ final class UpdateCheckViewController: UIViewController {
     private func makeCard() -> (card: UIView, inner: UIStackView) {
         let card = UIView()
         card.backgroundColor = UIColor(nativeHex: homeModel.theme.card)
-        card.layer.cornerRadius = 26
+        card.layer.cornerRadius = 12
         card.clipsToBounds = true
         let inner = UIStackView()
         inner.axis = .vertical
@@ -344,21 +345,49 @@ final class UpdateCheckViewController: UIViewController {
             statusLabel.bottomAnchor.constraint(equalTo: statusRow.bottomAnchor, constant: -10),
         ])
         inner.addArrangedSubview(statusRow)
+        // The update offer folds into this same card, below the
+        // status line, whenever a check has found a newer build.
+        offerDivider = divider()
+        inner.addArrangedSubview(offerDivider)
+        inner.addArrangedSubview(buildOfferSection())
         return card
     }
 
-    private func buildOfferCard() -> UIView {
-        let (card, inner) = makeCard()
+    /// The offer UI as a section of the version-check card (it was
+    /// a standalone card before): 更新内容 header + notes, the
+    /// download progress, then the phase buttons. The header row
+    /// folds the notes — collapsed by default, tap to expand.
+    private func buildOfferSection() -> UIView {
         let content = UIStackView()
         content.axis = .vertical
         content.spacing = 8
         content.layoutMargins = UIEdgeInsets(top: 14, left: 16, bottom: 14, right: 16)
         content.isLayoutMarginsRelativeArrangement = true
-        inner.addArrangedSubview(content)
 
-        let title = rowLabel("更新内容", size: 13, weight: .semibold)
-        content.addArrangedSubview(title)
+        let headerRow = UIControl()
+        headerRow.addTarget(self, action: #selector(offerHeaderTapped), for: .touchUpInside)
+        let headerTitle = rowLabel("更新内容", size: 13, weight: .semibold)
+        headerTitle.isUserInteractionEnabled = false
+        headerRow.addSubview(headerTitle)
+        offerChevron = UIImageView(image: UIImage(systemName: "chevron.right", withConfiguration: UIImage.SymbolConfiguration(pointSize: 12, weight: .semibold)))
+        offerChevron.tintColor = UIAppColors.secondary
+        offerChevron.contentMode = .scaleAspectFit
+        offerChevron.isUserInteractionEnabled = false
+        headerRow.addSubview(offerChevron)
+        headerTitle.translatesAutoresizingMaskIntoConstraints = false
+        offerChevron.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            headerRow.heightAnchor.constraint(greaterThanOrEqualToConstant: 22),
+            headerTitle.leadingAnchor.constraint(equalTo: headerRow.leadingAnchor),
+            headerTitle.topAnchor.constraint(equalTo: headerRow.topAnchor, constant: 2),
+            headerTitle.bottomAnchor.constraint(equalTo: headerRow.bottomAnchor, constant: -2),
+            offerChevron.trailingAnchor.constraint(equalTo: headerRow.trailingAnchor),
+            offerChevron.centerYAnchor.constraint(equalTo: headerRow.centerYAnchor),
+            headerTitle.trailingAnchor.constraint(lessThanOrEqualTo: offerChevron.leadingAnchor, constant: -12),
+        ])
+        content.addArrangedSubview(headerRow)
         offerNotesLabel = rowLabel("", size: 12.5, color: UIAppColors.secondary)
+        offerNotesLabel.isHidden = true
         content.addArrangedSubview(offerNotesLabel)
 
         progressView = UIProgressView(progressViewStyle: .default)
@@ -395,8 +424,15 @@ final class UpdateCheckViewController: UIViewController {
         signButton.translatesAutoresizingMaskIntoConstraints = false
         signButton.heightAnchor.constraint(greaterThanOrEqualToConstant: 46).isActive = true
 
-        offerCard = card
-        return card
+        offerSection = content
+        return content
+    }
+
+    @objc private func offerHeaderTapped() {
+        notesExpanded.toggle()
+        offerNotesLabel.isHidden = !notesExpanded
+        offerChevron.image = UIImage(systemName: notesExpanded ? "chevron.down" : "chevron.right",
+                                     withConfiguration: UIImage.SymbolConfiguration(pointSize: 12, weight: .semibold))
     }
 
     /// Configuration buttons render their title from the
@@ -467,70 +503,40 @@ final class UpdateCheckViewController: UIViewController {
     private func certificateCard() -> UIView {
         let (card, inner) = makeCard()
         // Every row in this card uses the page's shared row
-        // metrics — min-height 44 with 12pt vertical padding for
-        // content rows. (This card previously hand-rolled a 46pt
-        // header and a 38pt / 9pt saved row, which put its text
-        // rhythm off the rest of the page.)
-        let headerRow = UIView()
-        certIdentityLabel = rowLabel("", size: 13.5, weight: .semibold)
-        headerRow.addSubview(certIdentityLabel)
-        certIdentityLabel.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            headerRow.heightAnchor.constraint(greaterThanOrEqualToConstant: 44),
-            certIdentityLabel.leadingAnchor.constraint(equalTo: headerRow.leadingAnchor, constant: 16),
-            certIdentityLabel.trailingAnchor.constraint(equalTo: headerRow.trailingAnchor, constant: -16),
-            certIdentityLabel.topAnchor.constraint(equalTo: headerRow.topAnchor, constant: 12),
-            certIdentityLabel.bottomAnchor.constraint(equalTo: headerRow.bottomAnchor, constant: -12),
-        ])
-        inner.addArrangedSubview(headerRow)
-        inner.addArrangedSubview(divider())
-        // The header profile's device UDID(s) as a tappable entry
-        // into the cert-material detail page (which lists the
-        // stored P12 and profiles with swipe export/delete).
-        // UDIDs are long, so the value gets its own full-width
-        // line(s) under the title instead of squeezing into the
-        // value column of an info row; the chevron rides the
-        // row's trailing edge.
+        // metrics — min-height 44 with 12pt vertical padding.
+        // The UDID entry is always visible and reads as one line:
+        // 「当前设备UDID：<udid>」 once a certificate is imported,
+        // 「当前设备UDID：请导入证书」 while the store is empty.
+        // Tapping it opens the cert-material detail page.
         certUDIDRow = UIControl()
         certUDIDRow.addTarget(self, action: #selector(udidEntryTapped), for: .touchUpInside)
-        let udidTitleLabel = rowLabel("设备 UDID")
-        certUDIDValueLabel = rowLabel("", size: 12.5, color: UIAppColors.secondary)
-        let udidStack = UIStackView(arrangedSubviews: [udidTitleLabel, certUDIDValueLabel])
-        udidStack.axis = .vertical
-        udidStack.spacing = 2
-        udidStack.isUserInteractionEnabled = false
-        certUDIDRow.addSubview(udidStack)
+        certUDIDValueLabel = rowLabel("")
+        certUDIDValueLabel.isUserInteractionEnabled = false
+        certUDIDRow.addSubview(certUDIDValueLabel)
         let udidChevron = UIImageView(image: UIImage(systemName: "chevron.right", withConfiguration: UIImage.SymbolConfiguration(pointSize: 13, weight: .semibold)))
         udidChevron.tintColor = UIAppColors.secondary
         udidChevron.contentMode = .scaleAspectFit
         udidChevron.isUserInteractionEnabled = false
         certUDIDRow.addSubview(udidChevron)
-        udidStack.translatesAutoresizingMaskIntoConstraints = false
+        certUDIDValueLabel.translatesAutoresizingMaskIntoConstraints = false
         udidChevron.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             certUDIDRow.heightAnchor.constraint(greaterThanOrEqualToConstant: 44),
-            udidStack.leadingAnchor.constraint(equalTo: certUDIDRow.leadingAnchor, constant: 16),
-            udidStack.topAnchor.constraint(equalTo: certUDIDRow.topAnchor, constant: 12),
-            udidStack.bottomAnchor.constraint(equalTo: certUDIDRow.bottomAnchor, constant: -12),
+            certUDIDValueLabel.leadingAnchor.constraint(equalTo: certUDIDRow.leadingAnchor, constant: 16),
+            certUDIDValueLabel.topAnchor.constraint(equalTo: certUDIDRow.topAnchor, constant: 12),
+            certUDIDValueLabel.bottomAnchor.constraint(equalTo: certUDIDRow.bottomAnchor, constant: -12),
             udidChevron.trailingAnchor.constraint(equalTo: certUDIDRow.trailingAnchor, constant: -16),
             udidChevron.centerYAnchor.constraint(equalTo: certUDIDRow.centerYAnchor),
-            udidStack.trailingAnchor.constraint(lessThanOrEqualTo: udidChevron.leadingAnchor, constant: -12),
+            certUDIDValueLabel.trailingAnchor.constraint(lessThanOrEqualTo: udidChevron.leadingAnchor, constant: -12),
         ])
         inner.addArrangedSubview(certUDIDRow)
-        certUDIDDivider = divider()
-        inner.addArrangedSubview(certUDIDDivider)
-        inner.addArrangedSubview(actionRow(title: "导入 P12 与描述文件", color: UIAppColors.inkDynamic, action: #selector(importP12Tapped)))
         inner.addArrangedSubview(divider())
-        inner.addArrangedSubview(actionRow(title: "导入描述文件", color: UIAppColors.inkDynamic, action: #selector(importProfileTapped)))
-        return card
-    }
-
-    private func lcSignNodeCard() -> UIView {
-        let (card, inner) = makeCard()
-        // Display only: install nodes live inside LCSign (the
-        // hand-off URL carries no node choice), so this row is a
-        // plain info row — no chevron, no tap behaviour.
-        inner.addArrangedSubview(infoRow(title: "LCSign 安装节点", value: "LCSign 内置"))
+        inner.addArrangedSubview(actionRow(title: "导入证书", color: .systemBlue, action: #selector(importCertTapped)))
+        inner.addArrangedSubview(divider())
+        // The install node lives in this card as its last row:
+        // installation is served by the app's own on-device
+        // install server, so the row is display-only.
+        inner.addArrangedSubview(infoRow(title: "安装节点", value: "LUIYo 本地内置"))
         return card
     }
 
@@ -542,7 +548,16 @@ final class UpdateCheckViewController: UIViewController {
         statusLabel.isHidden = updater.statusText.isEmpty
         checkRow.isEnabled = updater.phase != .checking && updater.phase != .downloading
 
-        offerCard.isHidden = !updater.updateFound
+        offerSection.isHidden = !updater.updateFound
+        offerDivider.isHidden = !updater.updateFound
+        // A newly discovered build starts with its notes folded.
+        if updater.latestBuild != lastOfferBuild {
+            lastOfferBuild = updater.latestBuild
+            notesExpanded = false
+        }
+        offerNotesLabel.isHidden = !notesExpanded
+        offerChevron.image = UIImage(systemName: notesExpanded ? "chevron.down" : "chevron.right",
+                                     withConfiguration: UIImage.SymbolConfiguration(pointSize: 12, weight: .semibold))
         lcSignButton.isHidden = true
         // A signed result belongs to one specific download; when
         // the downloaded file changes, the signed state (and the
@@ -631,19 +646,17 @@ final class UpdateCheckViewController: UIViewController {
     }
 
     private func refreshCertificate() {
-        guard isViewLoaded, certIdentityLabel != nil else { return }
+        guard isViewLoaded, certUDIDValueLabel != nil else { return }
         let material = UpdateCertificateStore.load()
-        certIdentityLabel.text = UpdateCertificateStore.identityLine ?? "未导入证书"
-        // UDID entry: read from the header profile (the one the
-        // identity line comes from). A distribution profile has
-        // no device list, so the row reads 未包含； with nothing
-        // stored at all the row (and its divider) stays hidden.
-        let udids = material.profiles.last.map { UpdateCertificateStore.provisionedDevices(in: $0.data) } ?? []
-        let showUDIDRow = !material.isEmpty
-        certUDIDRow.isHidden = !showUDIDRow
-        certUDIDDivider.isHidden = !showUDIDRow
-        if showUDIDRow {
-            certUDIDValueLabel.text = udids.isEmpty ? "未包含" : udids.joined(separator: "\n")
+        // The UDID entry always shows exactly one line: with a
+        // certificate imported, the header profile's first
+        // provisioned device (未包含 when the profile carries no
+        // device list); with an empty store, the import prompt.
+        if material.isEmpty {
+            certUDIDValueLabel.text = "当前设备UDID：请导入证书"
+        } else {
+            let udids = material.profiles.last.map { UpdateCertificateStore.provisionedDevices(in: $0.data) } ?? []
+            certUDIDValueLabel.text = "当前设备UDID：\(udids.first ?? "未包含")"
         }
         // Freshly imported material may unlock the 签名此更新 action.
         refresh()
@@ -821,33 +834,28 @@ final class UpdateCheckViewController: UIViewController {
 
     // MARK: - Certificate import
 
-    private enum ImportKind { case p12AndProfile, profileOnly }
-    private var pendingImportKind: ImportKind = .profileOnly
-
     private static var provisionType: UTType {
         UTType(filenameExtension: "mobileprovision") ?? .data
     }
 
-    @objc private func importP12Tapped() {
-        pendingImportKind = .p12AndProfile
-        let picker = UIDocumentPickerViewController(forOpeningContentTypes: [UTType.pkcs12, Self.provisionType], asCopy: true)
+    /// One import entry for every shape of certificate material:
+    /// a single `.zip` (the format the UDID page exports — P12 +
+    /// profile(s) inside, one folder level is fine) or the loose
+    /// P12 + 描述文件 pair picked together (either file alone
+    /// also works). Everything funnels into the same validated
+    /// finishImport below.
+    @objc private func importCertTapped() {
+        let picker = UIDocumentPickerViewController(forOpeningContentTypes: [UTType.pkcs12, Self.provisionType, UTType.zip], asCopy: true)
         picker.delegate = self
         picker.allowsMultipleSelection = true
         present(picker, animated: true)
     }
 
-    @objc private func importProfileTapped() {
-        pendingImportKind = .profileOnly
-        let picker = UIDocumentPickerViewController(forOpeningContentTypes: [Self.provisionType], asCopy: true)
-        picker.delegate = self
-        picker.allowsMultipleSelection = false
-        present(picker, animated: true)
-    }
-
     /// Opens the 设备 UDID detail page: the header profile's
-    /// UDIDs plus every stored certificate item, each with
-    /// swipe-to-export / swipe-to-delete. Deletions in there
-    /// call back so this card re-reads the store on return.
+    /// UDIDs plus the imported certificate as one bundle item
+    /// (tap for 证书详情， swipe for zip export / bundle delete).
+    /// Deletions in there call back so this card re-reads the
+    /// store on return.
     @objc private func udidEntryTapped() {
         let detail = CertMaterialViewController(homeModel: homeModel)
         detail.applyPageFont(pageFont)
@@ -913,21 +921,27 @@ final class UpdateCheckViewController: UIViewController {
 // MARK: - Certificate material detail
 
 /// The 设备 UDID detail page behind the certificate card's UDID
-/// entry. Top section: the header profile's device UDIDs. Below:
-/// every stored certificate item — the P12 (when present) and
-/// each provisioning profile by its parsed name — with trailing
-/// swipe actions to export the stored file through the share
-/// sheet or delete exactly that item from the store. Presented
-/// as a full-screen modal with the shared page header, like the
-/// other subpages reached from the 我的 tab (no nav stack).
+/// entry. Hand-built with the same card scaffolding as the
+/// 检查更新 page — 12pt cards and real labels for EVERY text,
+/// section headers included, so the page font reaches all of it
+/// (the previous UITableView version drew its own section
+/// headers outside the font walk, which is why text in here did
+/// not follow the chosen font). Top section: the header
+/// profile's device UDIDs — or the import prompt while the store
+/// is empty. Below: the imported certificate as ONE item (the
+/// P12 and its profiles are a single bundle): tap it for the
+/// 证书详情 page; swipe it to 导出 the whole bundle as one zip,
+/// or 删除 the whole bundle. Presented as a full-screen modal
+/// with the shared page header, like the other subpages reached
+/// from the 我的 tab (no nav stack).
 final class CertMaterialViewController: UIViewController {
     private let homeModel: NativeHomeModel
 
-    /// Called after every per-item deletion so the presenting
+    /// Called after the bundle is deleted so the presenting
     /// update page can re-read the store for its cert card.
     var onMaterialChanged: (() -> Void)?
 
-    private var tableView: UITableView!
+    private var stack: UIStackView!
     private var material = UpdateCertMaterial()
     private var udids: [String] = []
 
@@ -973,17 +987,28 @@ final class CertMaterialViewController: UIViewController {
             header.heightAnchor.constraint(equalToConstant: 52),
         ])
 
-        tableView = UITableView(frame: .zero, style: .insetGrouped)
-        tableView.backgroundColor = .clear
-        tableView.dataSource = self
-        tableView.delegate = self
-        view.addSubview(tableView)
-        tableView.translatesAutoresizingMaskIntoConstraints = false
+        let scrollView = UIScrollView()
+        scrollView.alwaysBounceVertical = true
+        scrollView.showsVerticalScrollIndicator = false
+        view.addSubview(scrollView)
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            tableView.topAnchor.constraint(equalTo: header.bottomAnchor),
-            tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            scrollView.topAnchor.constraint(equalTo: header.bottomAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+        ])
+        stack = UIStackView()
+        stack.axis = .vertical
+        stack.spacing = 12
+        scrollView.addSubview(stack)
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            stack.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor, constant: 14),
+            stack.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor, constant: -14),
+            stack.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor, constant: 6),
+            stack.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor, constant: -24),
+            stack.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor, constant: -28),
         ])
         reloadMaterial()
         PageFontApplier.apply(pageFont, to: view)
@@ -991,30 +1016,155 @@ final class CertMaterialViewController: UIViewController {
 
     @objc private func backTapped() { dismiss(animated: true) }
 
+    // MARK: - Scaffolding (same shapes as the 检查更新 page)
+
+    private func makeCard() -> (card: UIView, inner: UIStackView) {
+        let card = UIView()
+        card.backgroundColor = UIColor(nativeHex: homeModel.theme.card)
+        card.layer.cornerRadius = 12
+        card.clipsToBounds = true
+        let inner = UIStackView()
+        inner.axis = .vertical
+        inner.spacing = 0
+        card.addSubview(inner)
+        inner.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            inner.leadingAnchor.constraint(equalTo: card.leadingAnchor),
+            inner.trailingAnchor.constraint(equalTo: card.trailingAnchor),
+            inner.topAnchor.constraint(equalTo: card.topAnchor),
+            inner.bottomAnchor.constraint(equalTo: card.bottomAnchor),
+        ])
+        return (card, inner)
+    }
+
+    private func divider() -> UIView {
+        let line = UIView()
+        line.backgroundColor = UIAppColors.divider
+        line.translatesAutoresizingMaskIntoConstraints = false
+        line.heightAnchor.constraint(equalToConstant: 1 / UIScreen.main.scale).isActive = true
+        let wrapper = UIView()
+        wrapper.addSubview(line)
+        NSLayoutConstraint.activate([
+            line.leadingAnchor.constraint(equalTo: wrapper.leadingAnchor, constant: 16),
+            line.trailingAnchor.constraint(equalTo: wrapper.trailingAnchor, constant: -16),
+            line.topAnchor.constraint(equalTo: wrapper.topAnchor),
+            line.bottomAnchor.constraint(equalTo: wrapper.bottomAnchor),
+        ])
+        return wrapper
+    }
+
+    private func rowLabel(_ text: String, size: CGFloat = 13, weight: UIFont.Weight = .regular, color: UIColor = UIAppColors.inkDynamic) -> UILabel {
+        let label = UILabel()
+        label.text = text
+        label.font = UIFont.systemFont(ofSize: size, weight: weight)
+        label.textColor = color
+        label.numberOfLines = 0
+        return label
+    }
+
+    private func sectionLabel(_ text: String) -> UIView {
+        let label = rowLabel(text, size: 13, weight: .semibold, color: UIAppColors.secondary)
+        let wrapper = UIView()
+        wrapper.addSubview(label)
+        label.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            label.leadingAnchor.constraint(equalTo: wrapper.leadingAnchor, constant: 6),
+            label.trailingAnchor.constraint(equalTo: wrapper.trailingAnchor, constant: -6),
+            label.topAnchor.constraint(equalTo: wrapper.topAnchor, constant: 4),
+            label.bottomAnchor.constraint(equalTo: wrapper.bottomAnchor),
+        ])
+        return wrapper
+    }
+
+    /// A plain text row at the shared 44pt metrics.
+    private func plainRow(_ text: String, color: UIColor = UIAppColors.inkDynamic) -> UIView {
+        let row = UIView()
+        let label = rowLabel(text, color: color)
+        row.addSubview(label)
+        label.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            row.heightAnchor.constraint(greaterThanOrEqualToConstant: 44),
+            label.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: 16),
+            label.trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -16),
+            label.topAnchor.constraint(equalTo: row.topAnchor, constant: 12),
+            label.bottomAnchor.constraint(equalTo: row.bottomAnchor, constant: -12),
+        ])
+        return row
+    }
+
     // MARK: - Data
-
-    private enum MaterialItem {
-        case p12
-        case profile(StoredProvisionProfile)
-    }
-
-    private var materialItems: [MaterialItem] {
-        var items: [MaterialItem] = []
-        if material.p12Data != nil { items.append(.p12) }
-        items.append(contentsOf: material.profiles.map { MaterialItem.profile($0) })
-        return items
-    }
 
     private func reloadMaterial() {
         material = UpdateCertificateStore.load()
         udids = material.profiles.last.map { UpdateCertificateStore.provisionedDevices(in: $0.data) } ?? []
-        tableView?.reloadData()
-        // Cells are (re)built by the reload; re-run the font
-        // applier so fresh cells pick up the page font as well.
+        rebuildContent()
+        // Rows are (re)built by the reload; re-run the font
+        // applier so fresh labels pick up the page font as well.
         if isViewLoaded { PageFontApplier.apply(pageFont, to: view) }
     }
 
-    // MARK: - Export / delete
+    private func rebuildContent() {
+        guard stack != nil else { return }
+        for arranged in stack.arrangedSubviews {
+            stack.removeArrangedSubview(arranged)
+            arranged.removeFromSuperview()
+        }
+        stack.addArrangedSubview(sectionLabel("设备 UDID"))
+        let (udidCard, udidInner) = makeCard()
+        if material.isEmpty {
+            udidInner.addArrangedSubview(plainRow("当前设备UDID：请导入证书", color: UIAppColors.secondary))
+        } else if udids.isEmpty {
+            udidInner.addArrangedSubview(plainRow("未包含", color: UIAppColors.secondary))
+        } else {
+            for (index, udid) in udids.enumerated() {
+                if index > 0 { udidInner.addArrangedSubview(divider()) }
+                udidInner.addArrangedSubview(plainRow(udid))
+            }
+        }
+        stack.addArrangedSubview(udidCard)
+
+        stack.addArrangedSubview(sectionLabel("证书与描述文件"))
+        let (certCard, certInner) = makeCard()
+        if material.isEmpty {
+            certInner.addArrangedSubview(plainRow("未导入任何证书", color: UIAppColors.secondary))
+        } else {
+            let row = SwipeRevealRow(
+                title: Self.bundleTitle(material),
+                subtitle: Self.bundleSubtitle(material),
+                backgroundColor: UIColor(nativeHex: homeModel.theme.card))
+            row.onTap = { [weak self] in self?.openCertDetail() }
+            row.onExport = { [weak self, weak row] in
+                guard let self, let row else { return }
+                self.exportBundle(from: row)
+            }
+            row.onDelete = { [weak self] in self?.deleteBundle() }
+            certInner.addArrangedSubview(row)
+        }
+        stack.addArrangedSubview(certCard)
+    }
+
+    /// The bundle's display name: the P12's identity label, then
+    /// the header profile's name, then a generic fallback.
+    private static func bundleTitle(_ material: UpdateCertMaterial) -> String {
+        material.p12Label ?? material.profiles.last?.name ?? "已导入证书"
+    }
+
+    private static func bundleSubtitle(_ material: UpdateCertMaterial) -> String {
+        switch (material.p12Data != nil, !material.profiles.isEmpty) {
+        case (true, true): return "证书 · 含描述文件"
+        case (true, false): return "证书文件（.p12）"
+        case (false, true): return "描述文件（.mobileprovision）"
+        case (false, false): return ""
+        }
+    }
+
+    // MARK: - Actions
+
+    private func openCertDetail() {
+        let detail = CertDetailViewController(homeModel: homeModel)
+        detail.applyPageFont(pageFont)
+        present(detail, animated: true)
+    }
 
     private static func sanitizedFileName(_ raw: String) -> String {
         let bad = CharacterSet(charactersIn: "/\\?%*|\"<>:").union(.controlCharacters)
@@ -1023,108 +1173,432 @@ final class CertMaterialViewController: UIViewController {
         return cleaned.isEmpty ? "LUIYo" : cleaned
     }
 
-    private func export(_ item: MaterialItem, from cell: UITableViewCell) {
-        let data: Data
-        let fileName: String
-        switch item {
-        case .p12:
-            guard let p12Data = material.p12Data else { return }
-            data = p12Data
-            fileName = Self.sanitizedFileName(material.p12Label ?? "LUIYo 证书") + ".p12"
-        case .profile(let profile):
-            data = profile.data
-            fileName = Self.sanitizedFileName(profile.name) + ".mobileprovision"
+    /// Exports the WHOLE bundle as one zip — the stored P12 and
+    /// every profile under their proper file names — through the
+    /// share sheet. The same zip re-imports via 导入证书.
+    private func exportBundle(from anchor: UIView) {
+        var entries: [ZipWriter.Entry] = []
+        var usedNames: Set<String> = []
+        func uniqueName(_ base: String) -> String {
+            var name = base
+            var counter = 2
+            while usedNames.contains(name) {
+                let dot = base.range(of: ".", options: .backwards)
+                if let dot {
+                    name = String(base[..<dot.lowerBound]) + "-\(counter)" + String(base[dot.lowerBound...])
+                } else {
+                    name = base + "-\(counter)"
+                }
+                counter += 1
+            }
+            usedNames.insert(name)
+            return name
         }
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
+        if let p12Data = material.p12Data {
+            let name = uniqueName(Self.sanitizedFileName(material.p12Label ?? "LUIYo 证书") + ".p12")
+            entries.append(ZipWriter.Entry(name: name, data: p12Data))
+        }
+        for profile in material.profiles {
+            let name = uniqueName(Self.sanitizedFileName(profile.name) + ".mobileprovision")
+            entries.append(ZipWriter.Entry(name: name, data: profile.data))
+        }
+        guard !entries.isEmpty else { return }
+        let zipData = ZipWriter.archive(entries: entries)
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent(Self.sanitizedFileName(Self.bundleTitle(material)) + ".zip")
         do {
-            try data.write(to: url, options: .atomic)
+            try zipData.write(to: url, options: .atomic)
         } catch {
             return
         }
         let activity = UIActivityViewController(activityItems: [url], applicationActivities: nil)
         if let popover = activity.popoverPresentationController {
-            popover.sourceView = cell
-            popover.sourceRect = cell.bounds
+            popover.sourceView = anchor
+            popover.sourceRect = anchor.bounds
         }
         present(activity, animated: true)
     }
 
-    private func delete(_ item: MaterialItem) {
-        switch item {
-        case .p12:
-            UpdateCertificateStore.deleteP12()
-        case .profile(let profile):
-            UpdateCertificateStore.deleteProfile(id: profile.id)
-        }
+    /// Deletes the whole stored bundle (P12 + password + every
+    /// profile) in one store clear.
+    private func deleteBundle() {
+        UpdateCertificateStore.clear()
         reloadMaterial()
         onMaterialChanged?()
     }
 }
 
-extension CertMaterialViewController: UITableViewDataSource, UITableViewDelegate {
-    func numberOfSections(in tableView: UITableView) -> Int { 2 }
+/// One row whose content slides left to reveal two trailing
+/// action buttons — 导出 (blue) and 删除 (red). A drag that runs
+/// past the revealed buttons fires the first action (export —
+/// the harmless one), mirroring a table row's full swipe. A tap
+/// fires `onTap` while closed, and just closes the row while
+/// open. Built by hand (not a table row) so the surrounding
+/// card's 12pt radius and the page-font walk apply unchanged.
+private final class SwipeRevealRow: UIView {
+    var onTap: (() -> Void)?
+    var onExport: (() -> Void)?
+    var onDelete: (() -> Void)?
 
-    func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
-        section == 0 ? "设备 UDID" : "证书与描述文件"
+    private let contentView = UIView()
+    private var contentLeading: NSLayoutConstraint!
+    private var offset: CGFloat = 0
+    private var panStartOffset: CGFloat = 0
+    private let actionsWidth: CGFloat = 152
+
+    init(title: String, subtitle: String, backgroundColor: UIColor) {
+        super.init(frame: .zero)
+        clipsToBounds = true
+
+        let exportButton = UIButton(type: .system)
+        exportButton.setTitle("导出", for: .normal)
+        exportButton.setTitleColor(.white, for: .normal)
+        exportButton.titleLabel?.font = UIFont.systemFont(ofSize: 14)
+        exportButton.backgroundColor = .systemBlue
+        exportButton.addTarget(self, action: #selector(exportTapped), for: .touchUpInside)
+        let deleteButton = UIButton(type: .system)
+        deleteButton.setTitle("删除", for: .normal)
+        deleteButton.setTitleColor(.white, for: .normal)
+        deleteButton.titleLabel?.font = UIFont.systemFont(ofSize: 14)
+        deleteButton.backgroundColor = .systemRed
+        deleteButton.addTarget(self, action: #selector(deleteTapped), for: .touchUpInside)
+        let actions = UIStackView(arrangedSubviews: [exportButton, deleteButton])
+        actions.axis = .horizontal
+        actions.distribution = .fillEqually
+        addSubview(actions)
+        actions.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            actions.trailingAnchor.constraint(equalTo: trailingAnchor),
+            actions.topAnchor.constraint(equalTo: topAnchor),
+            actions.bottomAnchor.constraint(equalTo: bottomAnchor),
+            actions.widthAnchor.constraint(equalToConstant: actionsWidth),
+        ])
+
+        contentView.backgroundColor = backgroundColor
+        addSubview(contentView)
+        contentView.translatesAutoresizingMaskIntoConstraints = false
+        contentLeading = contentView.leadingAnchor.constraint(equalTo: leadingAnchor)
+        NSLayoutConstraint.activate([
+            contentLeading,
+            contentView.topAnchor.constraint(equalTo: topAnchor),
+            contentView.bottomAnchor.constraint(equalTo: bottomAnchor),
+            contentView.widthAnchor.constraint(equalTo: widthAnchor),
+        ])
+
+        let titleLabel = UILabel()
+        titleLabel.text = title
+        titleLabel.font = UIFont.systemFont(ofSize: 15)
+        titleLabel.textColor = UIAppColors.inkDynamic
+        titleLabel.numberOfLines = 0
+        let subtitleLabel = UILabel()
+        subtitleLabel.text = subtitle
+        subtitleLabel.font = UIFont.systemFont(ofSize: 12)
+        subtitleLabel.textColor = UIAppColors.secondary
+        subtitleLabel.numberOfLines = 0
+        let textStack = UIStackView(arrangedSubviews: [titleLabel, subtitleLabel])
+        textStack.axis = .vertical
+        textStack.spacing = 2
+        textStack.isUserInteractionEnabled = false
+        contentView.addSubview(textStack)
+        textStack.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            contentView.heightAnchor.constraint(greaterThanOrEqualToConstant: 44),
+            textStack.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
+            textStack.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
+            textStack.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 12),
+            textStack.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -12),
+        ])
+
+        let pan = UIPanGestureRecognizer(target: self, action: #selector(handlePan(_:)))
+        contentView.addGestureRecognizer(pan)
+        let tap = UITapGestureRecognizer(target: self, action: #selector(handleTap))
+        tap.require(toFail: pan)
+        contentView.addGestureRecognizer(tap)
     }
 
-    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        if section == 0 { return max(udids.count, 1) }
-        return max(materialItems.count, 1)
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    private func applyOffset(animated: Bool) {
+        contentLeading.constant = offset
+        if animated {
+            UIView.animate(withDuration: 0.25, delay: 0, options: [.curveEaseOut]) {
+                self.layoutIfNeeded()
+            }
+        } else {
+            layoutIfNeeded()
+        }
     }
 
-    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        var dequeued = tableView.dequeueReusableCell(withIdentifier: "certMaterialCell")
-        if dequeued == nil {
-            dequeued = UITableViewCell(style: .subtitle, reuseIdentifier: "certMaterialCell")
-        }
-        let cell = dequeued!
-        cell.selectionStyle = .none
-        cell.textLabel?.text = nil
-        cell.detailTextLabel?.text = nil
-        cell.textLabel?.textColor = UIAppColors.inkDynamic
-        cell.detailTextLabel?.textColor = UIAppColors.secondary
-        if indexPath.section == 0 {
-            cell.textLabel?.text = udids.isEmpty ? "未包含" : udids[indexPath.row]
-            cell.textLabel?.font = UIFont.systemFont(ofSize: 13)
-            cell.textLabel?.numberOfLines = 0
-            return cell
-        }
-        let items = materialItems
-        guard !items.isEmpty else {
-            cell.textLabel?.text = "未导入任何证书"
-            cell.textLabel?.textColor = UIAppColors.secondary
-            return cell
-        }
-        switch items[indexPath.row] {
-        case .p12:
-            cell.textLabel?.text = material.p12Label ?? "P12 证书"
-            cell.detailTextLabel?.text = "证书文件（.p12）"
-        case .profile(let profile):
-            cell.textLabel?.text = profile.name
-            cell.detailTextLabel?.text = profile.teamId.isEmpty ? "描述文件（.mobileprovision）" : "描述文件 · \(profile.teamId)"
-        }
-        return cell
+    private func setOpen(_ open: Bool, animated: Bool = true) {
+        offset = open ? -actionsWidth : 0
+        applyOffset(animated: animated)
     }
 
-    func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
-        guard indexPath.section == 1 else { return nil }
-        let items = materialItems
-        guard !items.isEmpty else { return nil }
-        let item = items[indexPath.row]
-        // 导出 comes first on purpose: a full swipe performs the
-        // first action, and exporting is the harmless one.
-        let exportAction = UIContextualAction(style: .normal, title: "导出") { [weak self] _, _, completion in
-            guard let self, let cell = tableView.cellForRow(at: indexPath) else { completion(false); return }
-            self.export(item, from: cell)
-            completion(true)
+    @objc private func handlePan(_ recognizer: UIPanGestureRecognizer) {
+        switch recognizer.state {
+        case .began:
+            panStartOffset = offset
+        case .changed:
+            let translation = recognizer.translation(in: self).x
+            offset = min(0, max(-actionsWidth - 48, panStartOffset + translation))
+            applyOffset(animated: false)
+        case .ended, .cancelled:
+            let velocity = recognizer.velocity(in: self).x
+            if offset < -(actionsWidth + 30) || (offset < -40 && velocity < -600) {
+                // Full swipe: fire the first (harmless) action.
+                setOpen(false)
+                onExport?()
+            } else if offset < -actionsWidth / 2 {
+                setOpen(true)
+            } else {
+                setOpen(false)
+            }
+        default:
+            break
         }
-        exportAction.backgroundColor = .systemBlue
-        let deleteAction = UIContextualAction(style: .destructive, title: "删除") { [weak self] _, _, completion in
-            self?.delete(item)
-            completion(true)
+    }
+
+    @objc private func handleTap() {
+        if offset != 0 {
+            setOpen(false)
+        } else {
+            onTap?()
         }
-        return UISwipeActionsConfiguration(actions: [exportAction, deleteAction])
+    }
+
+    @objc private func exportTapped() {
+        setOpen(false)
+        onExport?()
+    }
+
+    @objc private func deleteTapped() {
+        setOpen(false)
+        onDelete?()
+    }
+}
+
+// MARK: - Certificate detail
+
+/// The 证书详情 page, opened by tapping the certificate row on
+/// the 设备 UDID page: the bundle's parsed identity — 证书名称，
+/// 团队 ID, 描述文件名称， 到期时间， 包含设备数 — over the full
+/// provisioned-device list. Same scaffolding (12pt cards) and
+/// page-font routing as its presenter; unknown fields read —.
+final class CertDetailViewController: UIViewController {
+    private let homeModel: NativeHomeModel
+
+    init(homeModel: NativeHomeModel) {
+        self.homeModel = homeModel
+        super.init(nibName: nil, bundle: nil)
+        modalPresentationStyle = .fullScreen
+        transitioningDelegate = self
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    // MARK: - Page font
+
+    private var pageFont: UIFont?
+
+    func applyPageFont(_ font: UIFont?) {
+        pageFont = font
+        if isViewLoaded { PageFontApplier.apply(font, to: view) }
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        PageFontApplier.apply(pageFont, to: view)
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        installEdgeSwipeBack()
+        view.backgroundColor = UIColor(nativeHex: homeModel.theme.background)
+
+        let header = luiyoPageHeader(title: "证书详情", backAction: #selector(backTapped), target: self)
+        view.addSubview(header)
+        header.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            header.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            header.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            header.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            header.heightAnchor.constraint(equalToConstant: 52),
+        ])
+
+        let scrollView = UIScrollView()
+        scrollView.alwaysBounceVertical = true
+        scrollView.showsVerticalScrollIndicator = false
+        view.addSubview(scrollView)
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            scrollView.topAnchor.constraint(equalTo: header.bottomAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+        ])
+        let stack = UIStackView()
+        stack.axis = .vertical
+        stack.spacing = 12
+        scrollView.addSubview(stack)
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            stack.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor, constant: 14),
+            stack.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor, constant: -14),
+            stack.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor, constant: 6),
+            stack.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor, constant: -24),
+            stack.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor, constant: -28),
+        ])
+
+        let material = UpdateCertificateStore.load()
+        let profile = material.profiles.last
+        let udids = profile.map { UpdateCertificateStore.provisionedDevices(in: $0.data) } ?? []
+
+        let (card, inner) = makeCard()
+        let expirationText: String
+        if let expiration = profile?.expiration {
+            let formatter = DateFormatter()
+            formatter.locale = Locale(identifier: "zh_CN")
+            formatter.dateFormat = "yyyy年M月d日"
+            expirationText = formatter.string(from: expiration)
+        } else {
+            expirationText = "—"
+        }
+        let rows: [(String, String)] = [
+            ("证书名称", material.p12Label ?? profile?.name ?? "已导入证书"),
+            ("团队 ID", profile.map { $0.teamId.isEmpty ? "—" : $0.teamId } ?? "—"),
+            ("描述文件名称", profile?.name ?? "—"),
+            ("到期时间", expirationText),
+            ("包含设备数", profile == nil ? "—" : "\(udids.count)"),
+        ]
+        for (index, row) in rows.enumerated() {
+            if index > 0 { inner.addArrangedSubview(divider()) }
+            inner.addArrangedSubview(infoRow(title: row.0, value: row.1))
+        }
+        stack.addArrangedSubview(card)
+
+        stack.addArrangedSubview(sectionLabel("设备 UDID"))
+        let (udidCard, udidInner) = makeCard()
+        if udids.isEmpty {
+            udidInner.addArrangedSubview(plainRow("未包含", color: UIAppColors.secondary))
+        } else {
+            for (index, udid) in udids.enumerated() {
+                if index > 0 { udidInner.addArrangedSubview(divider()) }
+                udidInner.addArrangedSubview(plainRow(udid))
+            }
+        }
+        stack.addArrangedSubview(udidCard)
+        PageFontApplier.apply(pageFont, to: view)
+    }
+
+    @objc private func backTapped() { dismiss(animated: true) }
+
+    // MARK: - Scaffolding (same shapes as the 检查更新 page)
+
+    private func makeCard() -> (card: UIView, inner: UIStackView) {
+        let card = UIView()
+        card.backgroundColor = UIColor(nativeHex: homeModel.theme.card)
+        card.layer.cornerRadius = 12
+        card.clipsToBounds = true
+        let inner = UIStackView()
+        inner.axis = .vertical
+        inner.spacing = 0
+        card.addSubview(inner)
+        inner.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            inner.leadingAnchor.constraint(equalTo: card.leadingAnchor),
+            inner.trailingAnchor.constraint(equalTo: card.trailingAnchor),
+            inner.topAnchor.constraint(equalTo: card.topAnchor),
+            inner.bottomAnchor.constraint(equalTo: card.bottomAnchor),
+        ])
+        return (card, inner)
+    }
+
+    private func divider() -> UIView {
+        let line = UIView()
+        line.backgroundColor = UIAppColors.divider
+        line.translatesAutoresizingMaskIntoConstraints = false
+        line.heightAnchor.constraint(equalToConstant: 1 / UIScreen.main.scale).isActive = true
+        let wrapper = UIView()
+        wrapper.addSubview(line)
+        NSLayoutConstraint.activate([
+            line.leadingAnchor.constraint(equalTo: wrapper.leadingAnchor, constant: 16),
+            line.trailingAnchor.constraint(equalTo: wrapper.trailingAnchor, constant: -16),
+            line.topAnchor.constraint(equalTo: wrapper.topAnchor),
+            line.bottomAnchor.constraint(equalTo: wrapper.bottomAnchor),
+        ])
+        return wrapper
+    }
+
+    private func rowLabel(_ text: String, size: CGFloat = 13, weight: UIFont.Weight = .regular, color: UIColor = UIAppColors.inkDynamic) -> UILabel {
+        let label = UILabel()
+        label.text = text
+        label.font = UIFont.systemFont(ofSize: size, weight: weight)
+        label.textColor = color
+        label.numberOfLines = 0
+        return label
+    }
+
+    private func sectionLabel(_ text: String) -> UIView {
+        let label = rowLabel(text, size: 13, weight: .semibold, color: UIAppColors.secondary)
+        let wrapper = UIView()
+        wrapper.addSubview(label)
+        label.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            label.leadingAnchor.constraint(equalTo: wrapper.leadingAnchor, constant: 6),
+            label.trailingAnchor.constraint(equalTo: wrapper.trailingAnchor, constant: -6),
+            label.topAnchor.constraint(equalTo: wrapper.topAnchor, constant: 4),
+            label.bottomAnchor.constraint(equalTo: wrapper.bottomAnchor),
+        ])
+        return wrapper
+    }
+
+    /// Label-left / value-right info row, min-height 44, growing
+    /// when a long value wraps.
+    private func infoRow(title: String, value: String) -> UIView {
+        let row = UIView()
+        let titleLabel = rowLabel(title)
+        let valueLabel = rowLabel(value, color: UIAppColors.secondary)
+        valueLabel.textAlignment = .right
+        row.addSubview(titleLabel)
+        row.addSubview(valueLabel)
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+        valueLabel.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            row.heightAnchor.constraint(greaterThanOrEqualToConstant: 44),
+            titleLabel.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: 16),
+            titleLabel.topAnchor.constraint(equalTo: row.topAnchor, constant: 12),
+            titleLabel.bottomAnchor.constraint(equalTo: row.bottomAnchor, constant: -12),
+            valueLabel.trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -16),
+            valueLabel.topAnchor.constraint(equalTo: row.topAnchor, constant: 12),
+            valueLabel.bottomAnchor.constraint(equalTo: row.bottomAnchor, constant: -12),
+            valueLabel.leadingAnchor.constraint(greaterThanOrEqualTo: titleLabel.trailingAnchor, constant: 12),
+        ])
+        return row
+    }
+
+    private func plainRow(_ text: String, color: UIColor = UIAppColors.inkDynamic) -> UIView {
+        let row = UIView()
+        let label = rowLabel(text, color: color)
+        row.addSubview(label)
+        label.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            row.heightAnchor.constraint(greaterThanOrEqualToConstant: 44),
+            label.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: 16),
+            label.trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -16),
+            label.topAnchor.constraint(equalTo: row.topAnchor, constant: 12),
+            label.bottomAnchor.constraint(equalTo: row.bottomAnchor, constant: -12),
+        ])
+        return row
+    }
+}
+
+extension CertDetailViewController: UIViewControllerTransitioningDelegate {
+    func animationController(forPresented presented: UIViewController, presenting: UIViewController, source: UIViewController) -> UIViewControllerAnimatedTransitioning? {
+        SlideFadeTransitionAnimator(presenting: true)
+    }
+
+    func animationController(forDismissed dismissed: UIViewController) -> UIViewControllerAnimatedTransitioning? {
+        SlideFadeTransitionAnimator(presenting: false)
     }
 }
 
@@ -1144,6 +1618,14 @@ extension UpdateCheckViewController: UIDocumentPickerDelegate {
     func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
         var p12Data: Data?
         var profile: (info: (name: String, teamId: String, expiration: Date?), data: Data)?
+        // A picked profile (loose or from a zip) goes through the
+        // same parse validation; a parse failure aborts the whole
+        // import with nothing saved.
+        func acceptProfile(_ data: Data) -> Bool {
+            guard let info = UpdateCertificateStore.parseProvision(data: data) else { return false }
+            profile = (info, data)
+            return true
+        }
         for url in urls {
             let scoped = url.startAccessingSecurityScopedResource()
             let data = try? Data(contentsOf: url)
@@ -1154,13 +1636,24 @@ extension UpdateCheckViewController: UIDocumentPickerDelegate {
             }
             switch url.pathExtension.lowercased() {
             case "p12", "pfx":
-                if pendingImportKind == .p12AndProfile { p12Data = data }
+                p12Data = data
             case "mobileprovision":
-                guard let info = UpdateCertificateStore.parseProvision(data: data) else {
+                guard acceptProfile(data) else {
                     showMessage(title: "导入失败", message: "描述文件解析失败，未保存任何内容。")
                     return
                 }
-                profile = (info, data)
+            case "zip":
+                guard let extracted = UpdateCertificateStore.certFiles(fromZipData: data) else {
+                    showMessage(title: "导入失败", message: "压缩包里没有找到 P12 证书或描述文件，未保存任何内容。")
+                    return
+                }
+                if let zipP12 = extracted.p12 { p12Data = zipP12 }
+                if let zipProfile = extracted.profile {
+                    guard acceptProfile(zipProfile) else {
+                        showMessage(title: "导入失败", message: "压缩包里的描述文件解析失败，未保存任何内容。")
+                        return
+                    }
+                }
             default:
                 showMessage(title: "导入失败", message: "不支持的文件类型，未保存任何内容。")
                 return

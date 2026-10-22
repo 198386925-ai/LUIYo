@@ -149,6 +149,37 @@ enum VersionPopup {
         )
     }
 
+    /// Build 31: the 检查更新 background auto-check discovered a
+    /// NEWER build in the feed — present the same soft （蓝紫）
+    /// update popup the version-state path uses, at most once per
+    /// discovered build (persisted, so relaunching does not nag
+    /// again for the same build). The popup's 更新 button opens
+    /// the feed IPA in Safari, exactly like the soft state entry.
+    /// Yields silently when the launch check has not run yet (no
+    /// host window), when another popup is already up or queued,
+    /// or when this build was already offered.
+    private static let discoveredPopupBuildKey = "luiyo.update.discoveredPopupBuild"
+
+    static func presentDiscoveredUpdateIfNeeded(version: String, build: Int, notes: String, downloadURL: URL?) {
+        guard hostWindowRef != nil,
+              popupController == nil,
+              pendingPayload == nil,
+              build > UserDefaults.standard.integer(forKey: discoveredPopupBuildKey)
+        else { return }
+        UserDefaults.standard.set(build, forKey: discoveredPopupBuildKey)
+        let firstLine = notes
+            .split(separator: "\n", omittingEmptySubsequences: true)
+            .first.map { String($0).trimmingCharacters(in: .whitespaces) } ?? ""
+        pendingPayload = Payload(
+            banned: false,
+            title: "请尽快更新\(version)版本",
+            l2: "发现新版 \(version) (Build \(build))，建议立即更新",
+            l3: firstLine.isEmpty ? "本次更新：优化体验，修复已知问题。" : firstLine,
+            downloadURL: downloadURL
+        )
+        tryPresent()
+    }
+
     /// Build 13: the popup is hosted in the app's MAIN window — the
     /// popup controller becomes a child of the window's root view
     /// controller and its view covers the whole window, above the

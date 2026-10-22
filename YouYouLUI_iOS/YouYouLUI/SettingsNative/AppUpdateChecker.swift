@@ -99,6 +99,11 @@ final class AppUpdateChecker: NSObject, ObservableObject {
     var latestSHA256: String { downloadSHA256 }
     private var expectedTotalBytes: Int64 = 0
     private var userCancelledDownload = false
+    /// Set only by the launch/foreground auto-check: when THAT
+    /// check discovers a newer build, the update popup is offered
+    /// (once per discovered build) on top of the badge. Manual
+    /// checks from the 检查更新 page never arm it.
+    private var autoDiscoveryArmed = false
 
     private lazy var downloadSession: URLSession = {
         URLSession(configuration: .default, delegate: self, delegateQueue: nil)
@@ -119,6 +124,7 @@ final class AppUpdateChecker: NSObject, ObservableObject {
         let last = UserDefaults.standard.double(forKey: lastAutoCheckKey)
         guard now - last >= 6 * 3600 else { return }
         UserDefaults.standard.set(now, forKey: lastAutoCheckKey)
+        shared.autoDiscoveryArmed = true
         shared.checkForUpdate()
     }
 
@@ -134,6 +140,10 @@ final class AppUpdateChecker: NSObject, ObservableObject {
     }
 
     private func handleCheckResult(data: Data?, error: Error?) {
+        // The discovery-popup arming belongs to the check that is
+        // completing right now, whichever way it lands.
+        let wasAutoDiscovery = autoDiscoveryArmed
+        autoDiscoveryArmed = false
         guard error == nil, let data,
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               (json["draft"] as? Bool) != true,
@@ -164,6 +174,14 @@ final class AppUpdateChecker: NSObject, ObservableObject {
             updateFound = true
             phase = .updateAvailable
             statusText = "发现新版 \(parsed.version) (Build \(parsed.build))"
+            if wasAutoDiscovery {
+                // A background discovery also raises the update
+                // popup (once per build) — the same soft popup the
+                // version-state path presents.
+                VersionPopup.presentDiscoveredUpdateIfNeeded(
+                    version: parsed.version, build: parsed.build,
+                    notes: releaseNotes, downloadURL: URL(string: urlString))
+            }
             if UpdateSettings.autoDownload {
                 startDownload()
             }
