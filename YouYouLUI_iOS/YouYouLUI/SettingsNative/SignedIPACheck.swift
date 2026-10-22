@@ -234,7 +234,7 @@ enum SignedIPACheck {
             streamPointer.pointee.src_size = data.count
             streamPointer.pointee.dst_ptr = destination
             streamPointer.pointee.dst_size = capacity
-            status = compression_stream_process(streamPointer, COMPRESSION_STREAM_FINALIZE)
+            status = compression_stream_process(streamPointer, Int32(COMPRESSION_STREAM_FINALIZE.rawValue))
             guard status == COMPRESSION_STATUS_END else { return nil }
             return Data(bytes: destination, count: capacity - streamPointer.pointee.dst_size)
         }
