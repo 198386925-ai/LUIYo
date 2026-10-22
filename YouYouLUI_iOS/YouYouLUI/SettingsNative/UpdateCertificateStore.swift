@@ -88,6 +88,25 @@ enum UpdateCertificateStore {
         CertKeychain.delete()
     }
 
+    /// Removes only the stored P12 (bytes + password + label),
+    /// leaving every imported profile in place. Backs the
+    /// per-item delete in the 设备 UDID detail page.
+    static func deleteP12() {
+        var material = load()
+        material.p12Data = nil
+        material.p12Password = nil
+        material.p12Label = nil
+        save(material)
+    }
+
+    /// Removes one stored profile by its stored id, leaving the
+    /// P12 and the other profiles in place.
+    static func deleteProfile(id: String) {
+        var material = load()
+        material.profiles.removeAll { $0.id == id }
+        save(material)
+    }
+
     /// The section header: the newest profile's identity in the
     /// video's `Name (TEAMID)` form, falling back to the P12's own
     /// identity label when only a certificate was imported.
