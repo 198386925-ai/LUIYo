@@ -617,10 +617,28 @@ final class UpdateCheckViewController: UIViewController {
     /// download takes over, exactly like the plain download action.
     @objc private func lcSignTapped() {
         let rawURL = updater.latestDownloadURLString
+        // Every parameter value is percent-encoded on its own
+        // (RFC 3986 unreserved set) before joining: the download
+        // URL, the feed's SHA-256 (so LCSign can verify what it
+        // downloads; omitted when the feed has no digest), and
+        // the same file name the in-app download uses (so the
+        // imported project in LCSign is named properly).
         let allowed = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~")
         guard !rawURL.isEmpty,
-              let encoded = rawURL.addingPercentEncoding(withAllowedCharacters: allowed),
-              let handoffURL = URL(string: "loadcontroller://import?url=\(encoded)") else {
+              let encodedURL = rawURL.addingPercentEncoding(withAllowedCharacters: allowed) else {
+            updater.startDownload()
+            return
+        }
+        var handoff = "loadcontroller://import?url=\(encodedURL)"
+        let sha256 = updater.latestSHA256
+        if !sha256.isEmpty, let encodedSHA = sha256.addingPercentEncoding(withAllowedCharacters: allowed) {
+            handoff += "&sha256=\(encodedSHA)"
+        }
+        let fileName = "LUIYo-\(updater.latestVersion)-Build(\(updater.latestBuild)).ipa"
+        if let encodedName = fileName.addingPercentEncoding(withAllowedCharacters: allowed) {
+            handoff += "&filename=\(encodedName)"
+        }
+        guard let handoffURL = URL(string: handoff) else {
             updater.startDownload()
             return
         }

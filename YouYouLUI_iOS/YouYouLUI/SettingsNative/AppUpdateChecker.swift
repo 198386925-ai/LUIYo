@@ -91,6 +91,12 @@ final class AppUpdateChecker: NSObject, ObservableObject {
     /// The feed's IPA download URL for the latest release (empty
     /// until a check has landed) — used by the LCSign hand-off.
     var latestDownloadURLString: String { downloadURLString }
+    private var downloadSHA256: String = ""
+    /// The feed asset's SHA-256 for the latest release (bare hex,
+    /// the `sha256:` prefix stripped; empty when the feed carries
+    /// no usable digest) — handed to LCSign so it can verify the
+    /// file it downloads.
+    var latestSHA256: String { downloadSHA256 }
     private var expectedTotalBytes: Int64 = 0
     private var userCancelledDownload = false
 
@@ -146,6 +152,12 @@ final class AppUpdateChecker: NSObject, ObservableObject {
         latestBuild = parsed.build
         releaseNotes = (json["body"] as? String) ?? ""
         downloadURLString = urlString
+        if let digest = asset["digest"] as? String, digest.hasPrefix("sha256:") {
+            let hex = String(digest.dropFirst("sha256:".count))
+            downloadSHA256 = (hex.count == 64 && hex.allSatisfy { $0.isHexDigit }) ? hex.lowercased() : ""
+        } else {
+            downloadSHA256 = ""
+        }
         expectedTotalBytes = (asset["size"] as? Int).map { Int64($0) } ?? 0
 
         if parsed.build > currentBuild {
