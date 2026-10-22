@@ -130,6 +130,24 @@ enum VersionPopup {
         )
     }
 
+    /// Build 20: the ACCOUNT ban reuses this exact banned popup
+    /// (same artwork, entrance and layout as the version ban); only
+    /// the texts and the 退出 action differ — the account flow
+    /// supplies `VersionPopupViewController.onBannedExit` so 退出
+    /// clears the account session and returns to the register gate
+    /// instead of terminating the app. Texts come from the account
+    /// status payload's ban fields; an empty field falls back to
+    /// the fig2 design's own placeholder text.
+    static func accountBanPayload(title: String, subtitle: String, reason: String) -> Payload {
+        Payload(
+            banned: true,
+            title: title.isEmpty ? "请尽快更新x.x.x版本" : title,
+            l2: subtitle.isEmpty ? "如您不更新我将禁用此版本" : subtitle,
+            l3: reason.isEmpty ? "LUIYo x.x.x版本已更新请您尽快更新" : reason,
+            downloadURL: nil
+        )
+    }
+
     /// Build 13: the popup is hosted in the app's MAIN window — the
     /// popup controller becomes a child of the window's root view
     /// controller and its view covers the whole window, above the
@@ -297,6 +315,12 @@ private final class IconCard {
 
 final class VersionPopupViewController: UIViewController {
     var onDismiss: (() -> Void)?
+    /// Build 20 (account ban only): when set, the banned popup's
+    /// 退出 button fades the popup out and calls this instead of
+    /// terminating the app — the account flow clears the session
+    /// and returns to the register gate. Nil (the version popup)
+    /// keeps the original behaviour: 退出 exits the app.
+    var onBannedExit: (() -> Void)?
 
     private let payload: VersionPopup.Payload
     private var palette: PopupPalette
@@ -800,9 +824,15 @@ final class VersionPopupViewController: UIViewController {
 
     @objc private func leftTapped() {
         if payload.banned {
-            // 退出：fade out, then terminate.
+            // 退出：fade out, then terminate — or, for the account
+            // ban (Build 20), hand over to onBannedExit, which
+            // clears the account session and returns to the gate.
             UIView.animate(withDuration: 0.25, animations: { self.view.alpha = 0 }) { _ in
-                exit(0)
+                if let onBannedExit = self.onBannedExit {
+                    onBannedExit()
+                } else {
+                    exit(0)
+                }
             }
         } else {
             dismissPopup()

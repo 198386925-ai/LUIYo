@@ -14,6 +14,38 @@ import CoreText
 /// invalid and the hint inherits the body ink color (#17171a). It is
 /// rendered that way here, exactly as the file computes.
 
+/// Build 20: the register/login card assembly shrunk a touch
+/// (~8–10% footprint). Side margins widened (14 → 28); every
+/// internal vertical spacing/padding is the design value × 0.92
+/// and the title/tab/field block heights are × 0.95. All account
+/// pages share these constants (the register/login page, the
+/// reset page and the captcha sheet all sit on the same base
+/// card), so the whole family shrinks consistently. Horizontal
+/// paddings inside the form (16) and all texts are unchanged.
+enum AccountMetrics {
+    static let cardSideMargin: CGFloat = 28   // was 14
+    static let cardTopPad: CGFloat = 39       // 42 × 0.92
+    static let titleHeight: CGFloat = 27      // 28 × 0.95
+    static let titleGap: CGFloat = 29         // 32 × 0.92
+    static let cardBottomPad: CGFloat = 18    // 20 × 0.92
+    static let pagePad: CGFloat = 26          // 28 × 0.92 (overflow layout)
+    static let panelInset: CGFloat = 18       // 20 × 0.92
+    static let tabHeight: CGFloat = 51        // 54 × 0.95
+    static let formPadTop: CGFloat = 20       // 22 × 0.92
+    static let formPadBottom: CGFloat = 20    // 22 × 0.92
+    static let fieldHeight: CGFloat = 38      // 40 × 0.95
+    static let fieldGap: CGFloat = 18         // field marginBottom 20 × 0.92
+    static let hintGap: CGFloat = 6           // 7 × 0.92
+    static let buttonHeight: CGFloat = 46     // 48 × 0.95
+    static let accessoryHeight: CGFloat = 29  // 30 × 0.95 (code button / suffix chip)
+    static let eyeSize: CGFloat = 36          // 38 × 0.95
+    static let agreeGap: CGFloat = 15         // 16 × 0.92
+    static let agreeRowHeight: CGFloat = 20   // 21 × 0.95
+    static let forgotGap: CGFloat = 18        // 20 × 0.92
+    static let shortFieldGap: CGFloat = 6     // 7 × 0.92 (password field margin)
+    static let brandGap: CGFloat = 26         // 28 × 0.92 (card → brand line)
+}
+
 enum AccountPalette {
     static let ink = splashHex("#17171a")
     static let inkSoft = splashHex("#3d3d44")
@@ -97,7 +129,7 @@ final class FormField: NSObject {
     let errLabel = UILabel()
     private(set) var hintLabel: UILabel?
     /// Bottom gap after this block (design `.field { margin-bottom }`).
-    var marginBottom: CGFloat = 20
+    var marginBottom: CGFloat = AccountMetrics.fieldGap
     /// Called whenever the block's height may have changed.
     var onHeightChanged: (() -> Void)?
 
@@ -162,10 +194,10 @@ final class FormField: NSObject {
     /// (excluding marginBottom).
     @discardableResult
     func layout(width: CGFloat) -> CGFloat {
-        input.frame = CGRect(x: 0, y: 0, width: width, height: 40)
-        var y: CGFloat = 40
+        input.frame = CGRect(x: 0, y: 0, width: width, height: AccountMetrics.fieldHeight)
+        var y: CGFloat = AccountMetrics.fieldHeight
         if let hintLabel {
-            y += 7
+            y += AccountMetrics.hintGap
             let h = measure(hintLabel, width: width - 18)
             hintLabel.frame = CGRect(x: 18, y: y, width: width - 18, height: h)
             y += h
@@ -328,14 +360,14 @@ final class WhitePanelView: UIView {
         let trait = UITraitCollection(userInterfaceStyle: style)
         return renderer.image { _ in
             guard let context = UIGraphicsGetCurrentContext() else { return }
-            context.addPath(formsPath(signup: signup, width: W, tabs: 54, height: H))
+            context.addPath(formsPath(signup: signup, width: W, tabs: AccountMetrics.tabHeight, height: H))
             // The bump path is in bump-local coordinates; a path is
             // converted to device space when it is ADDED, so
             // translating the CTM first lands it at its panel offset
             // (the old bump layer's frame origin).
             context.saveGState()
             context.translateBy(x: signup ? 0 : B - 18, y: 0)
-            context.addPath(bumpPath(signup: signup, half: B, tabs: 54))
+            context.addPath(bumpPath(signup: signup, half: B, tabs: AccountMetrics.tabHeight))
             context.restoreGState()
             context.setFillColor(UIColor.white.resolvedColor(with: trait).cgColor)
             context.fillPath()
@@ -439,7 +471,7 @@ final class DarkButton: UIButton {
         super.init(frame: frame)
         titleLabel?.font = .systemFont(ofSize: 15, weight: .medium)
         setTitleColor(.white, for: .normal)
-        layer.cornerRadius = 24
+        layer.cornerRadius = AccountMetrics.buttonHeight / 2
         clipsToBounds = true
         refresh()
         addTarget(self, action: #selector(pressDown), for: .touchDown)
@@ -665,7 +697,7 @@ func makeCodeButton(in field: FormField, target: Any, action: Selector) -> UIBut
     button.setTitleColor(.white, for: .normal)
     button.titleLabel?.font = .systemFont(ofSize: 12.5, weight: .medium)
     button.backgroundColor = AccountPalette.dark
-    button.layer.cornerRadius = 15
+    button.layer.cornerRadius = AccountMetrics.accessoryHeight / 2
     button.contentEdgeInsets = UIEdgeInsets(top: 0, left: 10, bottom: 0, right: 10)
     button.addTarget(target, action: action, for: .touchUpInside)
     field.view.addSubview(button)
@@ -673,23 +705,29 @@ func makeCodeButton(in field: FormField, target: Any, action: Selector) -> UIBut
     return button
 }
 
-/// Positions a code button inside its field (right 5, top 5, h 30).
+/// Positions a code button inside its field (right 5, vertically
+/// centered on the input, h = accessoryHeight).
 func layoutCodeButton(_ button: UIButton, in field: FormField, fieldWidth: CGFloat) {
     let size = button.intrinsicContentSize
-    button.frame = CGRect(x: fieldWidth - 5 - size.width, y: 5,
-                          width: size.width, height: 30)
+    button.frame = CGRect(x: fieldWidth - 5 - size.width,
+                          y: (AccountMetrics.fieldHeight - AccountMetrics.accessoryHeight) / 2,
+                          width: size.width, height: AccountMetrics.accessoryHeight)
 }
 
-/// Positions an eye button inside its field (right 5, 38 × 38,
-/// vertically centered on the 40-tall input).
+/// Positions an eye button inside its field (right 5, eyeSize ×
+/// eyeSize, vertically centered on the input).
 func layoutEyeButton(_ button: UIButton, fieldWidth: CGFloat) {
-    button.frame = CGRect(x: fieldWidth - 5 - 38, y: 1, width: 38, height: 38)
+    button.frame = CGRect(x: fieldWidth - 5 - AccountMetrics.eyeSize,
+                          y: (AccountMetrics.fieldHeight - AccountMetrics.eyeSize) / 2,
+                          width: AccountMetrics.eyeSize, height: AccountMetrics.eyeSize)
 }
 
-/// Positions a suffix chip inside its field (right 5, top 5, h 30).
+/// Positions a suffix chip inside its field (right 5, vertically
+/// centered on the input, h = accessoryHeight).
 func layoutSuffixChip(_ chip: SuffixChip, fieldWidth: CGFloat) {
-    chip.frame = CGRect(x: fieldWidth - 5 - chip.chipWidth, y: 5,
-                        width: chip.chipWidth, height: 30)
+    chip.frame = CGRect(x: fieldWidth - 5 - chip.chipWidth,
+                        y: (AccountMetrics.fieldHeight - AccountMetrics.accessoryHeight) / 2,
+                        width: chip.chipWidth, height: AccountMetrics.accessoryHeight)
 }
 
 // MARK: - Page scaffolding
@@ -783,26 +821,38 @@ class AccountFormBaseViewController: UIViewController {
         let W = view.bounds.width, H = view.bounds.height
         guard W > 0, H > 0 else { return }
         scrollView.frame = view.bounds
-        let cardW = W - 28
+        let cardW = W - 2 * AccountMetrics.cardSideMargin
         let contentH = contentHeight(forWidth: cardW)
-        let cardH = 42 + 28 + 32 + contentH + 20
+        let contentTop = AccountMetrics.cardTopPad + AccountMetrics.titleHeight
+            + AccountMetrics.titleGap
+        let cardH = contentTop + contentH + AccountMetrics.cardBottomPad
         let totalH = cardH + belowCardHeight
-        let scrollContentH = max(H, 28 + totalH + 28)
+        let scrollContentH = max(H, AccountMetrics.pagePad + totalH + AccountMetrics.pagePad)
         contentView.frame = CGRect(x: 0, y: 0, width: W, height: scrollContentH)
         scrollView.contentSize = contentView.frame.size
-        let cardY = totalH < H ? (H - totalH) / 2 : 28
-        cardView.frame = CGRect(x: 14, y: cardY, width: cardW, height: cardH)
-        titleLabel.frame = CGRect(x: 24, y: 42, width: cardW - 48, height: 28)
-        layoutContent(originY: 42 + 28 + 32, width: cardW)
+        let cardY = totalH < H ? (H - totalH) / 2 : AccountMetrics.pagePad
+        cardView.frame = CGRect(x: AccountMetrics.cardSideMargin, y: cardY,
+                                width: cardW, height: cardH)
+        titleLabel.frame = CGRect(x: 24, y: AccountMetrics.cardTopPad,
+                                  width: cardW - 48, height: AccountMetrics.titleHeight)
+        layoutContent(originY: contentTop, width: cardW)
         if belowCardHeight > 0 {
             layoutBelowCard(top: cardY + cardH, width: W)
         }
-        closeButton.frame = CGRect(x: W - 14 - 38, y: view.safeAreaInsets.top + 2,
+        closeButton.frame = CGRect(x: W - AccountMetrics.cardSideMargin - 38,
+                                   y: view.safeAreaInsets.top + 2,
                                    width: 38, height: 38)
         closeButton.isHidden = onClose == nil
     }
 
     func relayout(animated: Bool) {
+        // Build 20: the view MUST be marked dirty first — an
+        // animator that only calls layoutIfNeeded() performs no
+        // layout pass at all when nothing is marked, so the height
+        // change silently never happened (this is also why the
+        // register/login tab switch left the card at the old
+        // height: setTab now marks the view dirty the same way).
+        view.setNeedsLayout()
         if animated {
             // The design's panel height transition: .2s
             // cubic-bezier(.4,.05,.2,1). The layout itself carries
@@ -816,8 +866,6 @@ class AccountFormBaseViewController: UIViewController {
                     controlPoint2: CGPoint(x: 0.2, y: 1)))
             animator.addAnimations { self.view.layoutIfNeeded() }
             animator.startAnimation()
-        } else {
-            view.setNeedsLayout()
         }
     }
 
@@ -1044,6 +1092,9 @@ final class AccountViewController: AccountFormBaseViewController {
     private let brandView = UIView()
     private var brandLayers: [CATextLayer] = []
     private var brandAnimated = false
+    /// The account-ban popup (Build 20: the red fig2 popup, hosted
+    /// as a child covering this page while a ban is being shown).
+    private var banPopupController: VersionPopupViewController?
 
     override func viewDidLoad() {
         pageTitle = "注册或登录账户"
@@ -1072,7 +1123,7 @@ final class AccountViewController: AccountFormBaseViewController {
             placeholder: "设置密码", hint: "至少 8 个字符，需含大写和小写字母各 1 个。")
         suPass = passF; suPassEye = passEye
         suPass.input.textContentType = .newPassword
-        suPass.marginBottom = 7
+        suPass.marginBottom = AccountMetrics.shortFieldGap
         let (confirmF, confirmEye) = makePasswordField(placeholder: "请再次输入密码")
         suConfirm = confirmF; suConfirmEye = confirmEye
         suConfirm.input.textContentType = .newPassword
@@ -1177,10 +1228,10 @@ final class AccountViewController: AccountFormBaseViewController {
 
     // MARK: Layout
 
-    override var belowCardHeight: CGFloat { 28 + 26 }
+    override var belowCardHeight: CGFloat { AccountMetrics.brandGap + 26 }
 
     override func layoutBelowCard(top: CGFloat, width: CGFloat) {
-        brandView.frame = CGRect(x: 0, y: top + 28, width: width, height: 26)
+        brandView.frame = CGRect(x: 0, y: top + AccountMetrics.brandGap, width: width, height: 26)
         let font = UIFont.systemFont(ofSize: 19, weight: .semibold)
         let spacing: CGFloat = 19 * 0.08
         var widths: [CGFloat] = []
@@ -1201,51 +1252,54 @@ final class AccountViewController: AccountFormBaseViewController {
 
     private func formContentHeight(_ form: UIView, fields: [FormField],
                                    width: CGFloat) -> CGFloat {
-        var y: CGFloat = 22
+        var y: CGFloat = AccountMetrics.formPadTop
         for field in fields {
             y += field.layout(width: width) + field.marginBottom
         }
         if form === signupForm {
-            y += 48 + 16 + 21
+            y += AccountMetrics.buttonHeight + AccountMetrics.agreeGap
+                + AccountMetrics.agreeRowHeight
         } else {
-            y += 48 + 20 + 21
+            y += AccountMetrics.buttonHeight + AccountMetrics.forgotGap
+                + AccountMetrics.agreeRowHeight
         }
-        return y + 22
+        return y + AccountMetrics.formPadBottom
     }
 
     private func panelHeight(forTab tab: Int, formW: CGFloat) -> CGFloat {
         if tab == 0 {
             let fields = [suEmail, suCode, suPass, suConfirm, suKey].compactMap { $0 }
-            return 54 + formContentHeight(signupForm, fields: fields, width: formW)
+            return AccountMetrics.tabHeight + formContentHeight(signupForm, fields: fields, width: formW)
         }
         let fields = [liEmail, liPass].compactMap { $0 }
-        return 54 + formContentHeight(loginForm, fields: fields, width: formW)
+        return AccountMetrics.tabHeight + formContentHeight(loginForm, fields: fields, width: formW)
     }
 
     override func contentHeight(forWidth width: CGFloat) -> CGFloat {
-        let panelW = width - 40
+        let panelW = width - 2 * AccountMetrics.panelInset
         return panelHeight(forTab: activeTab, formW: panelW - 32)
     }
 
     override func layoutContent(originY: CGFloat, width: CGFloat) {
-        let panelW = width - 40
+        let panelW = width - 2 * AccountMetrics.panelInset
         let formW = panelW - 32
         let panelH = contentHeight(forWidth: width)
-        panelView.frame = CGRect(x: 20, y: originY, width: panelW, height: panelH)
+        panelView.frame = CGRect(x: AccountMetrics.panelInset, y: originY, width: panelW, height: panelH)
         whitePanel.frame = panelView.bounds
         whitePanel.setHeights(signup: panelHeight(forTab: 0, formW: formW),
                               login: panelHeight(forTab: 1, formW: formW))
-        signupTabButton.frame = CGRect(x: 0, y: 0, width: panelW / 2, height: 54)
-        loginTabButton.frame = CGRect(x: panelW / 2, y: 0, width: panelW / 2, height: 54)
+        signupTabButton.frame = CGRect(x: 0, y: 0, width: panelW / 2, height: AccountMetrics.tabHeight)
+        loginTabButton.frame = CGRect(x: panelW / 2, y: 0, width: panelW / 2, height: AccountMetrics.tabHeight)
         for form in [signupForm, loginForm] {
-            form.frame = CGRect(x: 0, y: 54, width: panelW, height: panelH - 54)
+            form.frame = CGRect(x: 0, y: AccountMetrics.tabHeight,
+                                width: panelW, height: panelH - AccountMetrics.tabHeight)
         }
         layoutSignup(formW: formW)
         layoutLogin(formW: formW)
     }
 
     private func layoutSignup(formW: CGFloat) {
-        var y: CGFloat = 22
+        var y: CGFloat = AccountMetrics.formPadTop
         for field in [suEmail, suCode, suPass, suConfirm, suKey] {
             guard let field else { continue }
             field.view.frame = CGRect(x: 16, y: y, width: formW, height: 0)
@@ -1255,13 +1309,13 @@ final class AccountViewController: AccountFormBaseViewController {
         layoutCodeButton(suCodeButton, in: suCode, fieldWidth: formW)
         layoutEyeButton(suPassEye, fieldWidth: formW)
         layoutEyeButton(suConfirmEye, fieldWidth: formW)
-        suButton.frame = CGRect(x: 16, y: y, width: formW, height: 48)
-        y += 48 + 16
+        suButton.frame = CGRect(x: 16, y: y, width: formW, height: AccountMetrics.buttonHeight)
+        y += AccountMetrics.buttonHeight + AccountMetrics.agreeGap
         layoutAgreeRow(y: y, formW: formW)
     }
 
     private func layoutAgreeRow(y: CGFloat, formW: CGFloat) {
-        agreeView.frame = CGRect(x: 16, y: y, width: formW, height: 21)
+        agreeView.frame = CGRect(x: 16, y: y, width: formW, height: AccountMetrics.agreeRowHeight)
         let boxSize: CGFloat = 15
         let labelW = (agreeLabel.text! as NSString)
             .size(withAttributes: [.font: agreeLabel.font as Any]).width
@@ -1273,20 +1327,21 @@ final class AccountViewController: AccountFormBaseViewController {
             .size(withAttributes: [.font: agreePrivacyButton.titleLabel!.font as Any]).width
         let total = boxSize + 6 + labelW + 2 + termsW + 2 + andW + 2 + privacyW
         var x = (formW - total) / 2
-        agreeBox.frame = CGRect(x: x, y: 3, width: boxSize, height: boxSize)
+        agreeBox.frame = CGRect(x: x, y: (AccountMetrics.agreeRowHeight - boxSize) / 2,
+                                width: boxSize, height: boxSize)
         agreeCheck.frame = CGRect(x: 2, y: 2, width: 11, height: 11)
         x += boxSize + 6
-        agreeLabel.frame = CGRect(x: x, y: 0, width: labelW, height: 21)
+        agreeLabel.frame = CGRect(x: x, y: 0, width: labelW, height: AccountMetrics.agreeRowHeight)
         x += labelW + 2
-        agreeTermsButton.frame = CGRect(x: x, y: 0, width: termsW, height: 21)
+        agreeTermsButton.frame = CGRect(x: x, y: 0, width: termsW, height: AccountMetrics.agreeRowHeight)
         x += termsW + 2
-        agreeAndLabel.frame = CGRect(x: x, y: 0, width: andW, height: 21)
+        agreeAndLabel.frame = CGRect(x: x, y: 0, width: andW, height: AccountMetrics.agreeRowHeight)
         x += andW + 2
-        agreePrivacyButton.frame = CGRect(x: x, y: 0, width: privacyW, height: 21)
+        agreePrivacyButton.frame = CGRect(x: x, y: 0, width: privacyW, height: AccountMetrics.agreeRowHeight)
     }
 
     private func layoutLogin(formW: CGFloat) {
-        var y: CGFloat = 22
+        var y: CGFloat = AccountMetrics.formPadTop
         for field in [liEmail, liPass] {
             guard let field else { continue }
             field.view.frame = CGRect(x: 16, y: y, width: formW, height: 0)
@@ -1294,9 +1349,9 @@ final class AccountViewController: AccountFormBaseViewController {
         }
         layoutSuffixChip(liChip, fieldWidth: formW)
         layoutEyeButton(liPassEye, fieldWidth: formW)
-        liButton.frame = CGRect(x: 16, y: y, width: formW, height: 48)
-        y += 48 + 20
-        forgotButton.frame = CGRect(x: 16, y: y, width: formW, height: 21)
+        liButton.frame = CGRect(x: 16, y: y, width: formW, height: AccountMetrics.buttonHeight)
+        y += AccountMetrics.buttonHeight + AccountMetrics.forgotGap
+        forgotButton.frame = CGRect(x: 16, y: y, width: formW, height: AccountMetrics.agreeRowHeight)
     }
 
     // MARK: Tabs
@@ -1324,6 +1379,20 @@ final class AccountViewController: AccountFormBaseViewController {
         guard index != activeTab else { return }
         finishSwitchAnimations()
         activeTab = index
+        // Build 20: mark the view dirty BEFORE the switch animator
+        // runs layoutIfNeeded(). Without this the animator's layout
+        // call was a no-op (nothing was marked), so the card kept
+        // the OUTGOING form's height forever — switching to login
+        // left the short form floating at the top of a register-tall
+        // card with a large empty gray area below it. With the view
+        // marked, the layout pass runs with the NEW activeTab:
+        // contentHeight() prices the incoming form, the card + panel
+        // resize on the same panel curve in BOTH directions, and
+        // because the layout centers the card for whatever height
+        // it currently has (both resting centers are the screen
+        // center), the assembly stays centered throughout the
+        // contraction/expansion.
+        view.setNeedsLayout()
         updateTabStyles()
         let incoming = index == 0 ? signupForm : loginForm
         let outgoing = index == 0 ? loginForm : signupForm
@@ -1557,7 +1626,7 @@ extension AccountViewController {
     /// the token — a new device now logs in directly once the slider
     /// proof is attached (the backend switches the device and kicks
     /// the old one; there is no email-confirmation detour anymore);
-    /// a ban opens the blocking ban page; errors land on the
+    /// a ban opens the blocking red ban popup; errors land on the
     /// relevant field.
     func login(email: String, password: String, button: DarkButton,
                restoreTitle: String, busyTitle: String, card: String,
@@ -1625,12 +1694,40 @@ extension AccountViewController {
         present(controller, animated: true)
     }
 
+    /// Build 20: a banned login answer shows the SAME red banned
+    /// popup as the version ban (fig2 design, reused wholesale via
+    /// VersionPopupViewController) instead of the old plain ban
+    /// page. It is hosted as a child covering this page — the same
+    /// in-window hosting the version popup uses. 退出 clears the
+    /// account session and dismisses the whole account page, back
+    /// to the gate's 03 splash; 联系客服 stays a no-op.
     func presentBanned(title: String, subtitle: String, reason: String) {
-        let banned = BannedViewController(
-            banTitle: title, banSubtitle: subtitle, banReason: reason,
-            buttonTitle: "返回")
-        banned.onButton = { [weak self] in self?.dismiss(animated: true) }
-        presentAux(banned)
+        guard banPopupController == nil else { return }
+        let popup = VersionPopupViewController(
+            payload: VersionPopup.accountBanPayload(
+                title: title, subtitle: subtitle, reason: reason))
+        popup.onBannedExit = { [weak self] in
+            guard let self else { return }
+            AccountSession.clear()
+            removeBanPopup()
+            onClose?()
+        }
+        banPopupController = popup
+        addChild(popup)
+        popup.view.frame = view.bounds
+        popup.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        view.addSubview(popup.view)
+        popup.didMove(toParent: self)
+        popup.view.layoutIfNeeded()
+        popup.beginEntrance()
+    }
+
+    private func removeBanPopup() {
+        guard let popup = banPopupController else { return }
+        banPopupController = nil
+        popup.willMove(toParent: nil)
+        popup.view.removeFromSuperview()
+        popup.removeFromParent()
     }
 
     @objc func forgotTapped() {

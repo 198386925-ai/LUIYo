@@ -9,12 +9,18 @@ import UIKit
 ///   dismisses itself; its 立即注册 button presents the register/login
 ///   page modally, and closing that page without a successful
 ///   register/login returns here. There is no other way in.
-/// - Token present → splash 04 （玻璃呼吸）: a `status` heartbeat runs
+/// - Token present → splash 04 （玻璃呼吸）: a `status` check runs
 ///   behind the design timeline; the splash plays once (~3.6 s incl.
 ///   stageOut) and dissolves into the home shell. A banned verdict
-///   swaps in the blocking ban page instead; an invalid/kicked token
-///   is cleared and the flow falls back to the 03 gate; a network
-///   failure fails open into home (the shell keeps its own state).
+///   swaps in the blocking red ban popup instead (Build 20: the
+///   same fig2 popup as the version ban — the plain ban page is
+///   gone); an invalid/kicked token is cleared and the flow falls
+///   back to the 03 gate; a network failure fails open into home
+///   (the shell keeps its own state). Once home is installed, a
+///   mid-session heartbeat re-checks `status` every 30 s (and on
+///   every return to the foreground), so an account banned
+///   mid-session gets the same red popup without waiting for the
+///   next launch — and a kicked token drops back to the 03 gate.
 ///
 /// The OLD device-code activation system is untouched by this build:
 /// it lives inside `AppRoot`'s controller exactly as before, and the
@@ -23,7 +29,8 @@ final class EntryGateViewController: UIViewController {
     private var contentViewController: UIViewController?
     private var splash03: Splash03ViewController?
     private var splash04: Splash04ViewController?
-    private var bannedController: BannedViewController?
+    private var accountBanController: VersionPopupViewController?
+    private var heartbeatTimer: Timer?
     private var began = false
     private var statusVerdict: AccountStatus?
 
@@ -32,6 +39,9 @@ final class EntryGateViewController: UIViewController {
         view.backgroundColor = splashHex("#6a54c8")
         NotificationCenter.default.addObserver(
             self, selector: #selector(startIfNeeded),
+            name: UIApplication.didBecomeActiveNotification, object: nil)
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(foregroundHeartbeat),
             name: UIApplication.didBecomeActiveNotification, object: nil)
         NotificationCenter.default.addObserver(
             self, selector: #selector(accountLoggedOut),
@@ -94,6 +104,15 @@ final class EntryGateViewController: UIViewController {
     /// too (no token). The OLD device-code activation inside the app
     /// is untouched: only the account door closed.
     @objc private func accountLoggedOut() {
+        tearDownToGate()
+    }
+
+    /// Tears everything down — presented pages, the installed app,
+    /// any splash, the ban popup, the heartbeat — and puts the 03
+    /// register gate back up. Shared by the settings logout, the
+    /// ban popup's 退出 and a mid-session kicked verdict.
+    private func tearDownToGate() {
+        stopHeartbeat()
         if presentedViewController != nil {
             dismiss(animated: false)
         }
@@ -102,8 +121,8 @@ final class EntryGateViewController: UIViewController {
         splash03 = nil
         remove(splash04)
         splash04 = nil
-        remove(bannedController)
-        bannedController = nil
+        remove(accountBanController)
+        accountBanController = nil
         remove(contentViewController)
         contentViewController = nil
         statusVerdict = nil
@@ -138,7 +157,7 @@ final class EntryGateViewController: UIViewController {
                 guard let self else { return }
                 remove(self.splash04)
                 self.splash04 = nil
-                showBanned(title: title, subtitle: subtitle, reason: reason)
+                showAccountBanned(title: title, subtitle: subtitle, reason: reason)
             }
         case .invalid:
             AccountSession.clear()
@@ -151,19 +170,78 @@ final class EntryGateViewController: UIViewController {
         }
     }
 
-    private func showBanned(title: String, subtitle: String, reason: String) {
-        let banned = BannedViewController(
-            banTitle: title, banSubtitle: subtitle, banReason: reason,
-            buttonTitle: "退出账号")
-        banned.onButton = { [weak self] in
+    /// Build 20: an account ban shows the red banned popup — the
+    /// EXACT VersionPopup banned rendering (same artwork, entrance
+    /// and layout), hosted as a child covering the gate just like
+    /// the version popup is hosted in the main window. Texts come
+    /// from the status payload's ban fields. 退出 clears the
+    /// account session and returns to the 03 gate (it does NOT
+    /// terminate the app); 联系客服 is a no-op, same as the
+    /// version popup.
+    private func showAccountBanned(title: String, subtitle: String, reason: String) {
+        guard accountBanController == nil else { return }
+        if presentedViewController != nil {
+            dismiss(animated: false)
+        }
+        let popup = VersionPopupViewController(
+            payload: VersionPopup.accountBanPayload(
+                title: title, subtitle: subtitle, reason: reason))
+        popup.onBannedExit = { [weak self] in
             guard let self else { return }
             AccountSession.clear()
-            remove(bannedController)
-            bannedController = nil
-            showSplash03()
+            tearDownToGate()
         }
-        embed(banned)
-        bannedController = banned
+        accountBanController = popup
+        addChild(popup)
+        popup.view.frame = view.bounds
+        popup.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        view.addSubview(popup.view)
+        popup.didMove(toParent: self)
+        popup.view.layoutIfNeeded()
+        popup.beginEntrance()
+    }
+
+    // MARK: Mid-session heartbeat (Build 20)
+
+    /// While home is installed, re-check `status` every 30 s so a
+    /// mid-session ban (or kick) lands without waiting for the next
+    /// launch: banned → the red ban popup over the shell; invalid →
+    /// the session is cleared and the gate falls back to 03. A
+    /// network failure fails open, exactly like the launch check.
+    private func startHeartbeat() {
+        stopHeartbeat()
+        heartbeatTimer = Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
+            self?.heartbeatTick()
+        }
+    }
+
+    private func stopHeartbeat() {
+        heartbeatTimer?.invalidate()
+        heartbeatTimer = nil
+    }
+
+    @objc private func foregroundHeartbeat() {
+        heartbeatTick()
+    }
+
+    private func heartbeatTick() {
+        guard AccountSession.isLoggedIn,
+              contentViewController != nil,
+              accountBanController == nil else { return }
+        AccountAPI.fetchStatus { [weak self] status in
+            guard let self,
+                  self.contentViewController != nil,
+                  self.accountBanController == nil else { return }
+            switch status {
+            case .banned(let title, let subtitle, let reason):
+                showAccountBanned(title: title, subtitle: subtitle, reason: reason)
+            case .invalid:
+                AccountSession.clear()
+                tearDownToGate()
+            case .ok, .unreachable:
+                break
+            }
+        }
     }
 
     // MARK: Content install
@@ -175,6 +253,7 @@ final class EntryGateViewController: UIViewController {
         guard contentViewController == nil else { return }
         let content = AppRoot.makeRootViewController()
         contentViewController = content
+        startHeartbeat()
         addChild(content)
         content.view.frame = view.bounds
         content.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
