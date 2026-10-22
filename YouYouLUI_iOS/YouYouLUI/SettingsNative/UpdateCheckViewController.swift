@@ -57,6 +57,12 @@ final class UpdateCheckViewController: UIViewController {
     // Certificate section
     private var certUDIDRow: UIControl!
     private var certUDIDValueLabel: UILabel!
+    private var certUDIDCopyButton: UIButton!
+    /// The UDID the cert-card entry row currently shows (nil
+    /// while the row reads 请导入证书 / 未包含 — no copy button
+    /// is shown in those states).
+    private var certUDIDCopyText: String?
+    private var certUDIDCopyFeedbackToken = 0
 
     init(updater: AppUpdateChecker, homeModel: NativeHomeModel) {
         self.updater = updater
@@ -165,7 +171,7 @@ final class UpdateCheckViewController: UIViewController {
     private func makeCard() -> (card: UIView, inner: UIStackView) {
         let card = UIView()
         card.backgroundColor = UIColor(nativeHex: homeModel.theme.card)
-        card.layer.cornerRadius = 12
+        card.layer.cornerRadius = 18
         card.clipsToBounds = true
         let inner = UIStackView()
         inner.axis = .vertical
@@ -246,39 +252,6 @@ final class UpdateCheckViewController: UIViewController {
             label.bottomAnchor.constraint(equalTo: control.bottomAnchor, constant: -12),
         ])
         return control
-    }
-
-    private func selectorGlyph() -> UIImageView {
-        let glyph = UIImageView(image: UIImage(systemName: "chevron.up.chevron.down", withConfiguration: UIImage.SymbolConfiguration(pointSize: 11, weight: .semibold)))
-        glyph.tintColor = UIAppColors.secondary
-        glyph.contentMode = .scaleAspectFit
-        return glyph
-    }
-
-    /// Label-left / value + selector-glyph row (single current value).
-    private func selectorRow(title: String, value: String) -> UIView {
-        let row = UIView()
-        let titleLabel = rowLabel(title)
-        let valueLabel = rowLabel(value, color: UIAppColors.secondary)
-        let glyph = selectorGlyph()
-        row.addSubview(titleLabel)
-        row.addSubview(valueLabel)
-        row.addSubview(glyph)
-        titleLabel.translatesAutoresizingMaskIntoConstraints = false
-        valueLabel.translatesAutoresizingMaskIntoConstraints = false
-        glyph.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            row.heightAnchor.constraint(greaterThanOrEqualToConstant: 44),
-            titleLabel.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: 16),
-            titleLabel.topAnchor.constraint(equalTo: row.topAnchor, constant: 12),
-            titleLabel.bottomAnchor.constraint(equalTo: row.bottomAnchor, constant: -12),
-            glyph.trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -16),
-            glyph.centerYAnchor.constraint(equalTo: row.centerYAnchor),
-            valueLabel.trailingAnchor.constraint(equalTo: glyph.leadingAnchor, constant: -6),
-            valueLabel.topAnchor.constraint(equalTo: row.topAnchor, constant: 12),
-            valueLabel.bottomAnchor.constraint(equalTo: row.bottomAnchor, constant: -12),
-        ])
-        return row
     }
 
     private func toggleRow(title: String, isOn: Bool, action: Selector) -> UIView {
@@ -484,11 +457,12 @@ final class UpdateCheckViewController: UIViewController {
     private func togglesCard() -> UIView {
         let (card, inner) = makeCard()
         // The install-method row heads this card: single line,
-        // like every other row — title + value + chevron. Whether
+        // like every other row — title + value, display-only (the
+        // method is fixed; there is nothing to select). Whether
         // LCSign is installed is probed internally (it picks the
         // offer card's primary action) and deliberately not shown
         // here.
-        inner.addArrangedSubview(selectorRow(title: "安装方式", value: "证书签名 (LCSign)"))
+        inner.addArrangedSubview(infoRow(title: "安装方式", value: "证书签名 (LCSign)"))
         inner.addArrangedSubview(divider())
         inner.addArrangedSubview(toggleRow(title: "在灵动岛与锁屏显示更新进度", isOn: UpdateSettings.showProgress, action: #selector(showProgressChanged(_:))))
         inner.addArrangedSubview(divider())
@@ -518,8 +492,19 @@ final class UpdateCheckViewController: UIViewController {
         udidChevron.contentMode = .scaleAspectFit
         udidChevron.isUserInteractionEnabled = false
         certUDIDRow.addSubview(udidChevron)
+        // Copy button for the shown UDID, sitting ahead of the
+        // chevron. As its own control it takes its taps itself —
+        // the row's navigation target never sees them. Hidden
+        // until a real UDID is on the row (refreshCertificate).
+        certUDIDCopyButton = UIButton(type: .system)
+        certUDIDCopyButton.setImage(UIImage(systemName: "doc.on.doc", withConfiguration: UIImage.SymbolConfiguration(pointSize: 14, weight: .regular)), for: .normal)
+        certUDIDCopyButton.tintColor = UIAppColors.secondary
+        certUDIDCopyButton.addTarget(self, action: #selector(copyUDIDTapped), for: .touchUpInside)
+        certUDIDCopyButton.isHidden = true
+        certUDIDRow.addSubview(certUDIDCopyButton)
         certUDIDValueLabel.translatesAutoresizingMaskIntoConstraints = false
         udidChevron.translatesAutoresizingMaskIntoConstraints = false
+        certUDIDCopyButton.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             certUDIDRow.heightAnchor.constraint(greaterThanOrEqualToConstant: 44),
             certUDIDValueLabel.leadingAnchor.constraint(equalTo: certUDIDRow.leadingAnchor, constant: 16),
@@ -527,7 +512,11 @@ final class UpdateCheckViewController: UIViewController {
             certUDIDValueLabel.bottomAnchor.constraint(equalTo: certUDIDRow.bottomAnchor, constant: -12),
             udidChevron.trailingAnchor.constraint(equalTo: certUDIDRow.trailingAnchor, constant: -16),
             udidChevron.centerYAnchor.constraint(equalTo: certUDIDRow.centerYAnchor),
-            certUDIDValueLabel.trailingAnchor.constraint(lessThanOrEqualTo: udidChevron.leadingAnchor, constant: -12),
+            certUDIDCopyButton.widthAnchor.constraint(equalToConstant: 30),
+            certUDIDCopyButton.heightAnchor.constraint(equalToConstant: 30),
+            certUDIDCopyButton.trailingAnchor.constraint(equalTo: udidChevron.leadingAnchor, constant: -8),
+            certUDIDCopyButton.centerYAnchor.constraint(equalTo: certUDIDRow.centerYAnchor),
+            certUDIDValueLabel.trailingAnchor.constraint(lessThanOrEqualTo: certUDIDCopyButton.leadingAnchor, constant: -8),
         ])
         inner.addArrangedSubview(certUDIDRow)
         inner.addArrangedSubview(divider())
@@ -654,10 +643,13 @@ final class UpdateCheckViewController: UIViewController {
         // device list); with an empty store, the import prompt.
         if material.isEmpty {
             certUDIDValueLabel.text = "当前设备UDID：请导入证书"
+            certUDIDCopyText = nil
         } else {
             let udids = material.profiles.last.map { UpdateCertificateStore.provisionedDevices(in: $0.data) } ?? []
             certUDIDValueLabel.text = "当前设备UDID：\(udids.first ?? "未包含")"
+            certUDIDCopyText = udids.first
         }
+        certUDIDCopyButton.isHidden = certUDIDCopyText == nil
         // Freshly imported material may unlock the 签名此更新 action.
         refresh()
     }
@@ -863,6 +855,25 @@ final class UpdateCheckViewController: UIViewController {
         present(detail, animated: true)
     }
 
+    /// Copies the UDID shown on the cert-card entry row. The
+    /// glyph flips to a checkmark for ~1.2s as the confirmation
+    /// (the tap itself already ticks via the global AppFeedback
+    /// swizzle); a token keeps a quick second tap from being
+    /// reverted by the first tap's timer.
+    @objc private func copyUDIDTapped() {
+        guard let udid = certUDIDCopyText else { return }
+        UIPasteboard.general.string = udid
+        certUDIDCopyFeedbackToken += 1
+        let token = certUDIDCopyFeedbackToken
+        certUDIDCopyButton.setImage(UIImage(systemName: "checkmark", withConfiguration: UIImage.SymbolConfiguration(pointSize: 14, weight: .semibold)), for: .normal)
+        certUDIDCopyButton.tintColor = .systemGreen
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
+            guard let self, self.certUDIDCopyFeedbackToken == token else { return }
+            self.certUDIDCopyButton.setImage(UIImage(systemName: "doc.on.doc", withConfiguration: UIImage.SymbolConfiguration(pointSize: 14, weight: .regular)), for: .normal)
+            self.certUDIDCopyButton.tintColor = UIAppColors.secondary
+        }
+    }
+
     /// Validates everything first, then saves in one write: a parse
     /// or password failure leaves the stored material untouched.
     private func finishImport(p12Data: Data?, profile: (info: (name: String, teamId: String, expiration: Date?), data: Data)?) {
@@ -944,6 +955,9 @@ final class CertMaterialViewController: UIViewController {
     private var stack: UIStackView!
     private var material = UpdateCertMaterial()
     private var udids: [String] = []
+    /// Pending glyph reverts for the UDID rows' copy buttons,
+    /// keyed by button so a re-tap restarts that button's timer.
+    private var udidCopyReverts: [ObjectIdentifier: DispatchWorkItem] = [:]
 
     init(homeModel: NativeHomeModel) {
         self.homeModel = homeModel
@@ -1021,7 +1035,7 @@ final class CertMaterialViewController: UIViewController {
     private func makeCard() -> (card: UIView, inner: UIStackView) {
         let card = UIView()
         card.backgroundColor = UIColor(nativeHex: homeModel.theme.card)
-        card.layer.cornerRadius = 12
+        card.layer.cornerRadius = 18
         card.clipsToBounds = true
         let inner = UIStackView()
         inner.axis = .vertical
@@ -1092,6 +1106,56 @@ final class CertMaterialViewController: UIViewController {
         return row
     }
 
+    /// A UDID row with a trailing copy button, at the shared
+    /// 44pt metrics. The button is tagged with the row's index
+    /// into `udids` (rows are rebuilt on every reload, so the
+    /// tag always matches the current list).
+    private func udidRow(_ udid: String, index: Int) -> UIView {
+        let row = UIView()
+        let label = rowLabel(udid)
+        let copyButton = UIButton(type: .system)
+        copyButton.tag = index
+        copyButton.setImage(UIImage(systemName: "doc.on.doc", withConfiguration: UIImage.SymbolConfiguration(pointSize: 14, weight: .regular)), for: .normal)
+        copyButton.tintColor = UIAppColors.secondary
+        copyButton.addTarget(self, action: #selector(copyUDIDTapped(_:)), for: .touchUpInside)
+        row.addSubview(label)
+        row.addSubview(copyButton)
+        label.translatesAutoresizingMaskIntoConstraints = false
+        copyButton.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            row.heightAnchor.constraint(greaterThanOrEqualToConstant: 44),
+            label.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: 16),
+            label.topAnchor.constraint(equalTo: row.topAnchor, constant: 12),
+            label.bottomAnchor.constraint(equalTo: row.bottomAnchor, constant: -12),
+            label.trailingAnchor.constraint(lessThanOrEqualTo: copyButton.leadingAnchor, constant: -8),
+            copyButton.widthAnchor.constraint(equalToConstant: 30),
+            copyButton.heightAnchor.constraint(equalToConstant: 30),
+            copyButton.trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -16),
+            copyButton.centerYAnchor.constraint(equalTo: row.centerYAnchor),
+        ])
+        return row
+    }
+
+    /// Copies the tapped row's UDID; the button's glyph flips
+    /// to a checkmark for ~1.2s as the confirmation (the tap
+    /// itself already ticks via the global AppFeedback swizzle).
+    @objc private func copyUDIDTapped(_ sender: UIButton) {
+        guard udids.indices.contains(sender.tag) else { return }
+        UIPasteboard.general.string = udids[sender.tag]
+        sender.setImage(UIImage(systemName: "checkmark", withConfiguration: UIImage.SymbolConfiguration(pointSize: 14, weight: .semibold)), for: .normal)
+        sender.tintColor = .systemGreen
+        let key = ObjectIdentifier(sender)
+        udidCopyReverts[key]?.cancel()
+        let revert = DispatchWorkItem { [weak self, weak sender] in
+            guard let sender else { return }
+            sender.setImage(UIImage(systemName: "doc.on.doc", withConfiguration: UIImage.SymbolConfiguration(pointSize: 14, weight: .regular)), for: .normal)
+            sender.tintColor = UIAppColors.secondary
+            self?.udidCopyReverts[key] = nil
+        }
+        udidCopyReverts[key] = revert
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2, execute: revert)
+    }
+
     // MARK: - Data
 
     private func reloadMaterial() {
@@ -1118,7 +1182,7 @@ final class CertMaterialViewController: UIViewController {
         } else {
             for (index, udid) in udids.enumerated() {
                 if index > 0 { udidInner.addArrangedSubview(divider()) }
-                udidInner.addArrangedSubview(plainRow(udid))
+                udidInner.addArrangedSubview(udidRow(udid, index: index))
             }
         }
         stack.addArrangedSubview(udidCard)
@@ -1497,7 +1561,7 @@ final class CertDetailViewController: UIViewController {
     private func makeCard() -> (card: UIView, inner: UIStackView) {
         let card = UIView()
         card.backgroundColor = UIColor(nativeHex: homeModel.theme.card)
-        card.layer.cornerRadius = 12
+        card.layer.cornerRadius = 18
         card.clipsToBounds = true
         let inner = UIStackView()
         inner.axis = .vertical

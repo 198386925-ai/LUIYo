@@ -43,6 +43,8 @@ enum SettingsContent {
             ChangelogEntry(tag: "优化", text: "检查更新页整合：更新内容与下载进度并入检查卡片，更新内容可展开收起；进入页面不再自动检查；自动下载完成后自动签名。"),
             ChangelogEntry(tag: "优化", text: "证书管理整合：导入合并为一个「导入证书」入口；证书集中在设备 UDID 页管理，可侧滑导出或删除；检查更新页卡片圆角改小。"),
             ChangelogEntry(tag: "优化", text: "精简 1.0.8 更新日志：合并同类条目，只保留主要功能与重要修复。"),
+            ChangelogEntry(tag: "优化", text: "检查更新页卡片圆角调大更圆润；「安装方式」改为纯展示行，去掉无实际作用的选择箭头。"),
+            ChangelogEntry(tag: "优化", text: "设备 UDID 新增复制按钮：检查更新页与设备 UDID 页点一下即可复制 UDID。"),
             ChangelogEntry(tag: "修复", text: "修复新版启动闪退（签名库加载路径问题）。"),
             ChangelogEntry(tag: "修复", text: "修复版本弹窗首次出现时背景、图标与按钮不显示、需切到后台再切回才恢复的问题；弹窗画面按设计图一比一还原。"),
             ChangelogEntry(tag: "修复", text: "修复注册 / 登录切换时白色面板变形、卡片高度不随表单变化的问题。"),
