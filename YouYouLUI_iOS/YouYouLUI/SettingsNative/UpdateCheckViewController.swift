@@ -20,6 +20,11 @@ final class UpdateCheckViewController: UIViewController {
     private var progressView: UIProgressView!
     private var progressBytesLabel: UILabel!
     private var downloadButton: UIButton!
+    private var lcSignButton: UIButton!
+
+    // Install method / LCSign detection
+    private var installMethodStateLabel: UILabel!
+    private var lcSignDetected = false
 
     // Status line
     private var statusLabel: UILabel!
@@ -102,10 +107,14 @@ final class UpdateCheckViewController: UIViewController {
             .store(in: &cancellables)
         refresh()
         refreshCertificate()
+        refreshLCSignDetection()
     }
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        // LCSign may have been installed or removed since the page
+        // was last shown — re-probe on every appearance.
+        refreshLCSignDetection()
         if !didAutoCheck {
             didAutoCheck = true
             if case .idle = updater.phase { updater.checkForUpdate() }
@@ -316,16 +325,14 @@ final class UpdateCheckViewController: UIViewController {
         progressBytesLabel = rowLabel("", size: 12, color: UIAppColors.secondary)
         content.addArrangedSubview(progressBytesLabel)
 
-        var config = UIButton.Configuration.filled()
-        config.baseBackgroundColor = UIAppColors.accentPurple
-        config.baseForegroundColor = .white
-        config.cornerStyle = .capsule
-        config.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attributes in
-            var attributes = attributes
-            attributes.font = UIFont.systemFont(ofSize: 15, weight: .semibold)
-            return attributes
-        }
-        downloadButton = UIButton(configuration: config)
+        lcSignButton = UIButton(configuration: filledButtonConfiguration())
+        lcSignButton.configuration?.title = "用 LCSign 签装"
+        lcSignButton.addTarget(self, action: #selector(lcSignTapped), for: .touchUpInside)
+        content.addArrangedSubview(lcSignButton)
+        lcSignButton.translatesAutoresizingMaskIntoConstraints = false
+        lcSignButton.heightAnchor.constraint(equalToConstant: 46).isActive = true
+
+        downloadButton = UIButton(configuration: filledButtonConfiguration())
         downloadButton.addTarget(self, action: #selector(downloadTapped), for: .touchUpInside)
         content.addArrangedSubview(downloadButton)
         downloadButton.translatesAutoresizingMaskIntoConstraints = false
@@ -335,10 +342,76 @@ final class UpdateCheckViewController: UIViewController {
         return card
     }
 
+    private static let buttonTitleTransformer = UIConfigurationTextAttributesTransformer { attributes in
+        var attributes = attributes
+        attributes.font = UIFont.systemFont(ofSize: 15, weight: .semibold)
+        return attributes
+    }
+
+    private func filledButtonConfiguration() -> UIButton.Configuration {
+        var config = UIButton.Configuration.filled()
+        config.baseBackgroundColor = UIAppColors.accentPurple
+        config.baseForegroundColor = .white
+        config.cornerStyle = .capsule
+        config.titleTextAttributesTransformer = Self.buttonTitleTransformer
+        return config
+    }
+
+    /// The in-app download stays available as the secondary action
+    /// whenever the LCSign hand-off is the card's primary action.
+    private func secondaryButtonConfiguration() -> UIButton.Configuration {
+        var config = UIButton.Configuration.tinted()
+        config.baseBackgroundColor = UIAppColors.accentPurple
+        config.baseForegroundColor = UIAppColors.accentPurple
+        config.cornerStyle = .capsule
+        config.titleTextAttributesTransformer = Self.buttonTitleTransformer
+        return config
+    }
+
     private func installMethodCard() -> UIView {
         let (card, inner) = makeCard()
-        inner.addArrangedSubview(selectorRow(title: "安装方式", value: "证书签名 (LCSign)"))
+        let row = UIView()
+        let titleLabel = rowLabel("安装方式")
+        installMethodStateLabel = rowLabel("", size: 12, color: UIAppColors.secondary)
+        let leftStack = UIStackView(arrangedSubviews: [titleLabel, installMethodStateLabel])
+        leftStack.axis = .vertical
+        leftStack.spacing = 2
+        let valueLabel = rowLabel("证书签名 (LCSign)", color: UIAppColors.secondary)
+        valueLabel.textAlignment = .right
+        let glyph = selectorGlyph()
+        row.addSubview(leftStack)
+        row.addSubview(valueLabel)
+        row.addSubview(glyph)
+        leftStack.translatesAutoresizingMaskIntoConstraints = false
+        valueLabel.translatesAutoresizingMaskIntoConstraints = false
+        glyph.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            row.heightAnchor.constraint(equalToConstant: 58),
+            leftStack.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: 16),
+            leftStack.centerYAnchor.constraint(equalTo: row.centerYAnchor),
+            glyph.trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -16),
+            glyph.centerYAnchor.constraint(equalTo: row.centerYAnchor),
+            valueLabel.trailingAnchor.constraint(equalTo: glyph.leadingAnchor, constant: -6),
+            valueLabel.centerYAnchor.constraint(equalTo: row.centerYAnchor),
+            valueLabel.leadingAnchor.constraint(greaterThanOrEqualTo: leftStack.trailingAnchor, constant: 12),
+        ])
+        inner.addArrangedSubview(row)
         return card
+    }
+
+    /// Probes the LCSign URL scheme (declared in
+    /// LSApplicationQueriesSchemes) and updates the install-method
+    /// state line + the offer card's primary action.
+    private func refreshLCSignDetection() {
+        if let probe = URL(string: "loadcontroller://") {
+            lcSignDetected = UIApplication.shared.canOpenURL(probe)
+        } else {
+            lcSignDetected = false
+        }
+        if isViewLoaded, installMethodStateLabel != nil {
+            installMethodStateLabel.text = lcSignDetected ? "已检测到 LCSign" : "未检测到 LCSign"
+        }
+        refresh()
     }
 
     private func togglesCard() -> UIView {
@@ -402,6 +475,7 @@ final class UpdateCheckViewController: UIViewController {
         checkRow.isEnabled = updater.phase != .checking && updater.phase != .downloading
 
         offerCard.isHidden = !updater.updateFound
+        lcSignButton.isHidden = true
         guard updater.updateFound else { return }
         offerNotesLabel.text = updater.releaseNotes.isEmpty ? "本次更新：优化体验，修复已知问题。" : updater.releaseNotes
         switch updater.phase {
@@ -413,6 +487,7 @@ final class UpdateCheckViewController: UIViewController {
             progressBytesLabel.text = updater.totalBytes > 0
                 ? "\(AppUpdateChecker.formatBytes(updater.downloadedBytes)) / \(AppUpdateChecker.formatBytes(updater.totalBytes)) · \(percent)%"
                 : "已下载 \(AppUpdateChecker.formatBytes(updater.downloadedBytes)) · \(percent)%"
+            downloadButton.configuration = filledButtonConfiguration()
             downloadButton.configuration?.title = "取消下载"
             downloadButton.isEnabled = true
         case .downloaded:
@@ -420,11 +495,20 @@ final class UpdateCheckViewController: UIViewController {
             progressView.progress = 1
             progressBytesLabel.isHidden = false
             progressBytesLabel.text = "下载完成 · \(AppUpdateChecker.formatBytes(updater.totalBytes > 0 ? updater.totalBytes : updater.downloadedBytes))"
+            downloadButton.configuration = filledButtonConfiguration()
             downloadButton.configuration?.title = "分享 / 安装 IPA"
             downloadButton.isEnabled = true
         default:
             progressView.isHidden = true
             progressBytesLabel.isHidden = true
+            if lcSignDetected {
+                // The hand-off is the primary action; the in-app
+                // download stays as the secondary one.
+                lcSignButton.isHidden = false
+                downloadButton.configuration = secondaryButtonConfiguration()
+            } else {
+                downloadButton.configuration = filledButtonConfiguration()
+            }
             downloadButton.configuration?.title = "下载更新"
             downloadButton.isEnabled = true
         }
@@ -451,6 +535,30 @@ final class UpdateCheckViewController: UIViewController {
             updater.shareDownloaded()
         default:
             updater.startDownload()
+        }
+    }
+
+    /// Hands the offered IPA to LCSign through its import scheme:
+    /// LCSign downloads the file itself and imports it as a project,
+    /// ready to sign and install with the user's own certificate
+    /// (managed inside LCSign). If the open fails, the in-app
+    /// download takes over, exactly like the plain download action.
+    @objc private func lcSignTapped() {
+        let rawURL = updater.latestDownloadURLString
+        let allowed = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~")
+        guard !rawURL.isEmpty,
+              let encoded = rawURL.addingPercentEncoding(withAllowedCharacters: allowed),
+              let handoffURL = URL(string: "loadcontroller://import?url=\(encoded)") else {
+            updater.startDownload()
+            return
+        }
+        UIApplication.shared.open(handoffURL, options: [:]) { [weak self] success in
+            guard let self else { return }
+            if success {
+                self.updater.markLCSignHandoffCompleted()
+            } else {
+                self.updater.startDownload()
+            }
         }
     }
 

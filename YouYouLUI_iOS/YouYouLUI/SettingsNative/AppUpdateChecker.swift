@@ -88,6 +88,9 @@ final class AppUpdateChecker: NSObject, ObservableObject {
     @Published private(set) var downloadedFileURL: URL?
 
     private var downloadURLString: String = ""
+    /// The feed's IPA download URL for the latest release (empty
+    /// until a check has landed) — used by the LCSign hand-off.
+    var latestDownloadURLString: String { downloadURLString }
     private var expectedTotalBytes: Int64 = 0
     private var userCancelledDownload = false
 
@@ -192,6 +195,15 @@ final class AppUpdateChecker: NSObject, ObservableObject {
         downloadedBytes = 0
         phase = .updateAvailable
         statusText = "发现新版 \(latestVersion) (Build \(latestBuild))"
+    }
+
+    /// Records a successful hand-off of the offered IPA to LCSign:
+    /// the status line now tells the user to finish inside LCSign.
+    /// (The hand-off itself stays a deliberate user tap — the
+    /// auto-download switch never opens LCSign on its own, and the
+    /// auto-exit switch only applies to the share-sheet handoff.)
+    func markLCSignHandoffCompleted() {
+        statusText = "已递交 LCSign，请在 LCSign 中完成签名与安装。"
     }
 
     /// Re-presents the share sheet for an already downloaded IPA.
