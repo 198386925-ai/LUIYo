@@ -115,6 +115,20 @@ enum UpdateCertificateStore {
         return (name, teamId, dict["ExpirationDate"] as? Date)
     }
 
+    /// The device UDIDs a profile is limited to (its
+    /// `ProvisionedDevices` list). Development / ad-hoc profiles
+    /// carry them; distribution profiles return an empty list.
+    static func provisionedDevices(in data: Data) -> [String] {
+        guard let start = data.range(of: Data("<?xml".utf8)) else { return [] }
+        let tail = data.subdata(in: start.lowerBound..<data.count)
+        guard let end = tail.range(of: Data("</plist>".utf8)) else { return [] }
+        let xml = tail.subdata(in: 0..<end.upperBound)
+        guard let dict = try? PropertyListSerialization.propertyList(from: xml, options: [], format: nil) as? [String: Any],
+              let devices = dict["ProvisionedDevices"] as? [String]
+        else { return [] }
+        return devices.filter { !$0.isEmpty }
+    }
+
     /// Validates that `data` is a PKCS12 archive that actually opens
     /// with `password`. Returns the certificate's subject summary as
     /// the identity label on success, nil on any failure (wrong

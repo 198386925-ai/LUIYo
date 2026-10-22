@@ -24,8 +24,8 @@ final class UpdateCheckViewController: UIViewController {
     private var signButton: UIButton!
     private var signingInProgress = false
 
-    // Install method / LCSign detection
-    private var installMethodStateLabel: UILabel!
+    // LCSign detection (internal only — it decides the offer
+    // card's primary action; it is never displayed on the page)
     private var lcSignDetected = false
 
     // Status line
@@ -35,6 +35,9 @@ final class UpdateCheckViewController: UIViewController {
     // Certificate section
     private var certIdentityLabel: UILabel!
     private var certSavedLabel: UILabel!
+    private var certUDIDRow: UIView!
+    private var certUDIDDivider: UIView!
+    private var certUDIDValueLabel: UILabel!
 
     init(updater: AppUpdateChecker, homeModel: NativeHomeModel) {
         self.updater = updater
@@ -114,7 +117,7 @@ final class UpdateCheckViewController: UIViewController {
         let certNote = footnoteLabel("同时选择一份 P12 证书和描述文件，再输入密码，验证成功后保存。证书、密码与文件仅保存在本机钥匙串，不会上传。")
         stack.addArrangedSubview(certNote)
         stack.addArrangedSubview(installNodeCard())
-        let nodeNote = footnoteLabel("使用 LCSign 的 HTTPS 安装清单服务，签好的 IPA 通过本机连接交给 iOS。节点不可用时自动切换。")
+        let nodeNote = footnoteLabel("安装节点由 LCSign 提供，在 LCSign 中选择；节点不可用时自动切换。")
         stack.addArrangedSubview(nodeNote)
 
         updater.objectWillChange
@@ -413,48 +416,23 @@ final class UpdateCheckViewController: UIViewController {
 
     private func installMethodCard() -> UIView {
         let (card, inner) = makeCard()
-        let row = UIView()
-        let titleLabel = rowLabel("安装方式")
-        installMethodStateLabel = rowLabel("", size: 12, color: UIAppColors.secondary)
-        let leftStack = UIStackView(arrangedSubviews: [titleLabel, installMethodStateLabel])
-        leftStack.axis = .vertical
-        leftStack.spacing = 2
-        let valueLabel = rowLabel("证书签名 (LCSign)", color: UIAppColors.secondary)
-        valueLabel.textAlignment = .right
-        let glyph = selectorGlyph()
-        row.addSubview(leftStack)
-        row.addSubview(valueLabel)
-        row.addSubview(glyph)
-        leftStack.translatesAutoresizingMaskIntoConstraints = false
-        valueLabel.translatesAutoresizingMaskIntoConstraints = false
-        glyph.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            row.heightAnchor.constraint(greaterThanOrEqualToConstant: 58),
-            leftStack.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: 16),
-            leftStack.topAnchor.constraint(equalTo: row.topAnchor, constant: 12),
-            leftStack.bottomAnchor.constraint(equalTo: row.bottomAnchor, constant: -12),
-            glyph.trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -16),
-            glyph.centerYAnchor.constraint(equalTo: row.centerYAnchor),
-            valueLabel.trailingAnchor.constraint(equalTo: glyph.leadingAnchor, constant: -6),
-            valueLabel.topAnchor.constraint(equalTo: row.topAnchor, constant: 12),
-            valueLabel.bottomAnchor.constraint(equalTo: row.bottomAnchor, constant: -12),
-            valueLabel.leadingAnchor.constraint(greaterThanOrEqualTo: leftStack.trailingAnchor, constant: 12),
-        ])
-        inner.addArrangedSubview(row)
+        // Single line, like every other row: title + value +
+        // chevron. Whether LCSign is installed is probed
+        // internally (it picks the offer card's primary action)
+        // and deliberately not shown here.
+        inner.addArrangedSubview(selectorRow(title: "安装方式", value: "证书签名 (LCSign)"))
         return card
     }
 
     /// Probes the LCSign URL scheme (declared in
-    /// LSApplicationQueriesSchemes) and updates the install-method
-    /// state line + the offer card's primary action.
+    /// LSApplicationQueriesSchemes). The result stays internal:
+    /// it decides whether the offer card's primary action is the
+    /// LCSign hand-off or the in-app download.
     private func refreshLCSignDetection() {
         if let probe = URL(string: "loadcontroller://") {
             lcSignDetected = UIApplication.shared.canOpenURL(probe)
         } else {
             lcSignDetected = false
-        }
-        if isViewLoaded, installMethodStateLabel != nil {
-            installMethodStateLabel.text = lcSignDetected ? "已检测到 LCSign" : "未检测到 LCSign"
         }
         refresh()
     }
@@ -473,12 +451,19 @@ final class UpdateCheckViewController: UIViewController {
 
     private func certificateCard() -> UIView {
         let (card, inner) = makeCard()
+        // Every row in this card uses the page's shared row
+        // metrics — min-height 44 with 12pt vertical padding for
+        // content rows, and the status-line metrics (no min-height,
+        // 10pt padding) for the saved-count line, exactly like the
+        // check card's status row. (This card previously hand-rolled
+        // a 46pt header and a 38pt / 9pt saved row, which put its
+        // text rhythm off the rest of the page.)
         let headerRow = UIView()
         certIdentityLabel = rowLabel("", size: 13.5, weight: .semibold)
         headerRow.addSubview(certIdentityLabel)
         certIdentityLabel.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            headerRow.heightAnchor.constraint(greaterThanOrEqualToConstant: 46),
+            headerRow.heightAnchor.constraint(greaterThanOrEqualToConstant: 44),
             certIdentityLabel.leadingAnchor.constraint(equalTo: headerRow.leadingAnchor, constant: 16),
             certIdentityLabel.trailingAnchor.constraint(equalTo: headerRow.trailingAnchor, constant: -16),
             certIdentityLabel.topAnchor.constraint(equalTo: headerRow.topAnchor, constant: 12),
@@ -486,16 +471,37 @@ final class UpdateCheckViewController: UIViewController {
         ])
         inner.addArrangedSubview(headerRow)
         inner.addArrangedSubview(divider())
+        // The header profile's device UDID(s), above the saved
+        // count. UDIDs are long, so the value gets its own
+        // full-width line(s) under the title instead of squeezing
+        // into the value column of an info row.
+        certUDIDRow = UIView()
+        let udidTitleLabel = rowLabel("设备 UDID")
+        certUDIDValueLabel = rowLabel("", size: 12.5, color: UIAppColors.secondary)
+        let udidStack = UIStackView(arrangedSubviews: [udidTitleLabel, certUDIDValueLabel])
+        udidStack.axis = .vertical
+        udidStack.spacing = 2
+        certUDIDRow.addSubview(udidStack)
+        udidStack.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            certUDIDRow.heightAnchor.constraint(greaterThanOrEqualToConstant: 44),
+            udidStack.leadingAnchor.constraint(equalTo: certUDIDRow.leadingAnchor, constant: 16),
+            udidStack.trailingAnchor.constraint(equalTo: certUDIDRow.trailingAnchor, constant: -16),
+            udidStack.topAnchor.constraint(equalTo: certUDIDRow.topAnchor, constant: 12),
+            udidStack.bottomAnchor.constraint(equalTo: certUDIDRow.bottomAnchor, constant: -12),
+        ])
+        inner.addArrangedSubview(certUDIDRow)
+        certUDIDDivider = divider()
+        inner.addArrangedSubview(certUDIDDivider)
         let savedRow = UIView()
         certSavedLabel = rowLabel("", size: 12.5, color: UIAppColors.secondary)
         savedRow.addSubview(certSavedLabel)
         certSavedLabel.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            savedRow.heightAnchor.constraint(greaterThanOrEqualToConstant: 38),
             certSavedLabel.leadingAnchor.constraint(equalTo: savedRow.leadingAnchor, constant: 16),
             certSavedLabel.trailingAnchor.constraint(equalTo: savedRow.trailingAnchor, constant: -16),
-            certSavedLabel.topAnchor.constraint(equalTo: savedRow.topAnchor, constant: 9),
-            certSavedLabel.bottomAnchor.constraint(equalTo: savedRow.bottomAnchor, constant: -9),
+            certSavedLabel.topAnchor.constraint(equalTo: savedRow.topAnchor, constant: 10),
+            certSavedLabel.bottomAnchor.constraint(equalTo: savedRow.bottomAnchor, constant: -10),
         ])
         inner.addArrangedSubview(savedRow)
         inner.addArrangedSubview(divider())
@@ -509,7 +515,10 @@ final class UpdateCheckViewController: UIViewController {
 
     private func installNodeCard() -> UIView {
         let (card, inner) = makeCard()
-        inner.addArrangedSubview(selectorRow(title: "LCSign 安装节点", value: UpdateSettings.installNode))
+        // Display only: install nodes live inside LCSign (the
+        // hand-off URL carries no node choice), so this row is a
+        // plain info row — no chevron, no tap behaviour.
+        inner.addArrangedSubview(infoRow(title: "LCSign 安装节点", value: "LCSign 内置"))
         return card
     }
 
@@ -569,6 +578,17 @@ final class UpdateCheckViewController: UIViewController {
         let material = UpdateCertificateStore.load()
         certIdentityLabel.text = UpdateCertificateStore.identityLine ?? "未导入证书"
         certSavedLabel.text = "已保存 \(material.profiles.count) 份描述文件"
+        // UDID row: read from the header profile (the one the
+        // identity line comes from). A distribution profile has
+        // no device list, so the row reads 未包含； with nothing
+        // stored at all the row (and its divider) stays hidden.
+        let udids = material.profiles.last.map { UpdateCertificateStore.provisionedDevices(in: $0.data) } ?? []
+        let showUDIDRow = !material.isEmpty
+        certUDIDRow.isHidden = !showUDIDRow
+        certUDIDDivider.isHidden = !showUDIDRow
+        if showUDIDRow {
+            certUDIDValueLabel.text = udids.isEmpty ? "未包含" : udids.joined(separator: "\n")
+        }
         // Freshly imported material may unlock the 签名此更新 action.
         refresh()
     }
