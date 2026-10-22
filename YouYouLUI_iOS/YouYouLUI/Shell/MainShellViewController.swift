@@ -156,10 +156,12 @@ final class MainShellViewController: UITabBarController {
             backgroundImageView.leadingAnchor.constraint(equalTo: rootView.leadingAnchor),
             backgroundImageView.trailingAnchor.constraint(equalTo: rootView.trailingAnchor)
         ])
-        // Custom background image feature removed — clear any previously stored image.
-        backgroundImageView.image = nil
+        // The old user-picked background image feature stays removed
+        // (clear any legacy stored file); the background image is now
+        // the factory-default wallpaper, resolved by
+        // refreshDefaultWallpaper() here and on every palette pass.
         try? FileManager.default.removeItem(at: AppPaths.legacyBackgroundImage)
-        homeModel.backgroundImage = nil
+        refreshDefaultWallpaper()
     }
 
     private func installEngine() {

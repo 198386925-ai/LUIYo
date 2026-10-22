@@ -11,64 +11,44 @@ static UIColor *LUISettingsOnInkColor(void) { return LUISettingsLiquidDynamicCol
 static UIColor *LUISettingsControlTrackColor(void) { return UIColor.tertiarySystemFillColor; }
 static UIColor *LUISettingsAccentColor(void) { return [UIColor colorWithRed:.69 green:.54 blue:.31 alpha:1]; }
 static UIColor *LUISettingsBadgeBackgroundColor(void) { return [LUISettingsAccentColor() colorWithAlphaComponent:.12]; }
-static UIColor *LUISettingsLiquidSwitchOnTintColor(void) { return UIColor.systemGreenColor; }
 static BOOL LUISettingsLiquidTraitIsDark(UITraitCollection *t) { return t.userInterfaceStyle == UIUserInterfaceStyleDark; }
 static void LUISettingsApplyTitleLabelChrome(UILabel *label) { label.adjustsFontSizeToFitWidth = YES; label.minimumScaleFactor = .85; }
 static CGFloat LUISettingsSafeLineHeight(UIFont *font) { return font.lineHeight; }
-// The brand card is a normal painted card, independent of the app's glass theme.
-@interface LUIYoHeroSwitchHost : UIControl
-@property(nonatomic,strong) UISwitch *sourceSwitch;
-@property(nonatomic,strong) UIView *track;
-@property(nonatomic,strong) UIView *knob;
-@property(nonatomic,strong) UIImageView *cloud;
-@property(nonatomic,strong) UIImageView *moon;
-@end
-@implementation LUIYoHeroSwitchHost
-- (instancetype)initWithSwitch:(UISwitch *)toggle {
-    if (!(self = [super initWithFrame:CGRectMake(0,0,44,26)])) return nil;
-    self.sourceSwitch = toggle; toggle.hidden = YES; [self addSubview:toggle];
-    self.track = [UIView new]; self.track.userInteractionEnabled = NO; self.track.layer.cornerRadius = 10; self.track.layer.borderWidth = 1; [self addSubview:self.track];
-    self.knob = [UIView new]; self.knob.userInteractionEnabled = NO; self.knob.layer.cornerRadius = 9; self.knob.layer.borderWidth = 1; [self.track addSubview:self.knob];
-    self.cloud = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"cloud.fill"]];self.cloud.tintColor = UIColor.whiteColor;self.cloud.contentMode = UIViewContentModeScaleAspectFit;[self.track addSubview:self.cloud];
-    self.moon = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"moon.fill"]];self.moon.tintColor = UIColor.whiteColor;self.moon.contentMode = UIViewContentModeScaleAspectFit;[self.knob addSubview:self.moon];
-    [self addTarget:self action:@selector(toggleValue) forControlEvents:UIControlEventTouchUpInside];
-    self.isAccessibilityElement = YES; self.accessibilityLabel = @"启用";self.accessibilityTraits = UIAccessibilityTraitButton;
-    return self;
+static NSString *LUISettingsCurrentAccountEmail(void) {
+    return [NSUserDefaults.standardUserDefaults stringForKey:@"youyou.account.email"] ?: @"";
 }
-- (void)toggleValue { self.sourceSwitch.on = !self.sourceSwitch.on; [self.sourceSwitch sendActionsForControlEvents:UIControlEventValueChanged];[self setNeedsLayout]; }
-- (BOOL)accessibilityActivate { [self toggleValue];return YES; }
-- (void)layoutSubviews {
-    [super layoutSubviews];BOOL on = self.sourceSwitch.on;
-    self.track.frame = CGRectMake(0,3,44,20);
-    self.track.backgroundColor = on ? [UIColor colorWithRed:.65 green:.88 blue:.94 alpha:1] : [UIColor colorWithRed:.21 green:.24 blue:.38 alpha:1];
-    self.track.layer.borderColor = [UIColor colorWithRed:.52 green:.73 blue:.79 alpha:1].CGColor;
-    self.knob.frame = CGRectMake(on?24:2,1,18,18);
-    self.knob.backgroundColor = on ? [UIColor colorWithRed:1 green:.87 blue:.39 alpha:1] : [UIColor colorWithRed:.46 green:.51 blue:.72 alpha:1];
-    self.knob.layer.borderColor = [UIColor colorWithRed:.85 green:.74 blue:.38 alpha:1].CGColor;
-    self.cloud.frame = CGRectMake(14,9,13,7);self.cloud.hidden = !on;
-    self.moon.frame = CGRectMake(4,4,10,10);self.moon.hidden = on;
-    self.accessibilityValue = on ? @"已启用" : @"未启用";
+
+/// 本机昵称：在「我的账号资料」页可改，按账号邮箱分键存在
+/// youyou.profile.nicknames 字典里（与 Swift 的 AccountProfileStore
+/// 共用同一份存储，两边的键名不许漂移）。显示优先级最高，
+/// 高于服务器下发的展示名。
+static NSString *LUISettingsProfileNickname(void) {
+    NSString *email = LUISettingsCurrentAccountEmail();
+    if (email.length == 0) return nil;
+    NSDictionary *map = [NSUserDefaults.standardUserDefaults dictionaryForKey:@"youyou.profile.nicknames"];
+    if (![map isKindOfClass:NSDictionary.class]) return nil;
+    id raw = map[email];
+    NSString *value = [raw isKindOfClass:NSString.class] ? raw : nil;
+    return value.length ? value : nil;
 }
-@end
-UIControl *LUIYoCreateThemeSwitch(BOOL enabled, void (^onChange)(BOOL)) {
-    UISwitch *source = [UISwitch new];source.on = enabled;
-    [source addAction:[UIAction actionWithHandler:^(__kindof UIAction *action) { onChange(((UISwitch *)action.sender).on); }] forControlEvents:UIControlEventValueChanged];
-    return [[LUIYoHeroSwitchHost alloc] initWithSwitch:source];
-}
-void LUIYoSetThemeSwitch(UIControl *view, BOOL enabled) {
-    if (![view isKindOfClass:LUIYoHeroSwitchHost.class]) return;
-    ((LUIYoHeroSwitchHost *)view).sourceSwitch.on = enabled;[view setNeedsLayout];
-}
-static UIView *LUISettingsLiquidWrapSwitch(UISwitch *toggle) { return [[LUIYoHeroSwitchHost alloc] initWithSwitch:toggle]; }
+
 static UIImage *LUISettingsAvatarImage(void) {
-    // 头像已固定为内置默认头像（DefaultAvatar）：不再读用户自选的
-    // 头像文件，也不再裁品牌参考图兜底——所有人永远是同一张。
+    // 头像优先级：本机账号头像（账号页里改的，文件存在
+    // Application Support/AccountAvatars/，文件名按账号记录在
+    // youyou.profile.avatarFiles 字典）> 内置默认头像 DefaultAvatar。
+    NSString *email = LUISettingsCurrentAccountEmail();
+    if (email.length) {
+        NSDictionary *map = [NSUserDefaults.standardUserDefaults dictionaryForKey:@"youyou.profile.avatarFiles"];
+        id raw = [map isKindOfClass:NSDictionary.class] ? map[email] : nil;
+        NSString *fileName = [raw isKindOfClass:NSString.class] ? raw : nil;
+        if (fileName.length) {
+            NSString *dir = [NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory, NSUserDomainMask, YES).firstObject stringByAppendingPathComponent:@"AccountAvatars"];
+            UIImage *local = [UIImage imageWithContentsOfFile:[dir stringByAppendingPathComponent:fileName]];
+            if (local) return local;
+        }
+    }
     return [UIImage imageNamed:@"DefaultAvatar"];
 }
-static BOOL LUIConfigBool(NSString *key, BOOL fallback) { id value = [NSUserDefaults.standardUserDefaults objectForKey:key]; return value ? [value boolValue] : fallback; }
-static void LUIConfigSetBool(NSString *key, BOOL enabled) { [NSUserDefaults.standardUserDefaults setBool:enabled forKey:key]; }
-static void LUISettingsApplyChangedKey(NSString *key) { [NSNotificationCenter.defaultCenter postNotificationName:@"LUIYoHeroPreferenceChanged" object:key]; }
-static void LUISettingsNotifyValueChangedFromResponder(UIResponder *responder, NSString *key) { [NSNotificationCenter.defaultCenter postNotificationName:@"LUIYoHeroValueChanged" object:responder userInfo:@{@"key":key}]; }
 static void LUISettingsApplyLiquidCardBackground(UITableViewCell *cell) {
     cell.backgroundColor = UIColor.clearColor;
     UIView *background = [UIView new];background.backgroundColor = LUISettingsLiquidDynamicColor([UIColor colorWithWhite:.99 alpha:1],[UIColor colorWithWhite:.13 alpha:1]);background.layer.cornerRadius = 24;background.clipsToBounds = YES;cell.backgroundView = background;
@@ -103,11 +83,13 @@ void LUIYoRefreshSettingsHero(UIView *view) {
     if (!_LUIYoHeroCustomFont) {
         _LUIYoHeroCustomFont = LUIYoLoadThemeFontFromDisk();
     }
-    // 名字 = 账号展示名（服务器分配的「LUI用户+4位数字」，由
+    // 名字与账号页同一套优先级：本机昵称（账号页里改的）>
+    // 账号展示名（服务器分配的「LUI用户+4位数字」，由
     // AccountAuthorization 镜像到 youyou.account.displayName；
     // 服务器还没给名时镜像里是本机按账号生成的同格式兜底名）。
-    // 镜像为空只可能是账号状态还没回来过，用品牌名占位一瞬。
-    NSString *name = [NSUserDefaults.standardUserDefaults stringForKey:@"youyou.account.displayName"];
+    // 两者皆空只可能是账号状态还没回来过，用品牌名占位一瞬。
+    NSString *name = LUISettingsProfileNickname();
+    if (name.length == 0) name = [NSUserDefaults.standardUserDefaults stringForKey:@"youyou.account.displayName"];
     if (name.length == 0) name = @"LUIYo";
     NSString *shortVer = [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleShortVersionString"] ?: @"1.0.6";
     NSString *buildNum = [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleVersion"] ?: @"";
@@ -190,12 +172,12 @@ void LUIYoSetSettingsHeroFont(UIView *view, UIFont * _Nullable font) {
         LUIYoSetHeroButtonFont(cell.logButton, [UIFont systemFontOfSize:12.0 weight:UIFontWeightSemibold]);
     }
 }
-UIView *LUIYoCreateSettingsHero(void (^onInfo)(void), void (^onChangelog)(void)) {
+UIView *LUIYoCreateSettingsHero(void (^onInfo)(void), void (^onChangelog)(void), void (^onEntry)(void)) {
     [NSUserDefaults.standardUserDefaults registerDefaults:@{@"luiyo.hero.enabled":@YES}];
-    // 头像与名字都已固定（默认头像 + 服务器分配的展示名），
-    // 头像和名字不再挂任何点按编辑手势。
+    // 卡上只展示头像与名字，不挂任何点按编辑手势；
+    // 修改头像/昵称的入口在右上角箭头进去的「我的账号资料」页里。
     LUISettingsHeroCell *cell = [[LUISettingsHeroCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
-    cell.onInfo = onInfo;cell.onChangelog = onChangelog;
+    cell.onInfo = onInfo;cell.onChangelog = onChangelog;cell.onEntry = onEntry;
     LUIYoRefreshSettingsHero(cell);
     return cell;
 }

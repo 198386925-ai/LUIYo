@@ -34,8 +34,32 @@ extension MainShellViewController {
         }
     }
 
+    /// The factory-default wallpaper: while no custom background
+    /// colour is stored for the current appearance, the shell
+    /// background IS the bundled `DefaultWallpaper` image itself
+    /// (light appearance only — dark keeps its own solid default).
+    /// A stored custom colour always wins: the image clears and the
+    /// palette paints the colour instead. `homeModel.backgroundImage`
+    /// mirrors the image so Home (clear over an image) and the search
+    /// overlay (handed the image by the shell) follow the same state.
+    func refreshDefaultWallpaper() {
+        let dark = traitCollection.userInterfaceStyle == .dark
+        let hasCustomColor = preferences.colorHex(.background, appearance: dark ? "dark" : "light") != nil
+        if !dark && !hasCustomColor {
+            if backgroundImageView.image == nil {
+                let image = UIImage(named: "DefaultWallpaper")
+                backgroundImageView.image = image
+                homeModel.backgroundImage = image
+            }
+        } else if backgroundImageView.image != nil {
+            backgroundImageView.image = nil
+            homeModel.backgroundImage = nil
+        }
+    }
+
     /// Re-resolves every stored colour after an appearance change.
     func applyStoredPalette() {
+        refreshDefaultWallpaper()
         // Keep solid palette only when no custom background image is active.
         if backgroundImageView.image == nil {
             view.backgroundColor = ThemePalette.stored(.background,

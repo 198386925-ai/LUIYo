@@ -127,6 +127,7 @@
 		AA7000000000000000002008 /* Entry/EntryGateViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA7000000000000000001008 /* Entry/EntryGateViewController.swift */; };
 		AA7000000000000000002009 /* Entry/CaptchaViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA7000000000000000001009 /* Entry/CaptchaViewController.swift */; };
 		AA5000000000000000002003 /* SettingsNative/AppSettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA5000000000000000001003 /* SettingsNative/AppSettingsViewController.swift */; };
+		AA5000000000000000002004 /* SettingsNative/AccountInfoViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA5000000000000000001004 /* SettingsNative/AccountInfoViewController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -242,6 +243,7 @@
 		AA7000000000000000001008 /* Entry/EntryGateViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "YouYouLUI/Entry/EntryGateViewController.swift"; sourceTree = SOURCE_ROOT; };
 		AA7000000000000000001009 /* Entry/CaptchaViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "YouYouLUI/Entry/CaptchaViewController.swift"; sourceTree = SOURCE_ROOT; };
 		AA5000000000000000001003 /* SettingsNative/AppSettingsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "YouYouLUI/SettingsNative/AppSettingsViewController.swift"; sourceTree = SOURCE_ROOT; };
+		AA5000000000000000001004 /* SettingsNative/AccountInfoViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "YouYouLUI/SettingsNative/AccountInfoViewController.swift"; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -605,6 +607,7 @@
 				AA7000000000000000002008 /* Entry/EntryGateViewController.swift in Sources */,
 				AA7000000000000000002009 /* Entry/CaptchaViewController.swift in Sources */,
 				AA5000000000000000002003 /* SettingsNative/AppSettingsViewController.swift in Sources */,
+				AA5000000000000000002004 /* SettingsNative/AccountInfoViewController.swift in Sources */,
 				AA2900000000000000000105 /* SettingsNative/SettingsContent.swift in Sources */,
 				AA2900000000000000000106 /* Home/HomeViewController.swift in Sources */,
 				AA2900000000000000000107 /* Home/ColorSettingsViewController.swift in Sources */,

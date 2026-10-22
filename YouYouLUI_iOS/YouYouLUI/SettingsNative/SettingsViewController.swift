@@ -322,8 +322,9 @@ final class SettingsViewController: UIViewController {
             { [weak self] in
                 guard let self else { return }
                 self.model.changelogExpanded.toggle()
-                if self.model.changelogExpanded { self.model.pendingScroll = "changelog" }
-            }
+                if self.model.pendingScroll { self.model.pendingScroll = "changelog" }
+            },
+            { [weak self] in self?.openAccountInfo() }
         )
         heroView = hero
         heroContainer.addSubview(hero)
@@ -736,6 +737,14 @@ final class SettingsViewController: UIViewController {
         present(page, animated: true)
     }
 
+    /// The hero card's top-right entry (the chevron where the theme
+    /// switch used to live) opens the account page, presented like
+    /// the other sub-pages from here （设置 / 检查更新）.
+    private func openAccountInfo() {
+        let page = AccountInfoViewController(homeModel: homeModel)
+        present(page, animated: true)
+    }
+
     // MARK: - Page font
 
     private var pageFont: UIFont?
@@ -766,7 +775,11 @@ final class SettingsViewController: UIViewController {
     }
 
     private func refreshTheme() {
-        view.backgroundColor = UIColor(nativeHex: homeModel.theme.background)
+        // Same rule as Home: over a background image (the default
+        // wallpaper) the page stays clear; over a colour it paints it.
+        view.backgroundColor = homeModel.backgroundImage == nil
+            ? UIColor(nativeHex: homeModel.theme.background)
+            : .clear
         let tint = UIColor(nativeHex: homeModel.theme.card)
         updateCard.configure(useBlur: homeModel.useBlur, tint: tint)
         appSettingsCard.configure(useBlur: homeModel.useBlur, tint: tint)

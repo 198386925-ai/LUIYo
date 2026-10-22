@@ -1,7 +1,8 @@
 // ============================================================================
 // LUISettingsHeroCell.m — 一级页品牌卡（v3 墨玉 · 2026-09-20 用户拍板）
-// 116pt · r24：左 48 圆头像（内置默认头像 DefaultAvatar，LUISettingsAvatarImage 恒定返回它；取不到时回落石墨底「L」字标，深色反转雾白）+ 3pt 外环；中 名字（账号展示名）20/700 + 两枚胶囊（登录邮箱、
-// 砂金点「已启用」）；右 总开关（TUTKeyPluginEnabled，同 SwitchCell 落盘口径）；底部两枚 28pt 玻璃按钮
+// 116pt · r24：左 48 圆头像（LUISettingsAvatarImage 返回：本机账号头像优先，否则内置默认头像 DefaultAvatar；都取不到时回落石墨底「L」字标，深色反转雾白）+ 3pt 外环；中 名字（本机昵称 > 服务器展示名）20/700 + 两枚胶囊（登录邮箱、
+// 账号授权状态）；右上角原总开关位置只放一枚箭头（chevron.right，与入口行同款），箭头周围整片右上区域都是点按区，
+// 点任意处经 onEntry 进「我的」账号页；底部两枚 28pt 玻璃按钮
 // 「插件信息 ›」「更新日志 ›」——把此前 profile 行的点按目标与顶栏感叹号都收进来。
 // 装饰：右上一组墨色同心水纹（1pt · 9%）+ 左上到右下一道白 55%→0 斜向高光，尾端极淡砂金。
 // 设计稿：~/Desktop/LiquidUI设置页重设计_2026-09-20/设计稿-LiquidUI设置页重设计.html §组件解剖。
@@ -23,12 +24,13 @@ static const CGFloat LUISettingsHeroRadius = 24.0;
 @property(nonatomic, strong) UIView *statusChip;
 @property(nonatomic, strong) UIView *statusDot;
 @property(nonatomic, strong) UILabel *statusLabel;
-@property(nonatomic, strong) UISwitch *toggle;
-@property(nonatomic, strong) UIView *toggleHost;
+@property(nonatomic, strong) UIButton *entryButton;
+@property(nonatomic, strong) UIImageView *entryChevronView;
 @property(nonatomic, strong) UIButton *infoButton;
 @property(nonatomic, strong) UIButton *logButton;
 @property(nonatomic, copy) void (^onInfo)(void);
 @property(nonatomic, copy) void (^onChangelog)(void);
+@property(nonatomic, copy) void (^onEntry)(void);
 - (void)configureWithTitle:(NSString *)title version:(NSString *)version key:(NSString *)key;
 @end
 
@@ -167,11 +169,22 @@ static UILabel *LUISettingsHeroMakeChipLabel(UIFont *font) {
     [_statusChip addSubview:_statusLabel];
     [self.contentView addSubview:_statusChip];
 
-    _toggle = [UISwitch new];
-    _toggle.onTintColor = LUISettingsLiquidSwitchOnTintColor();
-    [_toggle addTarget:self action:@selector(lui_toggleChanged:) forControlEvents:UIControlEventValueChanged];
-    _toggleHost = LUISettingsLiquidWrapSwitch(_toggle);
-    [self.contentView addSubview:_toggleHost];
+    // 右上角入口（原总开关的位置）：只放一枚箭头，不带任何文字；
+    // 箭头周围整片右上区域（layoutSubviews 里铺满）都是点按区，
+    // 点任意处触发 onEntry 进「我的」账号页。箭头是入口行同款的
+    // SF chevron.right（13pt semibold、墨色），仅作视觉锚点、不吃触摸。
+    _entryButton = [UIButton buttonWithType:UIButtonTypeCustom];
+    _entryButton.backgroundColor = UIColor.clearColor;
+    _entryButton.accessibilityLabel = @"我的账号资料";
+    [_entryButton addTarget:self action:@selector(lui_entryTapped) forControlEvents:UIControlEventTouchUpInside];
+    [self.contentView addSubview:_entryButton];
+    UIImageSymbolConfiguration *entryChevronConfig = [UIImageSymbolConfiguration configurationWithPointSize:13.0 weight:UIImageSymbolWeightSemibold];
+    UIImage *entryChevronImage = [[UIImage systemImageNamed:@"chevron.right" withConfiguration:entryChevronConfig] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+    _entryChevronView = [[UIImageView alloc] initWithImage:entryChevronImage];
+    _entryChevronView.tintColor = LUISettingsInkColor();
+    _entryChevronView.contentMode = UIViewContentModeScaleAspectFit;
+    _entryChevronView.userInteractionEnabled = NO;
+    [self.contentView addSubview:_entryChevronView];
 
     _infoButton = LUISettingsHeroMakeButton(@"info.circle", @"插件信息");
     [_infoButton addTarget:self action:@selector(lui_infoTapped) forControlEvents:UIControlEventTouchUpInside];
@@ -192,13 +205,17 @@ static UILabel *LUISettingsHeroMakeChipLabel(UIFont *font) {
 - (void)lui_accountAuthUpdated:(NSNotification *)note {
     [self lui_refreshTierChip];
     [self lui_refreshDisplayName];
+    [self lui_refreshAuthChip];
+    [self lui_refreshAvatar];
 }
 
-/// 名字 = 账号展示名（服务器分配、本机只展示）：随账号镜像
-/// youyou.account.displayName 刷新；服务器的名字第一次到达时
-/// 正在看的页面也能立刻换上，不用等下次进页面。
+/// 名字与账号页同一套优先级：本机昵称（账号页里改的，按账号
+/// 分键）> 服务器展示名（账号镜像 youyou.account.displayName）。
+/// 服务器的名字第一次到达、或在账号页改了昵称时，正在看的
+/// 页面也能立刻换上，不用等下次进页面。
 - (void)lui_refreshDisplayName {
-    NSString *_name = [NSUserDefaults.standardUserDefaults stringForKey:@"youyou.account.displayName"];
+    NSString *_name = LUISettingsProfileNickname();
+    if (_name.length == 0) _name = [NSUserDefaults.standardUserDefaults stringForKey:@"youyou.account.displayName"];
     if (_name.length == 0) return;
     dispatch_async(dispatch_get_main_queue(), ^{
         self.nameLabel.text = _name;
@@ -265,15 +282,17 @@ static UILabel *LUISettingsHeroMakeChipLabel(UIFont *font) {
     LUISettingsApplyLiquidCardBackground(self);
     self.contentView.backgroundColor = UIColor.clearColor;
     self.key = key;
-    NSString *_dn = [NSUserDefaults.standardUserDefaults stringForKey:@"youyou.account.displayName"];
+    NSString *_dn = LUISettingsProfileNickname();
+    if (_dn.length == 0) _dn = [NSUserDefaults.standardUserDefaults stringForKey:@"youyou.account.displayName"];
     self.nameLabel.text = _dn.length ? _dn : @"LUIYo";
     [self lui_refreshTierChip];
     [self lui_refreshAvatar];
-    [self lui_refreshStatus];
+    [self lui_refreshAuthChip];
     [self setNeedsLayout];
 }
 
-/// 头像：内置默认头像（所有人同一张，不可更换）；万一资源缺失才露出石墨底「L」字标。
+/// 头像：本机账号头像（在「我的账号资料」页里改、按账号分键）
+/// 优先，没有改过时是内置默认头像；资源缺失才露出石墨底「L」字标。
 - (void)lui_refreshAvatar {
     UIImage *avatar = LUISettingsAvatarImage();
     self.avatarImageView.image = avatar;
@@ -281,18 +300,24 @@ static UILabel *LUISettingsHeroMakeChipLabel(UIFont *font) {
     self.avatarGlyph.hidden = avatar != nil;
 }
 
-/// 状态胶囊 + 开关同步读配置：总开关开 → 砂金点「已启用」，关 → 三级灰点「未启用」。
-- (void)lui_refreshStatus {
-    BOOL enabled = self.key.length ? LUIConfigBool(self.key, NO) : NO;
-    self.toggle.on = enabled;
-    [self.toggleHost setNeedsLayout];   // 日夜皮肤按新 on 状态对齐（代码 setOn 不发 ValueChanged）
-    self.statusLabel.text = enabled ? @"已启用" : @"未启用";
-    self.statusLabel.textColor = enabled ? LUISettingsLiquidDynamicColor([UIColor colorWithRed:0.49 green:0.38 blue:0.20 alpha:1.0],
-                                                                         [UIColor colorWithRed:0.85 green:0.75 blue:0.56 alpha:1.0])
-                                         : LUISettingsInk2Color();
-    self.statusDot.backgroundColor = enabled ? LUISettingsAccentColor() : LUISettingsInk3Color();
-    self.statusChip.backgroundColor = enabled ? LUISettingsBadgeBackgroundColor() : LUISettingsControlTrackColor();
-    [self setNeedsLayout];
+/// 状态胶囊改显账号授权，与邮箱胶囊同一数据源（AccountAuthorization
+/// 镜像的 youyou.account.svip / svipExpiresAt，退出登录时已清空）：
+/// 已授权 = 砂金点金字，未授权 = 灰点灰字；随 LUIYoAccountAuthUpdated
+/// 与邮箱胶囊、展示名一起刷新，不另存第二份状态。
+- (void)lui_refreshAuthChip {
+    NSUserDefaults *_defaults = NSUserDefaults.standardUserDefaults;
+    BOOL _svip = [_defaults boolForKey:@"youyou.account.svip"];
+    NSTimeInterval _expires = [_defaults doubleForKey:@"youyou.account.svipExpiresAt"];
+    BOOL _authorized = _svip && _expires > NSDate.date.timeIntervalSince1970;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        self.statusLabel.text = _authorized ? @"已授权" : @"未授权";
+        self.statusLabel.textColor = _authorized ? LUISettingsLiquidDynamicColor([UIColor colorWithRed:0.49 green:0.38 blue:0.20 alpha:1.0],
+                                                                                 [UIColor colorWithRed:0.85 green:0.75 blue:0.56 alpha:1.0])
+                                                 : LUISettingsInk2Color();
+        self.statusDot.backgroundColor = _authorized ? LUISettingsAccentColor() : LUISettingsInk3Color();
+        self.statusChip.backgroundColor = _authorized ? LUISettingsBadgeBackgroundColor() : LUISettingsControlTrackColor();
+        [self setNeedsLayout];
+    });
 }
 
 - (void)layoutSubviews {
@@ -315,12 +340,18 @@ static UILabel *LUISettingsHeroMakeChipLabel(UIFont *font) {
 
     CGFloat padX = 16.0, padTop = 14.0;
     self.avatarView.frame = CGRectMake(padX, padTop, 48.0, 48.0);
-    // 右侧开关 44×26 垂直对齐头像中心。
-    CGRect th = self.toggleHost.frame;
-    th.origin = CGPointMake(W - padX - CGRectGetWidth(th), padTop + 24.0 - CGRectGetHeight(th) * 0.5);
-    self.toggleHost.frame = th;
+    // 右上角入口：箭头原地占原开关的锚点（右缘贴 padX、垂直对齐头像
+    // 中心）；点按区是卡片右上整片（宽 176、高到按钮行顶），区内点
+    // 任意处都触发入口。名字/胶囊的可用宽度以箭头左缘为界。
+    CGFloat topSectionH = padTop + 48.0 + 12.0;
+    CGFloat entryZoneW = 176.0;
+    self.entryButton.frame = CGRectMake(W - entryZoneW, 0, entryZoneW, topSectionH);
+    CGSize entryChevronSize = self.entryChevronView.image.size;
+    CGFloat entryChevronW = MAX(8.0, entryChevronSize.width);
+    CGFloat entryChevronH = MAX(13.0, entryChevronSize.height);
+    self.entryChevronView.frame = CGRectMake(W - padX - entryChevronW, padTop + 24.0 - entryChevronH * 0.5, entryChevronW, entryChevronH);
     CGFloat metaX = CGRectGetMaxX(self.avatarView.frame) + 13.0;
-    CGFloat metaW = MAX(0.0, CGRectGetMinX(th) - 6.0 - metaX);
+    CGFloat metaW = MAX(0.0, CGRectGetMinX(self.entryChevronView.frame) - 6.0 - metaX);
     CGFloat nameH = MAX(24.0, ceil(LUISettingsSafeLineHeight(self.nameLabel.font)));
     CGFloat chipH = 18.0;
     CGFloat blockH = nameH + 5.0 + chipH;
@@ -340,7 +371,7 @@ static UILabel *LUISettingsHeroMakeChipLabel(UIFont *font) {
     self.statusLabel.frame = CGRectMake(19.0, 0, MAX(0.0, statusW - 19.0 - 8.0), chipH);
 
     // 底部两枚按钮：28 高，紧挨着从左排，按标题自适应宽。
-    CGFloat btnY = padTop + 48.0 + 12.0;
+    CGFloat btnY = topSectionH;
     CGFloat bx = padX;
     for (UIButton *btn in @[self.infoButton, self.logButton]) {
         CGFloat bw = ceil([btn sizeThatFits:CGSizeMake(200.0, 28.0)].width);
@@ -351,22 +382,13 @@ static UILabel *LUISettingsHeroMakeChipLabel(UIFont *font) {
     }
 }
 
-- (void)lui_toggleChanged:(UISwitch *)sender {
-    if (!self.key.length) return;
-    // 与 LUISettingsSwitchCell.changed: 同一口径：落盘 → 联动 → 整表重载 → 响应链通知。
-    LUIConfigSetBool(self.key, sender.isOn);
-    LUISettingsApplyChangedKey(self.key);
-    [self lui_refreshStatus];
-    UIView *cursor = self.superview;
-    while (cursor && ![cursor isKindOfClass:UITableView.class]) cursor = cursor.superview;
-    if ([cursor isKindOfClass:UITableView.class]) [(UITableView *)cursor reloadData];
-    LUISettingsNotifyValueChangedFromResponder(self, self.key);
-}
 - (void)lui_infoTapped { if (self.onInfo) self.onInfo(); }
 - (void)lui_logTapped { if (self.onChangelog) self.onChangelog(); }
+- (void)lui_entryTapped { if (self.onEntry) self.onEntry(); }
 - (void)prepareForReuse {
     [super prepareForReuse];
     self.onInfo = nil;
     self.onChangelog = nil;
+    self.onEntry = nil;
 }
 @end

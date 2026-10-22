@@ -210,7 +210,11 @@ final class RulesViewController: UIViewController {
     }
 
     private func refreshTheme() {
-        view.backgroundColor = UIColor(nativeHex: homeModel.theme.background)
+        // Same rule as Home: over a background image (the default
+        // wallpaper) the page stays clear; over a colour it paints it.
+        view.backgroundColor = homeModel.backgroundImage == nil
+            ? UIColor(nativeHex: homeModel.theme.background)
+            : .clear
         let tint = UIColor(nativeHex: homeModel.theme.card)
         for card in sectionCards.values {
             card.configure(useBlur: homeModel.useBlur, tint: tint)
