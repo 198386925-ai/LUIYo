@@ -156,7 +156,7 @@ enum UpdateCertificateStore {
     /// first provisioning profile found, or nil when the archive
     /// holds neither. Entry names are matched by suffix, so folder
     /// prefixes need no special handling.
-    static func certFiles(fromZipData data: Data) -> (p12: Data?, profile: Data?) {
+    static func certFiles(fromZipData data: Data) -> (p12: Data?, profile: Data?)? {
         guard let entries = ZipEntryReader.entries(in: data) else { return nil }
         var p12: Data?
         var profile: Data?
