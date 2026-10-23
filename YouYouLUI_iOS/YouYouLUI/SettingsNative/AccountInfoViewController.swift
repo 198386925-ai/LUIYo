@@ -148,6 +148,7 @@ final class AccountInfoViewController: UIViewController {
         avatarCard.backgroundColor = UIColor(nativeHex: homeModel.theme.card)
         avatarCard.layer.cornerRadius = 26
         avatarCard.clipsToBounds = true
+        avatarCard.luiyoApplyGlassCardSurface(radius: 26, useBlur: homeModel.useBlur, tint: UIColor(nativeHex: homeModel.theme.card))
         view.addSubview(avatarCard)
         avatarCard.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
@@ -202,6 +203,7 @@ final class AccountInfoViewController: UIViewController {
         card.backgroundColor = UIColor(nativeHex: homeModel.theme.card)
         card.layer.cornerRadius = 26
         card.clipsToBounds = true
+        card.luiyoApplyGlassCardSurface(radius: 26, useBlur: homeModel.useBlur, tint: UIColor(nativeHex: homeModel.theme.card))
         view.addSubview(card)
         card.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
@@ -240,6 +242,7 @@ final class AccountInfoViewController: UIViewController {
         logoutCard.backgroundColor = UIColor(nativeHex: homeModel.theme.card)
         logoutCard.layer.cornerRadius = 26
         logoutCard.clipsToBounds = true
+        logoutCard.luiyoApplyGlassCardSurface(radius: 26, useBlur: homeModel.useBlur, tint: UIColor(nativeHex: homeModel.theme.card))
         view.addSubview(logoutCard)
         logoutCard.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
@@ -561,6 +564,7 @@ final class ChangePasswordViewController: UIViewController {
         card.backgroundColor = UIColor(nativeHex: homeModel.theme.card)
         card.layer.cornerRadius = 26
         card.clipsToBounds = true
+        card.luiyoApplyGlassCardSurface(radius: 26, useBlur: homeModel.useBlur, tint: UIColor(nativeHex: homeModel.theme.card))
         view.addSubview(card)
         card.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
@@ -619,6 +623,7 @@ final class ChangePasswordViewController: UIViewController {
         submitCard.backgroundColor = UIColor(nativeHex: homeModel.theme.card)
         submitCard.layer.cornerRadius = 26
         submitCard.clipsToBounds = true
+        submitCard.luiyoApplyGlassCardSurface(radius: 26, useBlur: homeModel.useBlur, tint: UIColor(nativeHex: homeModel.theme.card))
         view.addSubview(submitCard)
         submitCard.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
@@ -841,6 +846,7 @@ final class BindCardViewController: UIViewController {
         card.backgroundColor = UIColor(nativeHex: homeModel.theme.card)
         card.layer.cornerRadius = 26
         card.clipsToBounds = true
+        card.luiyoApplyGlassCardSurface(radius: 26, useBlur: homeModel.useBlur, tint: UIColor(nativeHex: homeModel.theme.card))
         view.addSubview(card)
         card.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
@@ -894,6 +900,7 @@ final class BindCardViewController: UIViewController {
         submitCard.backgroundColor = UIColor(nativeHex: homeModel.theme.card)
         submitCard.layer.cornerRadius = 26
         submitCard.clipsToBounds = true
+        submitCard.luiyoApplyGlassCardSurface(radius: 26, useBlur: homeModel.useBlur, tint: UIColor(nativeHex: homeModel.theme.card))
         view.addSubview(submitCard)
         submitCard.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([

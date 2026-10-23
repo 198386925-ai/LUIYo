@@ -198,6 +198,7 @@ final class AppSettingsViewController: UIViewController {
         card.backgroundColor = UIColor(nativeHex: homeModel.theme.card)
         card.layer.cornerRadius = 26
         card.clipsToBounds = true
+        card.luiyoApplyGlassCardSurface(radius: 26, useBlur: homeModel.useBlur, tint: UIColor(nativeHex: homeModel.theme.card))
         view.addSubview(card)
         card.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
@@ -255,6 +256,7 @@ final class AppSettingsViewController: UIViewController {
         logoutCard.backgroundColor = UIColor(nativeHex: homeModel.theme.card)
         logoutCard.layer.cornerRadius = 24
         logoutCard.clipsToBounds = true
+        logoutCard.luiyoApplyGlassCardSurface(radius: 24, useBlur: homeModel.useBlur, tint: UIColor(nativeHex: homeModel.theme.card))
         view.addSubview(logoutCard)
         logoutCard.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
@@ -323,6 +325,7 @@ final class AppSettingsViewController: UIViewController {
         updateCard.backgroundColor = UIColor(nativeHex: homeModel.theme.card)
         updateCard.layer.cornerRadius = 24
         updateCard.clipsToBounds = true
+        updateCard.luiyoApplyGlassCardSurface(radius: 24, useBlur: homeModel.useBlur, tint: UIColor(nativeHex: homeModel.theme.card))
         view.addSubview(updateCard)
         updateCard.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([

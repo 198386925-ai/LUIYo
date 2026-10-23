@@ -36,20 +36,30 @@ extension MainShellViewController {
         }
     }
 
-    /// The factory default background is now a flat colour
-    /// (#EFEFF3 light / #121214 dark — see ThemePalette); there is
-    /// no default wallpaper image anymore. This pass only guarantees
-    /// the seat stays empty: any image a previous build placed here
-    /// (or mirrored into `homeModel.backgroundImage` for Home / the
-    /// rules page / the search overlay) is cleared, so every page
-    /// paints the solid palette colour. (The bundled
-    /// `DefaultWallpaper` asset stays in the catalog, unused.)
+    /// Build 61: the light appearance gets the user's gradient
+    /// wallpaper (the bundled `DefaultWallpaper` asset — a purple-blue
+    /// fluid gradient) behind every page: the shell's background
+    /// image view shows it, and `homeModel.backgroundImage` mirrors
+    /// it for Home / the rules page / the search overlay / the 我的
+    /// page, which then skip their flat theme fill and let it show
+    /// through. The dark appearance keeps the flat #121214 — both
+    /// seats stay empty there, exactly as before.
     func refreshDefaultWallpaper() {
-        if backgroundImageView.image != nil {
-            backgroundImageView.image = nil
-        }
-        if homeModel.backgroundImage != nil {
-            homeModel.backgroundImage = nil
+        if traitCollection.userInterfaceStyle == .dark {
+            if backgroundImageView.image != nil {
+                backgroundImageView.image = nil
+            }
+            if homeModel.backgroundImage != nil {
+                homeModel.backgroundImage = nil
+            }
+        } else {
+            let image = UIImage(named: "DefaultWallpaper")
+            if backgroundImageView.image !== image {
+                backgroundImageView.image = image
+            }
+            if homeModel.backgroundImage !== image {
+                homeModel.backgroundImage = image
+            }
         }
     }
 
