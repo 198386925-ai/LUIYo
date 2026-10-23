@@ -33,8 +33,9 @@ enum UpdateSettings {
         set { defaults.set(newValue, forKey: "luiyo.update.autoDownload") }
     }
 
-    /// Terminate the app once a completed download has been handed
-    /// off (the share sheet finished with a chosen destination).
+    /// Terminate the app once an install hand-off has fully
+    /// completed: the on-device install server reported the IPA
+    /// entirely served and shut down.
     static var autoExitAfterInstall: Bool {
         get { boolValue("luiyo.update.autoExit") }
         set { defaults.set(newValue, forKey: "luiyo.update.autoExit") }
@@ -62,8 +63,7 @@ enum UpdateSettings {
 /// page, so it works whether or not the page is on screen. The
 /// install hand-off never kills the app before the installer has
 /// fetched the IPA: the auto-exit switch may end the app only
-/// after the install server reports the IPA fully served, or
-/// after the explicit 分享 fallback completes.
+/// after the install server reports the IPA fully served.
 final class AppUpdateChecker: NSObject, ObservableObject {
     static let shared = AppUpdateChecker()
 
@@ -113,19 +113,19 @@ final class AppUpdateChecker: NSObject, ObservableObject {
     @Published private(set) var signedFileURL: URL?
     /// Why the chain's sign step failed (auto chain only; a
     /// tap-started chain alerts instead). Rendered on the card's
-    /// bytes line above the 分享 fallback.
+    /// bytes line as the resting state.
     @Published private(set) var chainFailureText: String?
     /// A sign attempt for the current download has completed
-    /// (success or failure). The page uses it to rest on the
-    /// 分享 fallback instead of waiting for a chain that
-    /// already ran.
+    /// (success or failure). The page rests on the outcome —
+    /// a tap on the button re-arms the chain — instead of
+    /// waiting for a chain that already ran.
     @Published private(set) var chainSettledForCurrentDownload: Bool = false
     /// Status line for the install hand-off while it is in
     /// flight （安装已发起… / 已准备好安装）, rendered on the
     /// card's bytes line.
     @Published private(set) var installStatusText: String = ""
-    /// The install hand-off failed: the card rests on 分享 for
-    /// the signed file, with no auto-retry.
+    /// The install hand-off failed: the card rests on the
+    /// failure state, with no auto-retry.
     @Published private(set) var installFailed: Bool = false
     /// An install server is up (or the prompt was opened) for the
     /// current signed file.
@@ -371,6 +371,16 @@ final class AppUpdateChecker: NSObject, ObservableObject {
         }
         guard updateFound, downloadTask == nil,
               let url = URL(string: downloadURLString) else { return }
+        guard UpdateSigner.canSign else {
+            // No usable certificate material (a stored P12 with
+            // its password, plus at least one profile): an update
+            // is never downloaded unsigned — there would be
+            // nothing to sign it with. The status line carries
+            // the prompt for when the user visits the page, and
+            // the page's button routes to the cert import.
+            statusText = "请先导入证书"
+            return
+        }
         resetChainState()
         userCancelledDownload = false
         downloadedFileURL = nil
@@ -389,6 +399,10 @@ final class AppUpdateChecker: NSObject, ObservableObject {
     /// 立即下载 tapped: engages the chain (sign → install) for
     /// this download whether it starts now or has already landed.
     func startManualChain() {
+        // The page routes a no-cert tap to the cert import, so
+        // this is defence in depth: without usable cert material
+        // no chain — and no download — ever starts.
+        guard UpdateSigner.canSign else { return }
         manualChain = true
         persistPendingDownloadMetadata()
         if phase == .downloaded, downloadedFileURL != nil {
@@ -413,51 +427,9 @@ final class AppUpdateChecker: NSObject, ObservableObject {
     /// Records a successful hand-off of the offered IPA to LCSign:
     /// the status line now tells the user to finish inside LCSign.
     /// (The hand-off itself stays a deliberate user tap — the
-    /// auto-download switch never opens LCSign on its own, and the
-    /// auto-exit switch only applies to the share-sheet handoff.)
+    /// auto-download switch never opens LCSign on its own.)
     func markLCSignHandoffCompleted() {
         statusText = "已递交 LCSign，请在 LCSign 中完成签名与安装。"
-    }
-
-    /// Presents the share sheet for an already downloaded IPA.
-    /// The ONLY caller is the update page's 分享 button — the
-    /// explicit fallback for the states where the sign/install
-    /// chain cannot run (no cert material, signing or install
-    /// failure). Because this is a deliberate user tap and
-    /// nothing else reaches it, the auto-exit handler inside
-    /// presentShareSheet can only ever follow that fallback,
-    /// never the chain.
-    func shareDownloaded() {
-        guard let fileURL = downloadedFileURL else { return }
-        presentShareSheet(fileURL: fileURL)
-    }
-
-    /// Only reached via shareDownloaded() (the page's explicit
-    /// 分享 fallback). The auto-exit on completion therefore
-    /// cannot fire while the local install server is serving:
-    /// the install chain never presents this sheet.
-    private func presentShareSheet(fileURL: URL) {
-        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-              let rootVC = windowScene.windows.first?.rootViewController else { return }
-        var presenter = rootVC
-        while let presented = presenter.presentedViewController {
-            presenter = presented
-        }
-        let activity = UIActivityViewController(activityItems: [fileURL], applicationActivities: nil)
-        if let popover = activity.popoverPresentationController {
-            popover.sourceView = presenter.view
-            popover.sourceRect = CGRect(x: presenter.view.bounds.midX,
-                                        y: presenter.view.bounds.maxY - 40,
-                                        width: 1, height: 1)
-        }
-        activity.completionWithItemsHandler = { _, completed, _, _ in
-            // The install handoff only counts when the user actually
-            // picked a destination; dismissing the sheet keeps the
-            // app alive (the reference page's footnote semantics).
-            guard completed, UpdateSettings.autoExitAfterInstall else { return }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { exit(0) }
-        }
-        presenter.present(activity, animated: true)
     }
 
     static func formatBytes(_ count: Int64) -> String {
@@ -526,7 +498,8 @@ final class AppUpdateChecker: NSObject, ObservableObject {
                     if self.manualChain {
                         // A tap-started chain surfaces its failure
                         // with an alert (if a page is there to
-                        // present it) and rests on 分享.
+                        // present it); the card then rests on the
+                        // failure state.
                         self.postAlert(title: "签名失败", message: failure.message)
                     } else {
                         self.chainFailureText = "自动签名失败：\(failure.message)"
@@ -534,6 +507,21 @@ final class AppUpdateChecker: NSObject, ObservableObject {
                 }
             }
         }
+    }
+
+    /// Re-arms the chain for the current downloaded file after a
+    /// settled attempt produced no signed file (a sign failure
+    /// whose alert/text the user has already seen): the attempt
+    /// marker is cleared so the tap runs sign → install once
+    /// more, e.g. after the cert material was fixed. No-op once
+    /// a signed file exists.
+    func retrySettledChain() {
+        guard phase == .downloaded, downloadedFileURL != nil, signedFileURL == nil else { return }
+        manualChain = true
+        chainAttemptedFor = nil
+        chainSettledForCurrentDownload = false
+        chainFailureText = nil
+        driveChain()
     }
 
     /// Starts the on-device install server for the signed IPA.
@@ -584,8 +572,8 @@ final class AppUpdateChecker: NSObject, ObservableObject {
             self.installServer = nil
             switch reason {
             case .failed(let failure):
-                // No auto-retry: the card falls back to sharing
-                // the signed file.
+                // No auto-retry: the card rests on the failure
+                // state.
                 self.installFailed = true
                 self.installInFlight = false
                 self.pendingInstallPrompt = false
@@ -623,7 +611,7 @@ final class AppUpdateChecker: NSObject, ObservableObject {
         }
         UIApplication.shared.open(url, options: [:]) { [weak self] success in
             if !success {
-                self?.postAlert(title: "安装失败", message: "无法打开系统安装入口，请改用分享安装。")
+                self?.postAlert(title: "安装失败", message: "无法打开系统安装入口，请稍后重试。")
             }
         }
     }
@@ -735,15 +723,14 @@ extension AppUpdateChecker: URLSessionDownloadDelegate {
                 // Deliberately NO presentation here: the chain
                 // (driveChain) takes the file into signing and
                 // the install hand-off, surfacing only the
-                // system's own install prompt. Presenting the
-                // share sheet at this point (the pre-chain flow
-                // did) stacked it under that prompt, and its
-                // completion handler's auto-exit could then kill
-                // the app — and with it the in-app install
-                // server — before the installer had fetched the
-                // IPA, failing the install. The share sheet now
-                // exists only behind the page's explicit 分享
-                // button (shareDownloaded above).
+                // system's own install prompt. (Presenting a
+                // share sheet at this point — the pre-chain flow
+                // did — stacked it under that prompt, and its
+                // completion handler's auto-exit could kill the
+                // app, and with it the in-app install server,
+                // before the installer had fetched the IPA.
+                // Sharing has since been removed from the
+                // update flow entirely.)
                 self.driveChain()
             } else {
                 self.phase = .failed

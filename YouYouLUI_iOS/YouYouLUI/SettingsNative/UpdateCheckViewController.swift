@@ -366,7 +366,7 @@ final class UpdateCheckViewController: UIViewController {
 
         // Exactly one action button for the whole offer: its
         // title and role follow the phase (立即下载 / 取消下载 /
-        // 分享 fallback), driven from refresh().
+        // 请先导入证书), driven from refresh().
         downloadButton = UIButton(configuration: filledButtonConfiguration())
         downloadButton.addTarget(self, action: #selector(downloadTapped), for: .touchUpInside)
         content.addArrangedSubview(downloadButton)
@@ -415,17 +415,6 @@ final class UpdateCheckViewController: UIViewController {
         var config = UIButton.Configuration.filled()
         config.baseBackgroundColor = UIAppColors.accentPurple
         config.baseForegroundColor = .white
-        config.cornerStyle = .capsule
-        config.titleTextAttributesTransformer = buttonTitleTransformer
-        return config
-    }
-
-    /// The in-app download stays available as the secondary action
-    /// whenever the LCSign hand-off is the card's primary action.
-    private func secondaryButtonConfiguration() -> UIButton.Configuration {
-        var config = UIButton.Configuration.tinted()
-        config.baseBackgroundColor = UIAppColors.accentPurple
-        config.baseForegroundColor = UIAppColors.accentPurple
         config.cornerStyle = .capsule
         config.titleTextAttributesTransformer = buttonTitleTransformer
         return config
@@ -553,11 +542,11 @@ final class UpdateCheckViewController: UIViewController {
                 if updater.installFailed {
                     // The install hand-off failed (its alert has
                     // already been shown): no auto-retry — the
-                    // signed file stays reachable through 分享.
+                    // card rests here on the signed line.
                     progressBytesLabel.text = "签名完成 · 已通过签名校验"
-                    downloadButton.configuration = secondaryButtonConfiguration()
-                    downloadButton.configuration?.title = "分享"
-                    downloadButton.isEnabled = true
+                    downloadButton.configuration = filledButtonConfiguration()
+                    downloadButton.configuration?.title = "安装"
+                    downloadButton.isEnabled = false
                 } else if updater.installInFlight {
                     // The chain has this file at the on-device
                     // install: while its server is up the install
@@ -572,34 +561,40 @@ final class UpdateCheckViewController: UIViewController {
                     downloadButton.isEnabled = false
                 } else {
                     // Signed, and no chain carried it into the
-                    // install (e.g. the install cert is not
-                    // bundled): sharing the signed IPA it is.
+                    // install (e.g. the install server is not
+                    // available on this device): rest on the
+                    // signed line — there is no other hand-off.
                     progressBytesLabel.text = "签名完成 · 已通过签名校验"
-                    downloadButton.configuration = secondaryButtonConfiguration()
-                    downloadButton.configuration?.title = "分享"
-                    downloadButton.isEnabled = true
+                    downloadButton.configuration = filledButtonConfiguration()
+                    downloadButton.configuration?.title = "安装"
+                    downloadButton.isEnabled = false
                 }
-            } else if let chainFailureText = updater.chainFailureText {
-                progressBytesLabel.text = chainFailureText
-                downloadButton.configuration = secondaryButtonConfiguration()
-                downloadButton.configuration?.title = "分享"
-                downloadButton.isEnabled = true
             } else if !UpdateSigner.canSign {
-                // The chain stops here: without usable cert
-                // material there is nothing to sign with. The
-                // downloaded IPA is not stranded — 分享 hands
-                // it out unsigned.
+                // No usable cert material: nothing can be signed.
+                // (The checker also gates the download itself, so
+                // a file is only ever here if the cert was
+                // removed after it landed.) The button routes
+                // straight to the cert import.
                 progressBytesLabel.text = "下载完成 · 请先导入证书"
-                downloadButton.configuration = secondaryButtonConfiguration()
-                downloadButton.configuration?.title = "分享"
+                downloadButton.configuration = filledButtonConfiguration()
+                downloadButton.configuration?.title = "请先导入证书"
+                downloadButton.isEnabled = true
+            } else if let chainFailureText = updater.chainFailureText {
+                // The auto chain's sign step failed; its text is
+                // the resting state. The button re-arms the chain
+                // (e.g. after the cert material changed).
+                progressBytesLabel.text = chainFailureText
+                downloadButton.configuration = filledButtonConfiguration()
+                downloadButton.configuration?.title = "立即下载"
                 downloadButton.isEnabled = true
             } else if updater.chainSettledForCurrentDownload {
                 // A chain attempt already ran for this download
-                // and produced no signed file (its failure was
-                // surfaced then): rest on the 分享 fallback.
+                // and produced no signed file (a tap-started
+                // chain's failure was surfaced as an alert then):
+                // the button re-arms the chain.
                 progressBytesLabel.text = "下载完成 · \(AppUpdateChecker.formatBytes(updater.totalBytes > 0 ? updater.totalBytes : updater.downloadedBytes))"
-                downloadButton.configuration = secondaryButtonConfiguration()
-                downloadButton.configuration?.title = "分享"
+                downloadButton.configuration = filledButtonConfiguration()
+                downloadButton.configuration?.title = "立即下载"
                 downloadButton.isEnabled = true
             } else if !updater.chainEngaged {
                 // Downloaded, but no chain was ever engaged for
@@ -627,7 +622,13 @@ final class UpdateCheckViewController: UIViewController {
             progressView.isHidden = true
             progressBytesLabel.isHidden = true
             downloadButton.configuration = filledButtonConfiguration()
-            downloadButton.configuration?.title = "立即下载"
+            if UpdateSigner.canSign {
+                downloadButton.configuration?.title = "立即下载"
+            } else {
+                // No usable cert material: the download never
+                // starts — the button routes to the cert import.
+                downloadButton.configuration?.title = "请先导入证书"
+            }
             downloadButton.isEnabled = true
         }
 
@@ -671,21 +672,20 @@ final class UpdateCheckViewController: UIViewController {
         case .downloading:
             updater.cancelDownload()
         case .downloaded:
-            // In the downloaded state the button mostly rests as
-            // 分享 (mirroring refresh()'s states): it shares the
-            // SIGNED file once one exists, and the plain
-            // downloaded IPA in the no-cert / sign-failure /
-            // settled fallbacks — the file is never stranded.
-            // The one exception is a download no chain was ever
-            // engaged for: there the button reads 立即下载 and
-            // the tap engages the chain on the file already here.
-            if updater.signedFileURL != nil || updater.chainFailureText != nil
-                || !UpdateSigner.canSign || updater.chainSettledForCurrentDownload {
-                if let signed = updater.signedFileURL {
-                    presentShareSheet(fileURL: signed)
-                } else {
-                    updater.shareDownloaded()
-                }
+            // The button never shares anything — sharing was
+            // removed from the update flow entirely. With a
+            // signed file the chain owns the install and the
+            // button rests disabled; without one, the tap routes
+            // to the cert import (no usable material), re-arms
+            // a settled chain attempt, or engages the chain on
+            // the file already here.
+            if updater.signedFileURL != nil {
+                return
+            }
+            if !UpdateSigner.canSign {
+                importCertTapped()
+            } else if updater.chainSettledForCurrentDownload {
+                updater.retrySettledChain()
             } else {
                 updater.startManualChain()
             }
@@ -695,18 +695,15 @@ final class UpdateCheckViewController: UIViewController {
             // checker (with this page closed the same chain runs
             // when the background download lands). A tap-started
             // chain surfaces failures with an alert, like the
-            // old manual signing did.
-            updater.startManualChain()
+            // old manual signing did. Without usable cert
+            // material the download never starts: the tap opens
+            // the cert import instead (the 导入证书 row's picker).
+            if UpdateSigner.canSign {
+                updater.startManualChain()
+            } else {
+                importCertTapped()
+            }
         }
-    }
-
-    private func presentShareSheet(fileURL: URL) {
-        let activity = UIActivityViewController(activityItems: [fileURL], applicationActivities: nil)
-        if let popover = activity.popoverPresentationController {
-            popover.sourceView = view
-            popover.sourceRect = CGRect(x: view.bounds.midX, y: view.bounds.maxY - 40, width: 1, height: 1)
-        }
-        present(activity, animated: true)
     }
 
     @objc private func showProgressChanged(_ sender: UISwitch) { UpdateSettings.showProgress = sender.isOn }

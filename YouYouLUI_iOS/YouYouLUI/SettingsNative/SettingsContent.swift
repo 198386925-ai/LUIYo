@@ -41,6 +41,7 @@ enum SettingsContent {
             ChangelogEntry(tag: "优化", text: "设备 UDID 新增复制按钮：设备 UDID 页点一下即可复制 UDID。"),
             ChangelogEntry(tag: "优化", text: "检查更新入口移至设置页：检查更新改为设置页内声音下方的一张独立卡片，发现新版本时仍有红点提醒；「我的」页不再显示该入口。"),
             ChangelogEntry(tag: "优化", text: "自动检查更新间隔由六小时改为一小时：打开 LUIYo 时检查更新服务，每一小时最多一次。"),
+            ChangelogEntry(tag: "优化", text: "检查更新流程简化：移除分享安装，未导入证书时不再下载更新、直接提示请导入证书。"),
             ChangelogEntry(tag: "修复", text: "修复新版启动闪退（签名库加载路径问题）。"),
             ChangelogEntry(tag: "修复", text: "修复版本弹窗首次出现时背景、图标与按钮不显示、需切到后台再切回才恢复的问题；弹窗画面按设计图一比一还原。"),
             ChangelogEntry(tag: "修复", text: "修复注册 / 登录切换时白色面板变形、卡片高度不随表单变化的问题。"),

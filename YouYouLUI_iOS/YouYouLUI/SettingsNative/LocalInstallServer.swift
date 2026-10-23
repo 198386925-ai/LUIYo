@@ -112,7 +112,7 @@ final class LocalInstallServer {
         manifestMetadata = metadata
         scheduleLifetimeTimeout()
         guard let secIdentity = Self.loadServerIdentity() else {
-            finish(.failed(Failure(message: "无法加载本机安装证书，请改用分享安装。")))
+            finish(.failed(Failure(message: "无法加载本机安装证书，请稍后重试。")))
             return
         }
         attemptListen(secIdentity: secIdentity, attemptsLeft: 5)
@@ -141,7 +141,7 @@ final class LocalInstallServer {
         let candidate = UInt16.random(in: 20_000...60_000)
         guard let port = NWEndpoint.Port(rawValue: candidate) else {
             failOrRetry(secIdentity: secIdentity, attemptsLeft: attemptsLeft,
-                        message: "无法分配本机安装端口，请改用分享安装。")
+                        message: "无法分配本机安装端口，请稍后重试。")
             return
         }
         let listener: NWListener
