@@ -9,7 +9,10 @@ final class NativeHomeModel: ObservableObject {
     @Published var images: [Int: UIImage] = [:]
     @Published var status = ""
     @Published var query = ""
-    @Published var useBlur = false
+    /// Card material, pinned to the native frosted ("blur")
+    /// behaviour — Build 41 removed the 卡片材质 setting, so this
+    /// never changes at runtime anymore.
+    @Published var useBlur = true
     @Published var backgroundImage: UIImage?
     @Published var theme = NativeHomeTheme()
     @Published var fontName: String?

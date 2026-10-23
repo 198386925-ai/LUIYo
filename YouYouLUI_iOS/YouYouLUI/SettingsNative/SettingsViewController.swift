@@ -37,13 +37,14 @@ final class SolidCardView: UIView {
     func configure(tint: UIColor) { backgroundColor = tint }
 }
 
-/// A settings fold: tappable header (icon in a circle, title, subtitle,
-/// chevron) and a collapsible content area. Build 39: the row took the
-/// 设置 page's card metrics. Build 40: the row height is 48 pt and the
-/// card surface is gone entirely — no fill, no material — so the
-/// content sits directly on the page background, collapsed or expanded
-/// (the 设置 page's single-row cards match: 48 pt, transparent). The
-/// page stack's 14 pt side insets remain.
+/// A settings fold: solid card with a tappable header (icon in a
+/// circle, title, subtitle, chevron) and a collapsible content area.
+/// The row matches the 设置 page's card metrics — a 48 pt header
+/// height and a fixed 24 pt corner radius, collapsed or expanded
+/// (the same values as the 设置 page's 检查更新 card; the page
+/// stack's 14 pt side insets match too). Build 41: the solid card
+/// surface is restored — Build 40's transparency came from a
+/// misread instruction and is reverted.
 final class FoldView: UIView {
     let card = SolidCardView(radius: 24)
     let contentView = UIView()
@@ -58,7 +59,6 @@ final class FoldView: UIView {
     init(icon: String, iconImage: UIImage? = nil, title: String, subtitle: String) {
         super.init(frame: .zero)
         addSubview(card)
-        card.configure(tint: .clear)
         card.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             card.leadingAnchor.constraint(equalTo: leadingAnchor),
@@ -144,7 +144,7 @@ final class FoldView: UIView {
         subtitleLabel.isHidden = !value
         card.setRadius(24)
         card.content.layer.cornerRadius = 24
-        card.configure(tint: .clear)
+        card.configure(tint: lastTint)
         superview?.layoutIfNeeded()
         if animated {
             UIView.animate(withDuration: 0.2, delay: 0, options: [.curveEaseInOut, .beginFromCurrentState]) {
@@ -159,12 +159,11 @@ final class FoldView: UIView {
         }
     }
 
-    /// Build 40: the folds have no card surface at all — the tint is
-    /// remembered but the card itself stays transparent in both the
-    /// collapsed and expanded states.
+    /// The 我的 page's cards are solid (Build 38): only the theme
+    /// card colour applies here, painted fully opaque.
     func configureGlass(useBlur: Bool, tint: UIColor) {
         lastTint = tint
-        card.configure(tint: .clear)
+        card.configure(tint: tint)
     }
 
     func refreshAppearance() {
@@ -198,10 +197,8 @@ final class SettingsViewController: UIViewController {
     private var changelogFold: FoldView!
     private let appSettingsCard = SolidCardView(radius: 24)
     private var changelogCards: [SolidCardView] = []
-    private var backgroundWell: UIColorWell!
     private var minimizeSwitch: UISwitch!
     private var appearanceSeg: PillSegmentedControl!
-    private var materialSeg: PillSegmentedControl!
     private var bottomSearchSeg: PillSegmentedControl!
     private var fontSubtitleLabel: UILabel?
     private var cancellables = Set<AnyCancellable>()
@@ -257,7 +254,7 @@ final class SettingsViewController: UIViewController {
         stack.addArrangedSubview(heroContainer)
         rebuildHero()
 
-        themeFold = FoldView(icon: "circle.lefthalf.filled", iconImage: luiyoBundledIcon("theme"), title: "外观", subtitle: "卡片材质、背景、按钮与字体")
+        themeFold = FoldView(icon: "circle.lefthalf.filled", iconImage: luiyoBundledIcon("theme"), title: "外观", subtitle: "外观模式、按钮与字体")
         themeFold.onToggle = { [weak self] in
             guard let self else { return }
             self.model.themeExpanded.toggle()
@@ -382,18 +379,6 @@ final class SettingsViewController: UIViewController {
 
     // MARK: - Theme content
 
-    private func smallButton(_ title: String, action: Selector) -> UIButton {
-        let button = UIButton(type: .system)
-        button.setTitle(title, for: .normal)
-        button.setTitleColor(UIAppColors.inkDynamic, for: .normal)
-        button.titleLabel?.font = UIFont.systemFont(ofSize: 12.5)
-        button.backgroundColor = UIColor(red: 120 / 255, green: 120 / 255, blue: 128 / 255, alpha: 0.10)
-        button.layer.cornerRadius = 14
-        button.contentEdgeInsets = UIEdgeInsets(top: 6, left: 12, bottom: 6, right: 12)
-        button.addTarget(self, action: action, for: .touchUpInside)
-        return button
-    }
-
     private func themeRow(title: String, subtitle: String?, control: UIView, divider: Bool) -> UIView {
         let row = UIView()
         let titleLabel = UILabel()
@@ -447,19 +432,6 @@ final class SettingsViewController: UIViewController {
         return row
     }
 
-    /// The official system colour well: iOS draws it (colour disc with the
-    /// spectrum ring) and presents the official colour picker on tap;
-    /// changes arrive as `.valueChanged`.
-    private func colorWell(title: String) -> UIColorWell {
-        let well = UIColorWell()
-        well.title = title
-        well.supportsAlpha = false
-        well.translatesAutoresizingMaskIntoConstraints = false
-        well.widthAnchor.constraint(equalToConstant: 30).isActive = true
-        well.heightAnchor.constraint(equalToConstant: 30).isActive = true
-        return well
-    }
-
     private func buildThemeContent() -> UIView {
         let container = UIView()
         let inner = UIStackView()
@@ -486,22 +458,6 @@ final class SettingsViewController: UIViewController {
         appearanceSeg.translatesAutoresizingMaskIntoConstraints = false
         appearanceSeg.widthAnchor.constraint(equalToConstant: 140).isActive = true
         inner.addArrangedSubview(themeRow(title: "外观模式", subtitle: "跟随系统或固定浅色 / 深色", control: appearanceSeg, divider: true))
-
-        materialSeg = PillSegmentedControl()
-        materialSeg.options = [("liquid", "液态玻璃"), ("blur", "原生磨砂")]
-        materialSeg.setSelectedValue(model.cardMaterial)
-        materialSeg.onChange = { [weak self] value in self?.model.cardMaterial = value }
-        materialSeg.translatesAutoresizingMaskIntoConstraints = false
-        materialSeg.widthAnchor.constraint(equalToConstant: 132).isActive = true
-        inner.addArrangedSubview(themeRow(title: "卡片材质", subtitle: "iOS 26+ 原生液态玻璃 / UIKit 原生磨砂", control: materialSeg, divider: true))
-
-        backgroundWell = colorWell(title: "背景颜色")
-        backgroundWell.addTarget(self, action: #selector(backgroundWellChanged), for: .valueChanged)
-        let bgControl = UIStackView(arrangedSubviews: [backgroundWell, smallButton("恢复", action: #selector(resetBackground))])
-        bgControl.axis = .horizontal
-        bgControl.spacing = 8
-        bgControl.alignment = .center
-        inner.addArrangedSubview(themeRow(title: "背景颜色", subtitle: "浅色背景", control: bgControl, divider: true))
 
         bottomSearchSeg = PillSegmentedControl()
         bottomSearchSeg.options = [("off", "关闭"), ("merged", "合并"), ("separate", "分开")]
@@ -537,11 +493,7 @@ final class SettingsViewController: UIViewController {
     }
 
     @objc private func minimizeChanged(_ sender: UISwitch) { model.minimizeBottomBar = sender.isOn }
-    @objc private func resetBackground() { model.resetBackgroundColor() }
     @objc private func resetCard() { model.resetCardColor() }
-    @objc private func backgroundWellChanged() {
-        if let color = backgroundWell.selectedColor { model.updateBackgroundColor(color.nativeHex) }
-    }
     @objc private func fontEntryTapped() {
         guard let controller = model.fontController else { return }
         let page = FontSettingsViewController(fontController: controller, homeModel: homeModel)
@@ -684,7 +636,6 @@ final class SettingsViewController: UIViewController {
     }
 
     private func buildAppSettingsCard() {
-        appSettingsCard.configure(tint: .clear)
         let tap = UIControl()
         tap.addTarget(self, action: #selector(appSettingsTapped), for: .touchUpInside)
         appSettingsCard.content.addSubview(tap)
@@ -758,10 +709,8 @@ final class SettingsViewController: UIViewController {
     // MARK: - Refresh
 
     private func refreshFromModel() {
-        backgroundWell?.selectedColor = UIColor(nativeHex: model.backgroundColorHex)
         minimizeSwitch?.setOn(model.minimizeBottomBar, animated: false)
         appearanceSeg?.setSelectedValue(model.appearanceMode)
-        materialSeg?.setSelectedValue(model.cardMaterial)
         bottomSearchSeg?.setSelectedValue(model.bottomSearchLayout)
         fontSubtitleLabel?.text = model.customFontName
         refreshHero()
@@ -774,7 +723,7 @@ final class SettingsViewController: UIViewController {
             ? UIColor(nativeHex: homeModel.theme.background)
             : .clear
         let tint = UIColor(nativeHex: homeModel.theme.card)
-        appSettingsCard.configure(tint: .clear)
+        appSettingsCard.configure(tint: tint)
         themeFold?.configureGlass(useBlur: homeModel.useBlur, tint: tint)
         guideFold?.configureGlass(useBlur: homeModel.useBlur, tint: tint)
         changelogFold?.configureGlass(useBlur: homeModel.useBlur, tint: tint)

@@ -14,7 +14,6 @@ extension MainShellViewController {
         model.hasCustomFont = self.fontController.library.hasAnyCustomSelection
         model.customFontName = self.fontController.library.summary()
         model.onAppearanceChanged = { [weak self] mode in self?.applyAppearance(mode) }
-        model.onCardMaterialChanged = { [weak self] mode in self?.setCardMaterialMode(mode) }
         model.onColorsChanged = { [weak self] in self?.applyStoredPalette() }
         model.onMinimizeChanged = { [weak self] enabled in self?.setScrollMinimize(enabled) }
         model.onBottomSearchLayoutChanged = { [weak self] layout in

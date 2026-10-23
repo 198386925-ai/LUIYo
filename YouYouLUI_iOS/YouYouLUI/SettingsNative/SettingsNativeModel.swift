@@ -13,7 +13,6 @@ final class SettingsNativeModel: ObservableObject {
     /// Set by hero buttons: which fold to scroll to after expanding.
     @Published var pendingScroll: String?
     var onAppearanceChanged: ((String) -> Void)?
-    var onCardMaterialChanged: ((String) -> Void)?
     var onColorsChanged: (() -> Void)?
     var onMinimizeChanged: ((Bool) -> Void)?
     var onBottomSearchLayoutChanged: ((String) -> Void)?
@@ -24,17 +23,13 @@ final class SettingsNativeModel: ObservableObject {
         didSet { prefs.appearanceMode = appearanceMode; onAppearanceChanged?(appearanceMode) }
     }
 
-    // MARK: - Card material
-    /// "liquid" or "blur"
-    @Published var cardMaterial: String {
-        didSet { prefs.cardMaterialMode = cardMaterial; onCardMaterialChanged?(cardMaterial) }
-    }
-
     // MARK: - Colors (hex strings)
-    /// Display value for the background colour well: the factory
-    /// default flat colour (#EFEFF3), shown while no custom colour
-    /// is stored for the current appearance.
-    @Published var backgroundColorHex: String = "#EFEFF3"
+    // Build 41: the 卡片材质 and 背景颜色 settings were removed.
+    // The material is pinned to the native frosted behaviour
+    // (NativeHomeModel.useBlur is permanently true) and the page
+    // background is pinned to the factory flat colour, so neither
+    // has model state anymore; only the card/button colour slots
+    // remain.
     @Published var cardColorHex: String = "#FFFFFF"
     @Published var buttonColorHex: String = "#FFFFFF"
 
@@ -59,31 +54,16 @@ final class SettingsNativeModel: ObservableObject {
 
     init() {
         self.appearanceMode = prefs.appearanceMode
-        self.cardMaterial = prefs.cardMaterialMode
         self.bottomSearchLayout = prefs.bottomSearchLayout
         self.minimizeBottomBar = prefs.minimizeBottomBar
         // Load saved colors for current appearance
         let appearance = prefs.appearanceMode == "dark" ? "dark" : "light"
-        if let hex = prefs.colorHex(.background, appearance: appearance) {
-            self.backgroundColorHex = hex
-        }
         if let hex = prefs.colorHex(.heroCardColor, appearance: appearance) {
             self.cardColorHex = hex
         }
         if let hex = prefs.colorHex(.buttonColor, appearance: appearance) {
             self.buttonColorHex = hex
         }
-    }
-
-    func resetBackgroundColor() {
-        // Back to factory: drop the stored colour entirely so the
-        // flat default applies again (#EFEFF3 in light appearance,
-        // the dark solid in dark). The well shows the same hex as
-        // the "default" swatch.
-        backgroundColorHex = "#EFEFF3"
-        let appearance = prefs.appearanceMode == "dark" ? "dark" : "light"
-        prefs.removeColorHex(.background, appearance: appearance)
-        onColorsChanged?()
     }
 
     func resetCardColor() {
@@ -99,13 +79,6 @@ final class SettingsNativeModel: ObservableObject {
         buttonColorHex = def
         let appearance = prefs.appearanceMode == "dark" ? "dark" : "light"
         prefs.setColorHex(def, kind: .buttonColor, appearance: appearance)
-    }
-
-    func updateBackgroundColor(_ hex: String) {
-        backgroundColorHex = hex
-        let appearance = prefs.appearanceMode == "dark" ? "dark" : "light"
-        prefs.setColorHex(hex, kind: .background, appearance: appearance)
-        onColorsChanged?()
     }
 
     func updateCardColor(_ hex: String) {

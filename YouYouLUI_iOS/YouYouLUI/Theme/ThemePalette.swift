@@ -19,14 +19,6 @@ enum ThemePalette {
             : UIColor(red: 239.0 / 255.0, green: 239.0 / 255.0, blue: 243.0 / 255.0, alpha: 1)
     }
 
-    /// A stored light/dark pair, falling back to the supplied defaults.
-    static func stored(_ kind: ThemeColorKind, lightDefault: String, darkDefault: String) -> UIColor {
-        let defaults = ThemePreferences.shared
-        let light = ColorHex.parse(defaults.colorHex(kind, appearance: "light") ?? lightDefault) ?? .white
-        let dark = ColorHex.parse(defaults.colorHex(kind, appearance: "dark") ?? darkDefault) ?? .black
-        return UIColor { $0.userInterfaceStyle == .dark ? dark : light }
-    }
-
     /// Fill applied to card materials when the platform paints the surface itself.
     static let cardTint = UIColor { $0.userInterfaceStyle == .dark ? UIColor(nativeHex: darkCard) : .white }
 

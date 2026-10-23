@@ -14,7 +14,6 @@ enum PreferenceKey {
     static let bottomSearchEnabled = "youyou.bottomSearchEnabled"
     static let bottomSearchLayout = "youyou.bottomSearchLayout"
     static let minimizeBottomBar = "youyou.minimizeBottomBar"
-    static let cardMaterialMode = "youyou.cardMaterialMode"
     static let accountSVIP = "youyou.account.svip"
     static let accountSVIPExpiresAt = "youyou.account.svipExpiresAt"
     static let accountEmail = "youyou.account.email"
@@ -74,12 +73,6 @@ final class ThemePreferences {
     var minimizeBottomBar: Bool {
         get { defaults.bool(forKey: PreferenceKey.minimizeBottomBar) }
         set { defaults.set(newValue, forKey: PreferenceKey.minimizeBottomBar) }
-    }
-
-    /// Card material mode: "liquid" (iOS 26+ liquid glass) or "blur" (native frosted).
-    var cardMaterialMode: String {
-        get { defaults.string(forKey: PreferenceKey.cardMaterialMode) ?? "liquid" }
-        set { defaults.set(newValue, forKey: PreferenceKey.cardMaterialMode) }
     }
 
     /// Whether the account backend's latest `status` verdict says the

@@ -16,10 +16,12 @@ extension MainShellViewController {
     /// background, card colour, dark flag and the bottom-search visibility.
     func refreshHomeTheme() {
         let dark = traitCollection.userInterfaceStyle == .dark
-        let appearance = dark ? "dark" : "light"
         var theme = NativeHomeTheme()
-        theme.background = preferences.colorHex(.background, appearance: appearance)
-            ?? (dark ? ThemePalette.darkBackground : ThemePalette.lightBackground)
+        // Build 41: the 背景颜色 setting is gone — a previously
+        // stored custom background colour is ignored and the
+        // factory flat colour always applies (#EFEFF3 light,
+        // #121214 dark).
+        theme.background = dark ? ThemePalette.darkBackground : ThemePalette.lightBackground
         theme.card = ThemePalette.storedCardHex(isDark: dark)
         theme.dark = dark
         theme.bottomSearchEnabled = preferences.bottomSearchEnabled
@@ -40,8 +42,7 @@ extension MainShellViewController {
     /// the seat stays empty: any image a previous build placed here
     /// (or mirrored into `homeModel.backgroundImage` for Home / the
     /// rules page / the search overlay) is cleared, so every page
-    /// paints the solid palette colour. A stored custom colour
-    /// always wins via `applyStoredPalette()`. (The bundled
+    /// paints the solid palette colour. (The bundled
     /// `DefaultWallpaper` asset stays in the catalog, unused.)
     func refreshDefaultWallpaper() {
         if backgroundImageView.image != nil {
@@ -55,9 +56,10 @@ extension MainShellViewController {
     /// Re-resolves every stored colour after an appearance change.
     func applyStoredPalette() {
         refreshDefaultWallpaper()
-        view.backgroundColor = ThemePalette.stored(.background,
-                                                  lightDefault: ThemePalette.lightBackground,
-                                                  darkDefault: ThemePalette.darkBackground)
+        // Build 41: the page background is pinned to the factory
+        // flat colour (see refreshHomeTheme) — the adaptive colour
+        // is exactly #EFEFF3 light / #121214 dark.
+        view.backgroundColor = ThemePalette.adaptiveBackground
         nativeHomeHost?.view.backgroundColor = view.backgroundColor
         refreshHero()
         refreshHomeTheme()
@@ -134,10 +136,6 @@ extension MainShellViewController {
         guard let hero = settingsHero else { return }
         LUIYoRefreshSettingsHero(hero)
         LUIYoSetSettingsHeroFont(hero, fontController.font)
-    }
-
-    func setCardMaterialMode(_ rawMode: String) {
-        homeModel.useBlur = rawMode == "blur"
     }
 
     /// Applies the theme font to the tab bar, the search overlay, the hero card

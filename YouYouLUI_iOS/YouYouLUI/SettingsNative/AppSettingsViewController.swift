@@ -249,9 +249,10 @@ final class AppSettingsViewController: UIViewController {
         // exists; the behavior is unchanged — confirmation, clear
         // the account session, and the entry gate hears the
         // notification and swaps the app back to splash 03 at once.
-        // Build 40: no card surface — the row sits directly on the
-        // page background; height matches the 我的 rows (48 pt).
-        logoutCard.backgroundColor = .clear
+        // Build 41: the solid card surface is back (Build 40's
+        // transparency was a misread instruction, reverted); the
+        // height and radius keep the 我的-row metrics (48 pt / 24).
+        logoutCard.backgroundColor = UIColor(nativeHex: homeModel.theme.card)
         logoutCard.layer.cornerRadius = 24
         logoutCard.clipsToBounds = true
         view.addSubview(logoutCard)
@@ -316,9 +317,10 @@ final class AppSettingsViewController: UIViewController {
     // MARK: - 检查更新 card (Build 35: moved from the 我的 page)
 
     private func buildUpdateCard(below card: UIView) {
-        // Build 40: no card surface — the row sits directly on the
-        // page background; height matches the 我的 rows (48 pt).
-        updateCard.backgroundColor = .clear
+        // Build 41: the solid card surface is back (Build 40's
+        // transparency was a misread instruction, reverted); the
+        // height and radius keep the 我的-row metrics (48 pt / 24).
+        updateCard.backgroundColor = UIColor(nativeHex: homeModel.theme.card)
         updateCard.layer.cornerRadius = 24
         updateCard.clipsToBounds = true
         view.addSubview(updateCard)

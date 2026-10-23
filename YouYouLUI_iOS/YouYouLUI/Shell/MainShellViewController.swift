@@ -180,9 +180,10 @@ final class MainShellViewController: UITabBarController {
         ])
         // The old user-picked background image feature stays removed
         // (clear any legacy stored file); the background is the flat
-        // factory colour (#EFEFF3 light / #121214 dark) or the user's
-        // stored colour — refreshDefaultWallpaper() just guarantees
-        // no wallpaper image is ever seated here.
+        // factory colour (#EFEFF3 light / #121214 dark) — Build 41
+        // removed the custom background colour setting as well —
+        // and refreshDefaultWallpaper() just guarantees no wallpaper
+        // image is ever seated here.
         try? FileManager.default.removeItem(at: AppPaths.legacyBackgroundImage)
         refreshDefaultWallpaper()
     }
