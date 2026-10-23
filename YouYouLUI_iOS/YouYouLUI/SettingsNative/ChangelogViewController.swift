@@ -417,28 +417,37 @@ final class ChangelogViewController: UIViewController {
     }
 }
 
-/// One changelog card: the frosted-glass （毛玻璃） look under
-/// a content container — a milky, almost-white surface finished
-/// with a bright 1 pt rim, so the card reads almost white
-/// against the sheet (Builds 47–55: a light system blur pushed
-/// milky-white by a white overlay, 0.38 since Build 48; the
-/// Build 46 iOS 26 liquid-glass surface read as a gray-lavender
-/// wash over the sheet and was rejected). Build 56 (the user:
-/// 毛玻璃可以不用透明的效果吗): the surface is a SOLID fill —
-/// NO live blur, nothing shows through. Its colour is the old
-/// recipe baked flat over the sheet's baked surface (the flat
-/// background under the sheet's white-0.15 film, then the
-/// white 0.38 wash over that): light (247, 246, 244), dark
-/// (108, 108, 112). Over the flat sheet the bake is exact —
-/// the resting card looks the same as Build 55. Only a whisper
-/// of shadow beneath (the user asked for the shadow kept very
-/// light). The recipe is pinned and never follows the 卡片材质
-/// setting. Structure: this wrapper owns the shadow, border
-/// and radius; the solid fill pinned inside clips itself to
-/// the same radius.
+/// One changelog card: an acrylic / Mica-style THICK-glass
+/// surface under a content container, finished with a bright
+/// 1 pt rim (Build 60, the user's word: the cards use the
+/// Fluent-Acrylic / Windows-11-Mica effect — a thick frosted
+/// material, heavy blur, nearly opaque, softly tinted by what
+/// is behind it, muted and wallpaper-like). Apple's native
+/// equivalent is the thick material family, so the surface is
+/// a `UIVisualEffectView` with `.systemThickMaterialLight` /
+/// `.systemThickMaterialDark` (swapped on appearance change),
+/// plus a faint acrylic-finish tint inside its contentView:
+/// white 0.10 in light mode, white 0.06 in dark mode. History:
+/// a light system blur pushed milky-white by a white overlay
+/// (Builds 47–55; the Build 46 iOS 26 liquid-glass surface read
+/// as a gray-lavender wash over the sheet and was rejected),
+/// then a SOLID baked fill with no live blur at all
+/// (Builds 56–59, light (247, 246, 244), dark (108, 108, 112)).
+/// Only a whisper of shadow beneath (the user asked for the
+/// shadow kept very light). The recipe is pinned and never
+/// follows the 卡片材质 setting. Structure: this wrapper owns
+/// the shadow, border and radius; the effect view pinned
+/// inside clips itself to the same radius.
 private final class ChangelogGlassCardView: UIView {
     let content = UIView()
-    private let surface = UIView()
+    private let surface = UIVisualEffectView()
+    private let tint = UIView()
+
+    private static func thickMaterial(for traits: UITraitCollection) -> UIBlurEffect {
+        UIBlurEffect(style: traits.userInterfaceStyle == .dark
+            ? .systemThickMaterialDark
+            : .systemThickMaterialLight)
+    }
 
     init() {
         super.init(frame: .zero)
@@ -452,20 +461,28 @@ private final class ChangelogGlassCardView: UIView {
         layer.shadowOffset = CGSize(width: 0, height: 6)
         surface.isUserInteractionEnabled = false
         surface.clipsToBounds = true
-        surface.backgroundColor = UIColor { traits in
+        surface.effect = Self.thickMaterial(for: traitCollection)
+        tint.isUserInteractionEnabled = false
+        tint.backgroundColor = UIColor { traits in
             traits.userInterfaceStyle == .dark
-                ? UIColor(red: 108.0 / 255.0, green: 108.0 / 255.0, blue: 112.0 / 255.0, alpha: 1)
-                : UIColor(red: 247.0 / 255.0, green: 246.0 / 255.0, blue: 244.0 / 255.0, alpha: 1)
+                ? UIColor.white.withAlphaComponent(0.06)
+                : UIColor.white.withAlphaComponent(0.10)
         }
+        surface.contentView.addSubview(tint)
         addSubview(surface)
         addSubview(content)
         surface.translatesAutoresizingMaskIntoConstraints = false
+        tint.translatesAutoresizingMaskIntoConstraints = false
         content.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             surface.leadingAnchor.constraint(equalTo: leadingAnchor),
             surface.trailingAnchor.constraint(equalTo: trailingAnchor),
             surface.topAnchor.constraint(equalTo: topAnchor),
             surface.bottomAnchor.constraint(equalTo: bottomAnchor),
+            tint.leadingAnchor.constraint(equalTo: surface.contentView.leadingAnchor),
+            tint.trailingAnchor.constraint(equalTo: surface.contentView.trailingAnchor),
+            tint.topAnchor.constraint(equalTo: surface.contentView.topAnchor),
+            tint.bottomAnchor.constraint(equalTo: surface.contentView.bottomAnchor),
             content.leadingAnchor.constraint(equalTo: leadingAnchor),
             content.trailingAnchor.constraint(equalTo: trailingAnchor),
             content.topAnchor.constraint(equalTo: topAnchor),
@@ -474,6 +491,13 @@ private final class ChangelogGlassCardView: UIView {
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        if traitCollection.hasDifferentColorAppearance(comparedTo: previousTraitCollection) {
+            surface.effect = Self.thickMaterial(for: traitCollection)
+        }
+    }
 
     override func layoutSubviews() {
         super.layoutSubviews()
