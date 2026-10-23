@@ -83,7 +83,9 @@ enum AccountProfileStore {
 /// per account; the hero card itself only ever displays them).
 /// Build 35 adds a 修改密码 row under 账号授权 (opens
 /// `ChangePasswordViewController`) and a standalone 退出登录 card
-/// at the bottom, mirroring the 设置 page's logout card.
+/// at the bottom, mirroring the 设置 page's logout card. Build 39
+/// adds an 输入卡密授权 row under 修改密码 (opens
+/// `BindCardViewController`).
 ///
 /// State is read from the same account mirrors the hero card reads
 /// (`ThemePreferences` + `AccountAuthorization` + the profile
@@ -227,6 +229,8 @@ final class AccountInfoViewController: UIViewController {
         rows.addArrangedSubview(infoRow(title: "账号授权", valueLabel: authValueLabel))
         rows.addArrangedSubview(divider())
         rows.addArrangedSubview(actionRow(title: "修改密码", action: #selector(changePasswordTapped)))
+        rows.addArrangedSubview(divider())
+        rows.addArrangedSubview(actionRow(title: "输入卡密授权", action: #selector(bindCardTapped)))
 
         // Build 35: standalone 退出登录 card at the page bottom —
         // same card shape and behaviour as the 设置 page's logout
@@ -297,6 +301,12 @@ final class AccountInfoViewController: UIViewController {
 
     @objc private func changePasswordTapped() {
         let page = ChangePasswordViewController(homeModel: homeModel)
+        page.applyPageFont(pageFont)
+        present(page, animated: true)
+    }
+
+    @objc private func bindCardTapped() {
+        let page = BindCardViewController(homeModel: homeModel)
         page.applyPageFont(pageFont)
         present(page, animated: true)
     }
@@ -763,6 +773,262 @@ extension ChangePasswordViewController: UITextFieldDelegate {
 }
 
 extension ChangePasswordViewController: UIViewControllerTransitioningDelegate {
+    func animationController(forPresented presented: UIViewController, presenting: UIViewController, source: UIViewController) -> UIViewControllerAnimatedTransitioning? {
+        SlideFadeTransitionAnimator(presenting: true)
+    }
+
+    func animationController(forDismissed dismissed: UIViewController) -> UIViewControllerAnimatedTransitioning? {
+        SlideFadeTransitionAnimator(presenting: false)
+    }
+}
+
+/// The 输入卡密授权 page behind the account page's 输入卡密授权
+/// row (Build 39), in the same settings sub-page idiom as
+/// `ChangePasswordViewController` (shared header, card, edge-swipe
+/// back). One field for the card key — keyed in with the register
+/// form's own convention (all-caps keyboard, whitespace trimmed) —
+/// and a 绑定授权 submit. The call is the backend's existing
+/// `bind_card` action with the session token; the server's answer
+/// decides everything (invalid / already-used keys surface their
+/// server message verbatim, and an already-authorized account may
+/// still submit — no client-side renewal rules). On success the
+/// account status is re-fetched through the same `fetchStatus`
+/// flow the entry gate uses and applied via
+/// `AccountAuthorization.update`, so this page's 账号授权 row and
+/// the 我的 hero reflect the new state the moment the user pops
+/// back; the 30 s heartbeat remains the backstop.
+final class BindCardViewController: UIViewController {
+    private let homeModel: NativeHomeModel
+    private var pageFont: UIFont?
+
+    private let cardField = UITextField()
+    private let errorLabel = UILabel()
+    private let submitTap = UIControl()
+    private let submitTitle = UILabel()
+
+    init(homeModel: NativeHomeModel) {
+        self.homeModel = homeModel
+        super.init(nibName: nil, bundle: nil)
+        modalPresentationStyle = .fullScreen
+        transitioningDelegate = self
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    /// The 设置页 area's chosen font, handed over by the presenting
+    /// account page — same mechanism as the other sub-pages.
+    func applyPageFont(_ font: UIFont?) {
+        pageFont = font
+        if isViewLoaded { PageFontApplier.apply(font, to: view) }
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = UIColor(nativeHex: homeModel.theme.background)
+        installEdgeSwipeBack()
+
+        let header = luiyoPageHeader(title: "输入卡密授权", backAction: #selector(backTapped), target: self)
+        view.addSubview(header)
+        header.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            header.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            header.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            header.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            header.heightAnchor.constraint(equalToConstant: 52),
+        ])
+
+        let card = UIView()
+        card.backgroundColor = UIColor(nativeHex: homeModel.theme.card)
+        card.layer.cornerRadius = 26
+        card.clipsToBounds = true
+        view.addSubview(card)
+        card.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            card.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 14),
+            card.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -14),
+            card.topAnchor.constraint(equalTo: header.bottomAnchor, constant: 6),
+        ])
+
+        let rows = UIStackView()
+        rows.axis = .vertical
+        rows.spacing = 0
+        card.addSubview(rows)
+        rows.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            rows.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 16),
+            rows.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -16),
+            rows.topAnchor.constraint(equalTo: card.topAnchor, constant: 4),
+            rows.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -4),
+        ])
+        configure(cardField)
+        rows.addArrangedSubview(fieldRow(title: "卡密", field: cardField))
+
+        let hint = UILabel()
+        hint.text = "卡密格式为 LUI-备注-随机码，绑定成功后授权状态立即刷新。"
+        hint.font = UIFont.systemFont(ofSize: 12)
+        hint.textColor = UIAppColors.secondary
+        hint.numberOfLines = 0
+        view.addSubview(hint)
+        hint.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            hint.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 30),
+            hint.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -30),
+            hint.topAnchor.constraint(equalTo: card.bottomAnchor, constant: 10),
+        ])
+
+        errorLabel.font = UIFont.systemFont(ofSize: 12.5)
+        errorLabel.textColor = .systemRed
+        errorLabel.numberOfLines = 0
+        errorLabel.isHidden = true
+        view.addSubview(errorLabel)
+        errorLabel.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            errorLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 30),
+            errorLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -30),
+            errorLabel.topAnchor.constraint(equalTo: hint.bottomAnchor, constant: 6),
+        ])
+
+        // Submit: a standalone card like the logout cards, with a
+        // dark title instead of red.
+        let submitCard = UIView()
+        submitCard.backgroundColor = UIColor(nativeHex: homeModel.theme.card)
+        submitCard.layer.cornerRadius = 26
+        submitCard.clipsToBounds = true
+        view.addSubview(submitCard)
+        submitCard.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            submitCard.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 14),
+            submitCard.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -14),
+            submitCard.topAnchor.constraint(equalTo: errorLabel.bottomAnchor, constant: 12),
+            submitCard.heightAnchor.constraint(equalToConstant: 52),
+        ])
+        submitTap.addTarget(self, action: #selector(submitTapped), for: .touchUpInside)
+        submitCard.addSubview(submitTap)
+        submitTap.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            submitTap.leadingAnchor.constraint(equalTo: submitCard.leadingAnchor),
+            submitTap.trailingAnchor.constraint(equalTo: submitCard.trailingAnchor),
+            submitTap.topAnchor.constraint(equalTo: submitCard.topAnchor),
+            submitTap.bottomAnchor.constraint(equalTo: submitCard.bottomAnchor),
+        ])
+        submitTitle.text = "绑定授权"
+        submitTitle.font = UIFont.systemFont(ofSize: 13, weight: .semibold)
+        submitTitle.textColor = UIAppColors.inkDynamic
+        submitTitle.textAlignment = .center
+        submitTap.addSubview(submitTitle)
+        submitTitle.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            submitTitle.centerXAnchor.constraint(equalTo: submitTap.centerXAnchor),
+            submitTitle.centerYAnchor.constraint(equalTo: submitTap.centerYAnchor),
+        ])
+
+        PageFontApplier.apply(pageFont, to: view)
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        PageFontApplier.apply(pageFont, to: view)
+    }
+
+    private func configure(_ field: UITextField) {
+        // Same convention as the register form's card field: an
+        // all-caps keyboard (card keys are `LUI-<备注>-<random>`),
+        // no autocorrection, and the value is trimmed on submit.
+        field.autocapitalizationType = .allCharacters
+        field.autocorrectionType = .no
+        field.font = UIFont.systemFont(ofSize: 13)
+        field.textColor = UIAppColors.inkDynamic
+        field.attributedPlaceholder = NSAttributedString(
+            string: "请输入卡密",
+            attributes: [.foregroundColor: UIAppColors.secondary])
+        field.returnKeyType = .done
+        field.clearButtonMode = .whileEditing
+        field.delegate = self
+    }
+
+    private func fieldRow(title: String, field: UITextField) -> UIView {
+        let row = UIView()
+        let titleLabel = UILabel()
+        titleLabel.text = title
+        titleLabel.font = UIFont.systemFont(ofSize: 13)
+        titleLabel.textColor = UIAppColors.inkDynamic
+        titleLabel.setContentHuggingPriority(.required, for: .horizontal)
+        row.addSubview(titleLabel)
+        row.addSubview(field)
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+        field.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            titleLabel.leadingAnchor.constraint(equalTo: row.leadingAnchor),
+            titleLabel.centerYAnchor.constraint(equalTo: row.centerYAnchor),
+            titleLabel.widthAnchor.constraint(equalToConstant: 76),
+            field.leadingAnchor.constraint(equalTo: titleLabel.trailingAnchor, constant: 8),
+            field.trailingAnchor.constraint(equalTo: row.trailingAnchor),
+            field.centerYAnchor.constraint(equalTo: row.centerYAnchor),
+            row.heightAnchor.constraint(equalToConstant: 52),
+        ])
+        return row
+    }
+
+    // MARK: - Submit
+
+    private func showError(_ message: String, refocus: Bool) {
+        errorLabel.text = message
+        errorLabel.isHidden = false
+        if refocus { cardField.becomeFirstResponder() }
+    }
+
+    private func setBusy(_ busy: Bool) {
+        submitTap.isEnabled = !busy
+        submitTitle.text = busy ? "正在绑定…" : "绑定授权"
+    }
+
+    @objc private func submitTapped() {
+        let card = (cardField.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        if card.isEmpty { showError("请输入卡密。", refocus: true); return }
+        guard let token = AccountSession.token else {
+            showError("登录已过期，请重新登录。", refocus: false); return
+        }
+        errorLabel.isHidden = true
+        view.endEditing(true)
+        setBusy(true)
+        AccountAPI.post("bind_card", ["token": token, "card": card]) { [weak self] result in
+            guard let self else { return }
+            switch AccountAPI.outcome(result) {
+            case .error(let message):
+                self.setBusy(false)
+                self.showError(message, refocus: false)
+            case .ok:
+                // Refresh through the gate's own status flow so the
+                // mirrors (and with them the account page + hero)
+                // carry the server's verdict, never a local guess.
+                AccountAPI.fetchStatus { [weak self] status in
+                    guard let self else { return }
+                    if case .ok(let email, let svip, let svipExpiresAt, let displayName) = status {
+                        AccountAuthorization.update(
+                            email: email, svip: svip,
+                            svipExpiresAt: svipExpiresAt, displayName: displayName)
+                    }
+                    self.submitTap.isEnabled = false
+                    self.submitTitle.text = "绑定成功"
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
+                        self.dismiss(animated: true)
+                    }
+                }
+            }
+        }
+    }
+
+    @objc private func backTapped() { dismiss(animated: true) }
+}
+
+extension BindCardViewController: UITextFieldDelegate {
+    func textFieldShouldReturn(_ field: UITextField) -> Bool {
+        submitTapped()
+        return true
+    }
+}
+
+extension BindCardViewController: UIViewControllerTransitioningDelegate {
     func animationController(forPresented presented: UIViewController, presenting: UIViewController, source: UIViewController) -> UIViewControllerAnimatedTransitioning? {
         SlideFadeTransitionAnimator(presenting: true)
     }

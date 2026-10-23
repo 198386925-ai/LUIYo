@@ -38,10 +38,13 @@ final class SolidCardView: UIView {
 }
 
 /// A settings fold: solid card with a tappable header (icon in a circle,
-/// title, subtitle, chevron) and a collapsible content area. Collapsed it is
-/// capsule-shaped like the reference design; expanded it opens to radius 22.
+/// title, subtitle, chevron) and a collapsible content area. Build 39: the
+/// row takes the 设置 page's card metrics — a 52 pt header height and a
+/// fixed 26 pt corner radius, collapsed or expanded (the same values as
+/// the 设置 page's 检查更新 card; the page stack's 14 pt side insets
+/// already matched).
 final class FoldView: UIView {
-    let card = SolidCardView(radius: 24)
+    let card = SolidCardView(radius: 26)
     let contentView = UIView()
     private let iconView = UIImageView()
     private let titleLabel = UILabel()
@@ -94,7 +97,7 @@ final class FoldView: UIView {
         ])
         inner.addArrangedSubview(header)
         header.translatesAutoresizingMaskIntoConstraints = false
-        header.heightAnchor.constraint(equalToConstant: 42).isActive = true
+        header.heightAnchor.constraint(equalToConstant: 52).isActive = true
         header.addSubview(iconView)
         header.addSubview(titleLabel)
         header.addSubview(subtitleLabel)
@@ -118,7 +121,7 @@ final class FoldView: UIView {
         contentView.isHidden = true
         contentView.clipsToBounds = true
         card.content.clipsToBounds = true
-        card.content.layer.cornerRadius = 24
+        card.content.layer.cornerRadius = 26
         inner.addArrangedSubview(contentView)
         refreshAppearance()
     }
@@ -137,8 +140,8 @@ final class FoldView: UIView {
         // frame-by-frame ghosted neighbouring folds' text through it.)
         contentView.isHidden = !value
         subtitleLabel.isHidden = !value
-        card.setRadius(value ? 26 : 24)
-        card.content.layer.cornerRadius = value ? 26 : 24
+        card.setRadius(26)
+        card.content.layer.cornerRadius = 26
         card.configure(tint: lastTint)
         superview?.layoutIfNeeded()
         if animated {
@@ -687,7 +690,7 @@ final class SettingsViewController: UIViewController {
             tap.trailingAnchor.constraint(equalTo: appSettingsCard.content.trailingAnchor),
             tap.topAnchor.constraint(equalTo: appSettingsCard.content.topAnchor),
             tap.bottomAnchor.constraint(equalTo: appSettingsCard.content.bottomAnchor),
-            tap.heightAnchor.constraint(equalToConstant: 42),
+            tap.heightAnchor.constraint(equalToConstant: 52),
         ])
         let icon = UIImageView(image: UIImage(named: "tab-settings")?.withRenderingMode(.alwaysTemplate))
         icon.tintColor = UIAppColors.inkDynamic
