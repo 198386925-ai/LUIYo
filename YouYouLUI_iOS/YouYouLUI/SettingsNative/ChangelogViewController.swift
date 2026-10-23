@@ -228,7 +228,7 @@ private final class ChangelogGlassCardView: UIView {
         layer.shadowOffset = CGSize(width: 0, height: 6)
         surface.isUserInteractionEnabled = false
         surface.clipsToBounds = true
-        whitewash.backgroundColor = UIColor.white.withAlphaComponent(0.60)
+        whitewash.backgroundColor = UIColor.white.withAlphaComponent(0.38)
         whitewash.isUserInteractionEnabled = false
         surface.contentView.addSubview(whitewash)
         addSubview(surface)
@@ -274,7 +274,7 @@ private final class ChangelogCloseButton: UIControl {
         layer.borderColor = UIColor.white.withAlphaComponent(0.85).cgColor
         surface.isUserInteractionEnabled = false
         surface.clipsToBounds = true
-        whitewash.backgroundColor = UIColor.white.withAlphaComponent(0.60)
+        whitewash.backgroundColor = UIColor.white.withAlphaComponent(0.38)
         whitewash.isUserInteractionEnabled = false
         surface.contentView.addSubview(whitewash)
         addSubview(surface)
