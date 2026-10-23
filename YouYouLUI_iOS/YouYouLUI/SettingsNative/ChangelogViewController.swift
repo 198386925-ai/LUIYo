@@ -1,13 +1,26 @@
 import UIKit
 
 /// 更新日志 viewer (Build 46): a sheet that slides up over the
-/// presenting page and comes to rest ≈54 pt below the top of the
+/// current page and comes to rest ≈54 pt below the top of the
 /// screen with its top corners rounded ≈34 pt (Build 49, matched
 /// to the reference). The root view is fully transparent — the
 /// live page underneath shows through above the sheet and in the
-/// corner notches, and the sheet itself is a frosted veil
-/// (Build 50): one light blur + a 0.78 page-background wash, so
-/// the page also glows through the whole sheet, blurred.
+/// corner notches, and the sheet itself is a frosted veil:
+/// one light blur + a page-background wash at 0.90 (Build 51;
+/// Build 50 had 0.78), dense enough to read as the sheet's own
+/// background — the page underneath only washes through as a
+/// soft, illegible colour glow, the way the reference's
+/// wallpaper sits inside its sheet.
+/// Presentation is a CHILD OVERLAY of the app shell (Build 51,
+/// see `show(from:)`): Builds 49–50 presented this modally
+/// (.overFullScreen) from the embedded settings child and on
+/// device the modal's top read as flat opaque page colour —
+/// what sits behind a modal here is the window/shell painted
+/// with the background colour, not the live page render, so a
+/// 0.78 wash of that colour over a blur of itself is
+/// indistinguishable from a solid fill. As a shell child the
+/// viewer sits directly on top of the attached live page,
+/// the way the bottom-search overlay does.
 /// Inside: a fixed header (centered title, frosted-glass
 /// close button) over a scrolling stack of per-version cards.
 /// The cards are true frosted glass （毛玻璃）: a light system
@@ -20,11 +33,13 @@ import UIKit
 final class ChangelogViewController: UIViewController {
     private let backgroundColor: UIColor
     private var pageFont: UIFont?
+    private weak var sheetView: UIView?
+    private var presentedAsOverlay = false
+    private var isDismissing = false
 
     init(backgroundColor: UIColor) {
         self.backgroundColor = backgroundColor
         super.init(nibName: nil, bundle: nil)
-        modalPresentationStyle = .overFullScreen
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -57,6 +72,7 @@ final class ChangelogViewController: UIViewController {
         sheet.layer.cornerRadius = 34
         sheet.layer.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
         sheet.clipsToBounds = true
+        sheetView = sheet
         view.addSubview(sheet)
         sheet.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
@@ -66,11 +82,13 @@ final class ChangelogViewController: UIViewController {
             sheet.bottomAnchor.constraint(equalTo: view.bottomAnchor),
         ])
 
-        // Frosted veil (Build 50): the sheet's background is one
-        // light system blur under a page-background wash at 0.78,
-        // so the presenting page glows through the WHOLE sheet —
-        // behind the header and around the cards — the way the
-        // reference app's sheet veils the page behind it. The
+        // Frosted veil (Build 50, coverage raised in Build 51):
+        // the sheet's background is one light system blur under a
+        // page-background wash at 0.90 — dense enough to read as
+        // the sheet's own background layer, with the page below
+        // washing through only as a soft, illegible colour glow
+        // behind the header and around the cards, the way the
+        // reference app's wallpaper sits inside its sheet. The
         // wash is the page background pair (#EFEFF3 light /
         // #121214 dark), resolved per appearance. The sheet's
         // clipsToBounds keeps both layers inside the rounded-top
@@ -83,8 +101,8 @@ final class ChangelogViewController: UIViewController {
         let veilWash = UIView()
         veilWash.backgroundColor = UIColor { traits in
             traits.userInterfaceStyle == .dark
-                ? UIColor(red: 18.0 / 255.0, green: 18.0 / 255.0, blue: 20.0 / 255.0, alpha: 0.78)
-                : UIColor(red: 239.0 / 255.0, green: 239.0 / 255.0, blue: 243.0 / 255.0, alpha: 0.78)
+                ? UIColor(red: 18.0 / 255.0, green: 18.0 / 255.0, blue: 20.0 / 255.0, alpha: 0.90)
+                : UIColor(red: 239.0 / 255.0, green: 239.0 / 255.0, blue: 243.0 / 255.0, alpha: 0.90)
         }
         veilWash.isUserInteractionEnabled = false
         sheet.addSubview(veilWash)
@@ -159,7 +177,77 @@ final class ChangelogViewController: UIViewController {
         }
     }
 
-    @objc private func closeTapped() { dismiss(animated: true) }
+    @objc private func closeTapped() { dismissViewer() }
+
+    // MARK: - Presentation (Build 51: shell child overlay, not a modal)
+
+    /// Shows the viewer as a child overlay of the app shell — the
+    /// construction the bottom-search overlay uses
+    /// (`showSearchOverlay`) — so the live page and tab bar stay
+    /// attached directly underneath and every translucent layer
+    /// (transparent root, frosted veil, glass cards) has the real
+    /// page behind it. Falls back to an over-current-context
+    /// modal (presenter stays in the hierarchy) only if no shell
+    /// is reachable from the presenter.
+    func show(from presenter: UIViewController) {
+        guard let shell = Self.findShell(from: presenter) else {
+            modalPresentationStyle = .overCurrentContext
+            modalTransitionStyle = .coverVertical
+            presenter.present(self, animated: true)
+            return
+        }
+        presentedAsOverlay = true
+        shell.addChild(self)
+        view.frame = shell.view.bounds
+        view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        shell.view.addSubview(view)
+        view.layer.zPosition = 3
+        didMove(toParent: shell)
+        view.layoutIfNeeded()
+        // Slide the sheet up from below the screen to its rest
+        // position (top at 54 pt), keeping the cover-vertical feel
+        // the modal version had.
+        guard let sheet = sheetView else { return }
+        let travel = view.bounds.height + 60
+        sheet.transform = CGAffineTransform(translationX: 0, y: travel)
+        UIView.animate(withDuration: 0.42, delay: 0, options: [.curveEaseOut], animations: {
+            sheet.transform = .identity
+        })
+    }
+
+    private func dismissViewer() {
+        guard presentedAsOverlay else {
+            dismiss(animated: true)
+            return
+        }
+        guard !isDismissing else { return }
+        isDismissing = true
+        let travel = view.bounds.height + 60
+        UIView.animate(withDuration: 0.3, delay: 0, options: [.curveEaseIn], animations: {
+            self.sheetView?.transform = CGAffineTransform(translationX: 0, y: travel)
+        }, completion: { _ in
+            self.willMove(toParent: nil)
+            self.view.removeFromSuperview()
+            self.removeFromParent()
+        })
+    }
+
+    /// Finds the app shell above a presenter: walks each
+    /// presenter's parent chain, stepping through the
+    /// presenting chain for presenters that are themselves
+    /// presented (the 检查更新 path sits two page sheets deep).
+    private static func findShell(from viewController: UIViewController) -> MainShellViewController? {
+        var link: UIViewController? = viewController
+        while let current = link {
+            var node: UIViewController? = current
+            while let candidate = node {
+                if let shell = candidate as? MainShellViewController { return shell }
+                node = candidate.parent
+            }
+            link = current.presentingViewController
+        }
+        return nil
+    }
 
     // MARK: - Cards
 

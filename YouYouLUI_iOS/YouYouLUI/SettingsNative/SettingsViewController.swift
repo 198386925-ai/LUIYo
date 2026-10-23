@@ -617,7 +617,9 @@ final class SettingsViewController: UIViewController {
     private func openChangelogViewer() {
         let viewer = ChangelogViewController(backgroundColor: UIColor(nativeHex: homeModel.theme.background))
         viewer.applyPageFont(pageFont)
-        present(viewer, animated: true)
+        // Shell child overlay, not a modal (Build 51): the modal
+        // version's top read as opaque page colour on device.
+        viewer.show(from: self)
     }
 
     private func buildAppSettingsCard() {

@@ -386,7 +386,8 @@ final class UpdateCheckViewController: UIViewController {
         guard updater.updateFound else {
             let viewer = ChangelogViewController(backgroundColor: UIColor(nativeHex: homeModel.theme.background))
             viewer.applyPageFont(pageFont)
-            present(viewer, animated: true)
+            // Shell child overlay, not a modal (Build 51).
+            viewer.show(from: self)
             return
         }
         notesExpanded.toggle()
