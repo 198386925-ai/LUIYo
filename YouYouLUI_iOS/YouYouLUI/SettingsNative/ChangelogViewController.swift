@@ -31,17 +31,22 @@ import UIKit
 /// Inside: a fixed header (centered title, native-glass
 /// close button since Build 52) over a scrolling stack of
 /// per-version cards. Build 55: the scroll view spans the
-/// full sheet under a frosted header strip, so scrolled cards
-/// travel up through the header zone and clip at the sheet's
-/// top edge; the title and close button keep their exact
-/// positions and appearance from Builds 46–54.
-/// The cards are true frosted glass （毛玻璃）: a light system
-/// blur pushed milky-white with a white overlay and a bright rim
-/// (Build 47 recipe, overlay lightened to 0.38 in Build 48),
-/// pinned on purpose: they do NOT follow the 卡片材质 (liquid /
-/// blur) setting. Content is `SettingsContent.changelog`, newest
-/// first, rendered in the same type sizes the old inline fold
-/// used.
+/// full sheet under a header strip (frosted in Build 55, solid
+/// since Build 56), so scrolled cards travel up through the
+/// header zone and clip at the sheet's top edge; the title and
+/// close button keep their exact positions and appearance
+/// from Builds 46–54.
+/// The cards wear the frosted-glass （毛玻璃） LOOK — a milky,
+/// almost-white surface with a bright rim (the Build 47 recipe,
+/// overlay lightened to 0.38 in Build 48) — pinned on purpose:
+/// they do NOT follow the 卡片材质 (liquid / blur) setting.
+/// Build 56 (the user: 毛玻璃可以不用透明的效果吗): the card
+/// surface is a SOLID fill baked to the exact colour the live
+/// blur + white overlay produced over the flat sheet, and the
+/// header strip is likewise solid — no live blur in the cards
+/// or the strip, so nothing ghosts through them. Content is
+/// `SettingsContent.changelog`, newest first, rendered in the
+/// same type sizes the old inline fold used.
 final class ChangelogViewController: UIViewController {
     private let backgroundColor: UIColor
     private var pageFont: UIFont?
@@ -110,8 +115,7 @@ final class ChangelogViewController: UIViewController {
         // Transparency exists ONLY above the sheet (the clear
         // root). The sheet's clipsToBounds keeps both layers
         // inside the rounded-top shape; the scroll view, header
-        // frost strip and header are added after, so they sit
-        // on top.
+        // strip and header are added after, so they sit on top.
         let sheetBackground = ChangelogSheetBackgroundView()
         sheetBackground.isUserInteractionEnabled = false
         sheet.addSubview(sheetBackground)
@@ -151,7 +155,7 @@ final class ChangelogViewController: UIViewController {
         // the header's bottom edge. A 74 pt top content inset
         // keeps the resting layout pixel-identical to Builds
         // 46–54: the first card still begins at sheet top + 74.
-        // The header frost strip and the header are added after
+        // The header strip and the header are added after
         // the scroll view so they render above it; the title
         // and close button keep their original constraints.
         let scrollView = UIScrollView()
@@ -184,36 +188,33 @@ final class ChangelogViewController: UIViewController {
             stack.addArrangedSubview(makeCard(version))
         }
 
-        // Header frost strip (Build 55): the sheet film's recipe
-        // (light system blur + colour-neutral tint) pinned over
+        // Header strip (Build 55: a frosted strip in the sheet
+        // film's recipe; Build 56: SOLID — the user asked for
+        // the frost without the see-through). Filled with the
+        // sheet's own baked surface colour — the flat
+        // background under the sheet's white-0.15 film: light
+        // (242, 241, 237); dark the flat #121214 — pinned over
         // the header zone, above the scroll view, so cards
-        // scrolling up under the title are frosted, not shown
-        // raw; the sheet's own clipsToBounds keeps the strip
-        // inside the rounded top corners. Non-interactive — the
-        // header (title + close button) is added next and
-        // renders above it, unmoved.
-        let headerFrost = UIVisualEffectView(effect: UIBlurEffect(style: .systemMaterialLight))
-        headerFrost.isUserInteractionEnabled = false
-        let headerFrostTint = UIView()
-        headerFrostTint.backgroundColor = UIColor { traits in
+        // scrolling up under the title slide behind it and
+        // disappear cleanly at its bottom edge instead of
+        // ghosting through. The sheet's own clipsToBounds keeps
+        // the strip inside the rounded top corners.
+        // Non-interactive — the header (title + close button)
+        // is added next and renders above it, unmoved.
+        let headerStrip = UIView()
+        headerStrip.isUserInteractionEnabled = false
+        headerStrip.backgroundColor = UIColor { traits in
             traits.userInterfaceStyle == .dark
-                ? UIColor(red: 18.0 / 255.0, green: 18.0 / 255.0, blue: 20.0 / 255.0, alpha: 0.5)
-                : UIColor.white.withAlphaComponent(0.15)
+                ? UIColor(red: 18.0 / 255.0, green: 18.0 / 255.0, blue: 20.0 / 255.0, alpha: 1)
+                : UIColor(red: 242.0 / 255.0, green: 241.0 / 255.0, blue: 237.0 / 255.0, alpha: 1)
         }
-        headerFrostTint.isUserInteractionEnabled = false
-        headerFrost.contentView.addSubview(headerFrostTint)
-        headerFrostTint.translatesAutoresizingMaskIntoConstraints = false
-        sheet.addSubview(headerFrost)
-        headerFrost.translatesAutoresizingMaskIntoConstraints = false
+        sheet.addSubview(headerStrip)
+        headerStrip.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            headerFrost.leadingAnchor.constraint(equalTo: sheet.leadingAnchor),
-            headerFrost.trailingAnchor.constraint(equalTo: sheet.trailingAnchor),
-            headerFrost.topAnchor.constraint(equalTo: sheet.topAnchor),
-            headerFrost.heightAnchor.constraint(equalToConstant: 74),
-            headerFrostTint.leadingAnchor.constraint(equalTo: headerFrost.contentView.leadingAnchor),
-            headerFrostTint.trailingAnchor.constraint(equalTo: headerFrost.contentView.trailingAnchor),
-            headerFrostTint.topAnchor.constraint(equalTo: headerFrost.contentView.topAnchor),
-            headerFrostTint.bottomAnchor.constraint(equalTo: headerFrost.contentView.bottomAnchor),
+            headerStrip.leadingAnchor.constraint(equalTo: sheet.leadingAnchor),
+            headerStrip.trailingAnchor.constraint(equalTo: sheet.trailingAnchor),
+            headerStrip.topAnchor.constraint(equalTo: sheet.topAnchor),
+            headerStrip.heightAnchor.constraint(equalToConstant: 74),
         ])
 
         let header = UIView()
@@ -256,8 +257,8 @@ final class ChangelogViewController: UIViewController {
     /// construction the bottom-search overlay uses
     /// (`showSearchOverlay`) — so the live page and tab bar stay
     /// attached directly underneath: the clear root shows the
-    /// raw page above the sheet, and the glass cards blur the
-    /// sheet's own frost layer beneath them. Falls back to an
+    /// raw page above the sheet, and the cards rest on the
+    /// sheet's own layered surface. Falls back to an
     /// over-current-context
     /// modal (presenter stays in the hierarchy) only if no shell
     /// is reachable from the presenter.
@@ -404,21 +405,28 @@ final class ChangelogViewController: UIViewController {
     }
 }
 
-/// One changelog card: a true frosted-glass （毛玻璃） surface
-/// under a content container — a light system blur pushed
-/// milky-white by a white overlay (0.38 since Build 48), finished with a bright
-/// 1 pt rim, so the card reads almost white against the sheet
-/// while keeping a hint of translucency (Build 47; the Build 46
-/// iOS 26 liquid-glass surface read as a gray-lavender wash over
-/// the sheet and was rejected). Only a whisper of shadow beneath
-/// (the user asked for the shadow kept very light). The recipe
-/// is pinned and never follows the 卡片材质 setting. Structure:
-/// this wrapper owns the shadow, border and radius; the effect
-/// view pinned inside clips itself to the same radius.
+/// One changelog card: the frosted-glass （毛玻璃） look under
+/// a content container — a milky, almost-white surface finished
+/// with a bright 1 pt rim, so the card reads almost white
+/// against the sheet (Builds 47–55: a light system blur pushed
+/// milky-white by a white overlay, 0.38 since Build 48; the
+/// Build 46 iOS 26 liquid-glass surface read as a gray-lavender
+/// wash over the sheet and was rejected). Build 56 (the user:
+/// 毛玻璃可以不用透明的效果吗): the surface is a SOLID fill —
+/// NO live blur, nothing shows through. Its colour is the old
+/// recipe baked flat over the sheet's baked surface (the flat
+/// background under the sheet's white-0.15 film, then the
+/// white 0.38 wash over that): light (247, 246, 244), dark
+/// (108, 108, 112). Over the flat sheet the bake is exact —
+/// the resting card looks the same as Build 55. Only a whisper
+/// of shadow beneath (the user asked for the shadow kept very
+/// light). The recipe is pinned and never follows the 卡片材质
+/// setting. Structure: this wrapper owns the shadow, border
+/// and radius; the solid fill pinned inside clips itself to
+/// the same radius.
 private final class ChangelogGlassCardView: UIView {
     let content = UIView()
-    private let surface = UIVisualEffectView(effect: UIBlurEffect(style: .systemMaterialLight))
-    private let whitewash = UIView()
+    private let surface = UIView()
 
     init() {
         super.init(frame: .zero)
@@ -432,23 +440,20 @@ private final class ChangelogGlassCardView: UIView {
         layer.shadowOffset = CGSize(width: 0, height: 6)
         surface.isUserInteractionEnabled = false
         surface.clipsToBounds = true
-        whitewash.backgroundColor = UIColor.white.withAlphaComponent(0.38)
-        whitewash.isUserInteractionEnabled = false
-        surface.contentView.addSubview(whitewash)
+        surface.backgroundColor = UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? UIColor(red: 108.0 / 255.0, green: 108.0 / 255.0, blue: 112.0 / 255.0, alpha: 1)
+                : UIColor(red: 247.0 / 255.0, green: 246.0 / 255.0, blue: 244.0 / 255.0, alpha: 1)
+        }
         addSubview(surface)
         addSubview(content)
         surface.translatesAutoresizingMaskIntoConstraints = false
         content.translatesAutoresizingMaskIntoConstraints = false
-        whitewash.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             surface.leadingAnchor.constraint(equalTo: leadingAnchor),
             surface.trailingAnchor.constraint(equalTo: trailingAnchor),
             surface.topAnchor.constraint(equalTo: topAnchor),
             surface.bottomAnchor.constraint(equalTo: bottomAnchor),
-            whitewash.leadingAnchor.constraint(equalTo: surface.contentView.leadingAnchor),
-            whitewash.trailingAnchor.constraint(equalTo: surface.contentView.trailingAnchor),
-            whitewash.topAnchor.constraint(equalTo: surface.contentView.topAnchor),
-            whitewash.bottomAnchor.constraint(equalTo: surface.contentView.bottomAnchor),
             content.leadingAnchor.constraint(equalTo: leadingAnchor),
             content.trailingAnchor.constraint(equalTo: trailingAnchor),
             content.topAnchor.constraint(equalTo: topAnchor),
