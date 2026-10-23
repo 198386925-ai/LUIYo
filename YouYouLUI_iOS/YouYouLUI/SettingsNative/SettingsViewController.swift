@@ -77,7 +77,7 @@ final class FoldView: UIView {
         iconView.contentMode = .scaleAspectFit
         iconView.tintColor = UIAppColors.ink
         titleLabel.text = title
-        titleLabel.font = UIFont.systemFont(ofSize: 12, weight: .semibold)
+        titleLabel.font = UIFont.systemFont(ofSize: 13, weight: .semibold)
         subtitleLabel.text = subtitle
         subtitleLabel.font = UIFont.systemFont(ofSize: 8)
         subtitleLabel.textColor = UIAppColors.secondary
@@ -661,7 +661,7 @@ final class SettingsViewController: UIViewController {
         icon.contentMode = .scaleAspectFit
         let title = UILabel()
         title.text = "设置"
-        title.font = UIFont.systemFont(ofSize: 12, weight: .semibold)
+        title.font = UIFont.systemFont(ofSize: 13, weight: .semibold)
         title.textColor = UIAppColors.inkDynamic
         let chevron = UIImageView(image: UIImage(systemName: "chevron.right", withConfiguration: UIImage.SymbolConfiguration(pointSize: 13, weight: .semibold)))
         chevron.tintColor = UIAppColors.inkDynamic
