@@ -11,9 +11,12 @@ import UIKit
 /// (Build 51, the reference's construction): an opaque fill in
 /// the page background colour — the live page does not ghost
 /// through the sheet's body at all — plus a frosted-glass film
-/// over it (light blur + background-colour tint 0.5 since
-/// Build 53 — white 0.45 before), so the sheet reads
-/// soft while transparency exists only above it.
+/// over it, so the sheet reads soft while transparency exists
+/// only above it. Build 54: the light-mode background layer is
+/// a vertical gradient in the user's #BAD0EB family and the
+/// film is back to a colour-neutral frost (light blur + plain
+/// white sheen 0.15) so the gradient shows through undyed;
+/// dark mode keeps its flat #121214 background and film.
 /// Presentation is a CHILD OVERLAY of the app shell (Build 51,
 /// see `show(from:)`): Builds 49–50 presented this modally
 /// (.overFullScreen) from the embedded settings child and on
@@ -88,30 +91,25 @@ final class ChangelogViewController: UIViewController {
 
         // Sheet background (Build 51 — the reference's TWO-layer
         // construction, per the user's correction): layer 1 is an
-        // OPAQUE fill in the page background colour (#EFEFF3
-        // light / #121214 dark, resolved per appearance) — the
-        // live page does NOT ghost through the sheet's body at
-        // all; layer 2, on top of it, is a frosted-glass film: one
-        // light system blur carrying a translucent tint at 0.5
-        // in the page background colour itself (Build 53 — it
-        // was a white tint at 0.45 until the user pointed out
-        // the white lifted the sheet off his background colour;
-        // tinting with the background colour keeps the sheet's
-        // rendered tone exactly that colour). The pair (solid
-        // background + frost over it) is
-        // what makes the reference's sheet read soft: its
-        // wallpaper is crisp above the sheet and soft inside it
-        // because inside there is a frost layer over the same
-        // background. Transparency exists ONLY above the sheet
-        // (the clear root). The sheet's clipsToBounds keeps both
-        // layers inside the rounded-top shape; the header and
-        // scroll view are added after, so they sit on top.
-        let sheetBackground = UIView()
-        sheetBackground.backgroundColor = UIColor { traits in
-            traits.userInterfaceStyle == .dark
-                ? UIColor(red: 18.0 / 255.0, green: 18.0 / 255.0, blue: 20.0 / 255.0, alpha: 1)
-                : UIColor(red: 239.0 / 255.0, green: 239.0 / 255.0, blue: 243.0 / 255.0, alpha: 1)
-        }
+        // OPAQUE background — the live page does NOT ghost through
+        // the sheet's body at all; layer 2, on top of it, is a
+        // frosted-glass film. Build 54 (the user's colour call):
+        // the gradient colour belongs to the BACKGROUND layer
+        // only — light mode is a vertical gradient in his
+        // #BAD0EB family (#E3EEFA at the top, #BAD0EB at 55%,
+        // #A8C4E4 at the bottom; dark mode keeps the flat
+        // #121214, the colour being a light-mode identity) — and
+        // the film is colour-NEUTRAL: one light system blur plus
+        // a plain white sheen at 0.15 (dark: the #121214 tint at
+        // 0.5 as before), so the gradient shows through the
+        // frost undyed. (Build 53 had tinted the film with the
+        // flat background colour at 0.5 to keep the sheet exactly
+        // #EFEFF3; that washes a gradient flat, so it goes.)
+        // Transparency exists ONLY above the sheet (the clear
+        // root). The sheet's clipsToBounds keeps both layers
+        // inside the rounded-top shape; the header and scroll
+        // view are added after, so they sit on top.
+        let sheetBackground = ChangelogSheetBackgroundView()
         sheetBackground.isUserInteractionEnabled = false
         sheet.addSubview(sheetBackground)
         sheetBackground.translatesAutoresizingMaskIntoConstraints = false
@@ -121,7 +119,7 @@ final class ChangelogViewController: UIViewController {
         frostTint.backgroundColor = UIColor { traits in
             traits.userInterfaceStyle == .dark
                 ? UIColor(red: 18.0 / 255.0, green: 18.0 / 255.0, blue: 20.0 / 255.0, alpha: 0.5)
-                : UIColor(red: 239.0 / 255.0, green: 239.0 / 255.0, blue: 243.0 / 255.0, alpha: 0.5)
+                : UIColor.white.withAlphaComponent(0.15)
         }
         frostTint.isUserInteractionEnabled = false
         frost.contentView.addSubview(frostTint)
@@ -487,6 +485,64 @@ private final class ChangelogCloseButton: UIControl {
             surface.cornerConfiguration = .uniformCorners(radius: .fixed(Double(radius)))
         } else {
             surface.layer.cornerRadius = radius
+        }
+    }
+}
+
+/// The sheet's background layer (layer 1 of the two-layer
+/// construction). Light mode (Build 54, the user's colour call):
+/// a vertical gradient in his #BAD0EB family — #E3EEFA at the
+/// top, #BAD0EB at 55%, #A8C4E4 at the bottom — opaque, so the
+/// live page never ghosts through the sheet's body. Dark mode
+/// keeps the flat #121214 of Builds 51–53: #BAD0EB is a
+/// light-mode identity colour and no dark gradient was asked
+/// for. The colour lives ONLY in this layer; the frost film
+/// laid over it is colour-neutral.
+private final class ChangelogSheetBackgroundView: UIView {
+    private let gradient = CAGradientLayer()
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        gradient.colors = [
+            UIColor(red: 227.0 / 255.0, green: 238.0 / 255.0, blue: 250.0 / 255.0, alpha: 1).cgColor, // #E3EEFA
+            UIColor(red: 186.0 / 255.0, green: 208.0 / 255.0, blue: 235.0 / 255.0, alpha: 1).cgColor, // #BAD0EB
+            UIColor(red: 168.0 / 255.0, green: 196.0 / 255.0, blue: 228.0 / 255.0, alpha: 1).cgColor, // #A8C4E4
+        ]
+        gradient.locations = [0, 0.55, 1]
+        gradient.startPoint = CGPoint(x: 0.5, y: 0)
+        gradient.endPoint = CGPoint(x: 0.5, y: 1)
+        layer.addSublayer(gradient)
+        refresh()
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        gradient.frame = bounds
+    }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        refresh()
+    }
+
+    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        if traitCollection.userInterfaceStyle != previousTraitCollection?.userInterfaceStyle {
+            refresh()
+        }
+    }
+
+    private func refresh() {
+        if traitCollection.userInterfaceStyle == .dark {
+            backgroundColor = UIColor(red: 18.0 / 255.0, green: 18.0 / 255.0, blue: 20.0 / 255.0, alpha: 1)
+            gradient.isHidden = true
+        } else {
+            // Base under the gradient is the gradient's own mid
+            // stop, so any unpainted edge reads as the same blue.
+            backgroundColor = UIColor(red: 186.0 / 255.0, green: 208.0 / 255.0, blue: 235.0 / 255.0, alpha: 1)
+            gradient.isHidden = false
         }
     }
 }
