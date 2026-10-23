@@ -1,8 +1,9 @@
 import UIKit
 
 /// 更新日志 viewer (Build 46): a sheet that slides up over the
-/// current page and comes to rest ≈54 pt below the top of the
-/// screen with its top corners rounded ≈34 pt (Build 49, matched
+/// current page and comes to rest ≈64 pt below the top of the
+/// screen (54 pt until Build 52 lowered it 10 pt) with its top
+/// corners rounded ≈34 pt (Build 49, matched
 /// to the reference). The root view is fully transparent — the
 /// live page underneath shows through above the sheet and in the
 /// corner notches. The sheet's own background is TWO layers
@@ -21,8 +22,9 @@ import UIKit
 /// indistinguishable from a solid fill. As a shell child the
 /// viewer sits directly on top of the attached live page,
 /// the way the bottom-search overlay does.
-/// Inside: a fixed header (centered title, frosted-glass
-/// close button) over a scrolling stack of per-version cards.
+/// Inside: a fixed header (centered title, native-glass
+/// close button since Build 52) over a scrolling stack of
+/// per-version cards.
 /// The cards are true frosted glass （毛玻璃）: a light system
 /// blur pushed milky-white with a white overlay and a bright rim
 /// (Build 47 recipe, overlay lightened to 0.38 in Build 48),
@@ -78,7 +80,7 @@ final class ChangelogViewController: UIViewController {
         NSLayoutConstraint.activate([
             sheet.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             sheet.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            sheet.topAnchor.constraint(equalTo: view.topAnchor, constant: 54),
+            sheet.topAnchor.constraint(equalTo: view.topAnchor, constant: 64),
             sheet.bottomAnchor.constraint(equalTo: view.bottomAnchor),
         ])
 
@@ -218,7 +220,7 @@ final class ChangelogViewController: UIViewController {
         didMove(toParent: shell)
         view.layoutIfNeeded()
         // Slide the sheet up from below the screen to its rest
-        // position (top at 54 pt), keeping the cover-vertical feel
+        // position (top at 64 pt), keeping the cover-vertical feel
         // the modal version had.
         guard let sheet = sheetView else { return }
         let travel = view.bounds.height + 60
@@ -406,20 +408,35 @@ private final class ChangelogGlassCardView: UIView {
     }
 }
 
-/// The header's circular close button (≈33 pt), in the same
-/// frosted-glass （毛玻璃） recipe as the cards (Build 47): light
-/// system blur + milky-white overlay + bright rim.
+/// The header's circular close button (≈33 pt). Build 52: on
+/// iOS 26 the surface is TRUE NATIVE GLASS — a `UIGlassEffect`
+/// effect view, interactive, clear/untinted (the same plain
+/// `UIGlassEffect()` the search overlay's input surface uses),
+/// shaped by `cornerConfiguration`; the × glyph is a plain
+/// content view on top of the effect view. Before iOS 26 the
+/// button falls back to the cards' frosted-glass （毛玻璃）
+/// recipe (Build 47): light system blur + milky-white overlay
+/// + bright rim. The CARDS stay frosted on every system — only
+/// this button is native glass, per the user's word.
 private final class ChangelogCloseButton: UIControl {
-    private let surface = UIVisualEffectView(effect: UIBlurEffect(style: .systemMaterialLight))
+    private let surface = UIVisualEffectView()
     private let whitewash = UIView()
 
     override init(frame: CGRect) {
         super.init(frame: frame)
-        layer.borderWidth = 1
-        layer.borderColor = UIColor.white.withAlphaComponent(0.85).cgColor
         surface.isUserInteractionEnabled = false
-        surface.clipsToBounds = true
-        whitewash.backgroundColor = UIColor.white.withAlphaComponent(0.38)
+        if #available(iOS 26.0, *) {
+            let glass = UIGlassEffect()
+            glass.isInteractive = true
+            surface.effect = glass
+            whitewash.isHidden = true
+        } else {
+            layer.borderWidth = 1
+            layer.borderColor = UIColor.white.withAlphaComponent(0.85).cgColor
+            surface.effect = UIBlurEffect(style: .systemMaterialLight)
+            surface.clipsToBounds = true
+            whitewash.backgroundColor = UIColor.white.withAlphaComponent(0.38)
+        }
         whitewash.isUserInteractionEnabled = false
         surface.contentView.addSubview(whitewash)
         addSubview(surface)
@@ -455,6 +472,10 @@ private final class ChangelogCloseButton: UIControl {
         super.layoutSubviews()
         let radius = bounds.height / 2
         layer.cornerRadius = radius
-        surface.layer.cornerRadius = radius
+        if #available(iOS 26.0, *), surface.effect is UIGlassEffect {
+            surface.cornerConfiguration = .uniformCorners(radius: .fixed(Double(radius)))
+        } else {
+            surface.layer.cornerRadius = radius
+        }
     }
 }
