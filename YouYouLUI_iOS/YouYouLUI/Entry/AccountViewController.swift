@@ -262,6 +262,24 @@ final class WhitePanelView: UIView {
         super.init(frame: frame)
         isUserInteractionEnabled = false
         clipsToBounds = true
+        // Build 43: the panel's own clip must carry the shape's
+        // bottom radius (formsPath's r = 26). Until now the panel
+        // clipped as a plain rectangle and the bitmaps supplied
+        // the roundness — but the switch animates the panel height
+        // for 0.55 s, and mid-switch the panel's bottom edge slices
+        // straight across the white bitmaps, so the visible white
+        // bottom read as two SQUARE corners against the gray card
+        // until the height settled and the bitmaps' own arcs
+        // reached the panel's bottom again (the user's recording
+        // shows exactly that slab mid-shrink). With the layer's
+        // bottom corners masked at the same 26 pt, every
+        // intermediate clip boundary is the design's arc. The top
+        // stays unmasked: the bump shapes live there and are never
+        // touched by the clip. At rest the panel height equals the
+        // bitmap height, so the mask coincides with the bitmap's
+        // own arcs and the settled look is unchanged.
+        layer.cornerRadius = 26
+        layer.maskedCorners = [.layerMinXMaxYCorner, .layerMaxXMaxYCorner]
         for (i, iv) in imageViews.enumerated() {
             // The frame is always set to the bitmap's own size, so
             // this content mode never actually scales anything.

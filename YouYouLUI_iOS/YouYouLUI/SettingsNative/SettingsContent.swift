@@ -53,6 +53,8 @@ enum SettingsContent {
             ChangelogEntry(tag: "修复", text: "修复 App 内签名完成后校验误报「签名校验失败」、签名文件被删除的问题。"),
             ChangelogEntry(tag: "修复", text: "修复签名后安装过程中多余弹出分享面板、可能导致安装失败的问题。"),
             ChangelogEntry(tag: "修复", text: "修复启动图在打开瞬间闪过紫色的问题。"),
+            ChangelogEntry(tag: "修复", text: "修复切换注册 / 登录时白色面板底部闪现直角的问题。"),
+            ChangelogEntry(tag: "修复", text: "修复打开 App 时系统启动屏闪紫的问题：启动屏改用与启动图一致的蓝色渐变。"),
         ]),
         ChangelogVersion(title: "Version 1.0.7-1", isCurrent: false, entries: [
             ChangelogEntry(tag: "新增", text: "自定义颜色新增「深色模式」分组：可单独开关深色图标反转，并自定义深色颜色。"),
