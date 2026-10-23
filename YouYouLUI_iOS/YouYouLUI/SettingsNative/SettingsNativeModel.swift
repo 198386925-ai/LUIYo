@@ -55,7 +55,6 @@ final class SettingsNativeModel: ObservableObject {
     // MARK: - Section expansion
     @Published var themeExpanded: Bool = false
     @Published var guideExpanded: Bool = false
-    @Published var changelogExpanded: Bool = false
 
     init() {
         self.appearanceMode = prefs.appearanceMode

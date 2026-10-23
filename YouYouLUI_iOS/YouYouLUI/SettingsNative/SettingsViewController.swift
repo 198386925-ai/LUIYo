@@ -177,8 +177,8 @@ final class FoldView: UIView {
     }
 }
 
-/// Settings page (UIKit): identity hero, theme / guide / changelog
-/// folds — same content and behaviour as the previous settings
+/// Settings page (UIKit): identity hero, theme / guide folds and
+/// the changelog viewer entry — same content and behaviour as the
 /// page, rendered with UIKit and the UIKit material. (Authorization
 /// lives in the account system now; the hero card shows its state —
 /// there is no activation form here. The 检查更新 entry moved to
@@ -194,9 +194,8 @@ final class SettingsViewController: UIViewController {
     private var heroView: UIView?
     private var themeFold: FoldView!
     private var guideFold: FoldView!
-    private var changelogFold: FoldView!
+    private var changelogRowCard: SolidCardView!
     private let appSettingsCard = SolidCardView(radius: 24)
-    private var changelogCards: [SolidCardView] = []
     private var minimizeSwitch: UISwitch!
     private var appearanceSeg: PillSegmentedControl!
     private var materialSeg: PillSegmentedControl!
@@ -284,18 +283,12 @@ final class SettingsViewController: UIViewController {
         ])
         stack.addArrangedSubview(guideFold)
 
-        changelogFold = FoldView(icon: "clock.arrow.circlepath", iconImage: luiyoBundledIcon("changelog"), title: "更新日志", subtitle: "Version 1.0.8 · 当前版本")
-        changelogFold.onToggle = { [weak self] in self?.model.changelogExpanded.toggle() }
-        let changelogContent = buildChangelogContent()
-        changelogFold.contentView.addSubview(changelogContent)
-        changelogContent.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            changelogContent.leadingAnchor.constraint(equalTo: changelogFold.contentView.leadingAnchor),
-            changelogContent.trailingAnchor.constraint(equalTo: changelogFold.contentView.trailingAnchor),
-            changelogContent.topAnchor.constraint(equalTo: changelogFold.contentView.topAnchor),
-            changelogContent.bottomAnchor.constraint(equalTo: changelogFold.contentView.bottomAnchor),
-        ])
-        stack.addArrangedSubview(changelogFold)
+        // 更新日志 is a plain push row since Build 46: tapping it
+        // presents the changelog viewer sheet; the log no longer
+        // expands inline on this page.
+        changelogRowCard = SolidCardView(radius: 24)
+        buildChangelogRow()
+        stack.addArrangedSubview(changelogRowCard)
 
         buildAppSettingsCard()
         stack.addArrangedSubview(appSettingsCard)
@@ -319,13 +312,12 @@ final class SettingsViewController: UIViewController {
             .store(in: &cancellables)
         model.$themeExpanded.sink { [weak self] value in self?.themeFold?.setExpanded(value, animated: true) }.store(in: &cancellables)
         model.$guideExpanded.sink { [weak self] value in self?.guideFold?.setExpanded(value, animated: true) }.store(in: &cancellables)
-        model.$changelogExpanded.sink { [weak self] value in self?.changelogFold?.setExpanded(value, animated: true) }.store(in: &cancellables)
         model.$pendingScroll
             .receive(on: DispatchQueue.main)
             .sink { [weak self] target in
                 guard let self, let target else { return }
                 self.model.pendingScroll = nil
-                let fold = target == "guide" ? self.guideFold : self.changelogFold
+                let fold = self.guideFold
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
                     let rect = fold!.convert(fold!.bounds, to: self.scrollView)
                     self.scrollView.scrollRectToVisible(rect.insetBy(dx: 0, dy: -8), animated: true)
@@ -340,7 +332,6 @@ final class SettingsViewController: UIViewController {
         refreshFromModel()
         themeFold.setExpanded(model.themeExpanded, animated: false)
         guideFold.setExpanded(model.guideExpanded, animated: false)
-        changelogFold.setExpanded(model.changelogExpanded, animated: false)
     }
 
     // MARK: - Hero
@@ -353,11 +344,7 @@ final class SettingsViewController: UIViewController {
                 self.model.guideExpanded.toggle()
                 if self.model.guideExpanded { self.model.pendingScroll = "guide" }
             },
-            { [weak self] in
-                guard let self else { return }
-                self.model.changelogExpanded.toggle()
-                if self.model.changelogExpanded { self.model.pendingScroll = "changelog" }
-            },
+            { [weak self] in self?.openChangelogViewer() },
             { [weak self] in self?.openAccountInfo() }
         )
         heroView = hero
@@ -572,76 +559,65 @@ final class SettingsViewController: UIViewController {
         return paddedContent(inner)
     }
 
-    private func tagColor(_ tag: String) -> UIColor {
-        switch tag {
-        case "新增": return UIColor(red: 0x34 / 255, green: 0xC7 / 255, blue: 0x59 / 255, alpha: 1)
-        case "优化": return UIColor(red: 0x0A / 255, green: 0x84 / 255, blue: 0xFF / 255, alpha: 1)
-        case "修复": return UIColor(red: 0xFF / 255, green: 0x9F / 255, blue: 0x0A / 255, alpha: 1)
-        default: return UIAppColors.secondary
-        }
+    /// The 更新日志 row: a 48 pt solid card in the same shape as
+    /// the 设置 entry below it — bundled icon, 13 pt semibold
+    /// title, push chevron. Tapping it (like the hero's 更新日志
+    /// pill) presents the changelog viewer sheet.
+    private func buildChangelogRow() {
+        let tap = UIControl()
+        tap.addTarget(self, action: #selector(changelogRowTapped), for: .touchUpInside)
+        changelogRowCard.content.addSubview(tap)
+        tap.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            tap.leadingAnchor.constraint(equalTo: changelogRowCard.content.leadingAnchor),
+            tap.trailingAnchor.constraint(equalTo: changelogRowCard.content.trailingAnchor),
+            tap.topAnchor.constraint(equalTo: changelogRowCard.content.topAnchor),
+            tap.bottomAnchor.constraint(equalTo: changelogRowCard.content.bottomAnchor),
+            tap.heightAnchor.constraint(equalToConstant: 48),
+        ])
+        let icon = UIImageView(image: luiyoBundledIcon("changelog"))
+        icon.tintColor = UIAppColors.inkDynamic
+        icon.contentMode = .scaleAspectFit
+        let title = UILabel()
+        title.text = "更新日志"
+        title.font = UIFont.systemFont(ofSize: 13, weight: .semibold)
+        title.textColor = UIAppColors.inkDynamic
+        let subtitle = UILabel()
+        subtitle.text = "Version 1.0.8 · 当前版本"
+        subtitle.font = UIFont.systemFont(ofSize: 8)
+        subtitle.textColor = UIAppColors.secondary
+        subtitle.isHidden = true
+        let chevron = UIImageView(image: UIImage(systemName: "chevron.right", withConfiguration: UIImage.SymbolConfiguration(pointSize: 13, weight: .semibold)))
+        chevron.tintColor = UIAppColors.inkDynamic
+        chevron.contentMode = .scaleAspectFit
+        tap.addSubview(icon)
+        tap.addSubview(title)
+        tap.addSubview(subtitle)
+        tap.addSubview(chevron)
+        icon.translatesAutoresizingMaskIntoConstraints = false
+        title.translatesAutoresizingMaskIntoConstraints = false
+        subtitle.translatesAutoresizingMaskIntoConstraints = false
+        chevron.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            icon.leadingAnchor.constraint(equalTo: tap.leadingAnchor, constant: 16),
+            icon.centerYAnchor.constraint(equalTo: tap.centerYAnchor),
+            icon.widthAnchor.constraint(equalToConstant: 21),
+            icon.heightAnchor.constraint(equalToConstant: 21),
+            title.leadingAnchor.constraint(equalTo: icon.trailingAnchor, constant: 10),
+            title.centerYAnchor.constraint(equalTo: tap.centerYAnchor),
+            subtitle.leadingAnchor.constraint(equalTo: title.trailingAnchor, constant: 6),
+            subtitle.centerYAnchor.constraint(equalTo: tap.centerYAnchor),
+            chevron.trailingAnchor.constraint(equalTo: tap.trailingAnchor, constant: -16),
+            chevron.centerYAnchor.constraint(equalTo: tap.centerYAnchor),
+        ])
     }
 
-    private func buildChangelogContent() -> UIView {
-        let inner = UIStackView()
-        inner.axis = .vertical
-        inner.spacing = 12
-        for version in SettingsContent.changelog {
-            let cardView = SolidCardView(radius: 26)
-            cardView.configure(tint: UIColor(nativeHex: homeModel.theme.card))
-            changelogCards.append(cardView)
-            let block = UIStackView()
-            block.axis = .vertical
-            block.spacing = 10
-            cardView.content.addSubview(block)
-            block.translatesAutoresizingMaskIntoConstraints = false
-            NSLayoutConstraint.activate([
-                block.leadingAnchor.constraint(equalTo: cardView.content.leadingAnchor, constant: 14),
-                block.trailingAnchor.constraint(equalTo: cardView.content.trailingAnchor, constant: -14),
-                block.topAnchor.constraint(equalTo: cardView.content.topAnchor, constant: 13),
-                block.bottomAnchor.constraint(equalTo: cardView.content.bottomAnchor, constant: -13),
-            ])
-            let head = UIStackView()
-            head.axis = .horizontal
-            head.spacing = 8
-            head.alignment = .center
-            let title = UILabel()
-            title.text = version.title
-            title.font = UIFont.systemFont(ofSize: 13.5, weight: .semibold)
-            title.textColor = .label
-            head.addArrangedSubview(title)
-            if version.isCurrent {
-                let current = UILabel()
-                current.text = "当前版本"
-                current.font = UIFont.systemFont(ofSize: 12.5, weight: .semibold)
-                current.textColor = .systemBlue
-                head.addArrangedSubview(current)
-            }
-            head.addArrangedSubview(UIView())
-            block.addArrangedSubview(head)
-            for entry in version.entries {
-                let label = UILabel()
-                label.numberOfLines = 0
-                let text = NSMutableAttributedString()
-                let para = NSMutableParagraphStyle()
-                para.lineSpacing = 3
-                if let tag = entry.tag, !tag.isEmpty {
-                    text.append(NSAttributedString(string: tag + "  ", attributes: [
-                        .font: UIFont.systemFont(ofSize: 13),
-                        .foregroundColor: tagColor(tag),
-                        .paragraphStyle: para,
-                    ]))
-                }
-                text.append(NSAttributedString(string: entry.text, attributes: [
-                    .font: UIFont.systemFont(ofSize: 13),
-                    .foregroundColor: UIColor.secondaryLabel,
-                    .paragraphStyle: para,
-                ]))
-                label.attributedText = text
-                block.addArrangedSubview(label)
-            }
-            inner.addArrangedSubview(cardView)
-        }
-        return paddedContent(inner)
+    @objc private func changelogRowTapped() { openChangelogViewer() }
+
+    private func openChangelogViewer() {
+        let viewer = ChangelogViewController(backgroundColor: UIColor(nativeHex: homeModel.theme.background))
+        viewer.applyPageFont(pageFont)
+        present(viewer, animated: true)
     }
 
     private func buildAppSettingsCard() {
@@ -736,8 +712,7 @@ final class SettingsViewController: UIViewController {
         appSettingsCard.configure(tint: tint)
         themeFold?.configureGlass(useBlur: homeModel.useBlur, tint: tint)
         guideFold?.configureGlass(useBlur: homeModel.useBlur, tint: tint)
-        changelogFold?.configureGlass(useBlur: homeModel.useBlur, tint: tint)
-        for card in changelogCards { card.configure(tint: tint) }
+        changelogRowCard?.configure(tint: tint)
     }
 }
 

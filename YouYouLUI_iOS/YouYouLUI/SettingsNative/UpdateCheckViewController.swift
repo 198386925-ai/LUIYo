@@ -4,9 +4,9 @@ import UniformTypeIdentifiers
 
 /// The 检查更新 page, rebuilt after the reference update page: the
 /// current version and a manual check with its status line share
-/// one card — the card always carries a collapsible 更新日志
-/// section (the current version's bundled changelog, or the new
-/// build's feed notes once a check finds one), and the update
+/// one card — the card carries a 更新日志 section whose header
+/// folds an offered build's feed notes, or opens the changelog
+/// viewer when no update is on offer — and the update
 /// offer (in-app download with progress) folds in below it —
 /// then the install-method row heading the behaviour switches
 /// card, and the certificate card (UDID entry, 导入证书， and the
@@ -320,10 +320,11 @@ final class UpdateCheckViewController: UIViewController {
     /// The 更新日志 + offer UI as a section of the version-check
     /// card (it was a standalone card before): 更新日志 header +
     /// notes, the download progress, then the one action button.
-    /// The header row folds the notes — collapsed by default, tap
-    /// to expand. The header and notes are always present; the
-    /// progress and button join them only while an update is on
-    /// offer.
+    /// While a build is on offer the header folds its feed notes —
+    /// collapsed by default, tap to expand. With no offer, the
+    /// header instead opens the changelog viewer sheet and the
+    /// notes stay hidden. The progress and button join only while
+    /// an update is on offer.
     private func buildOfferSection() -> UIView {
         let content = UIStackView()
         content.axis = .vertical
@@ -378,6 +379,16 @@ final class UpdateCheckViewController: UIViewController {
     }
 
     @objc private func offerHeaderTapped() {
+        // With no update on offer, the header opens the changelog
+        // viewer (the same sheet the 我的 page presents); the
+        // inline fold below only serves an offered build's feed
+        // notes.
+        guard updater.updateFound else {
+            let viewer = ChangelogViewController(backgroundColor: UIColor(nativeHex: homeModel.theme.background))
+            viewer.applyPageFont(pageFont)
+            present(viewer, animated: true)
+            return
+        }
         notesExpanded.toggle()
         offerNotesLabel.isHidden = !notesExpanded
         offerChevron.image = UIImage(systemName: notesExpanded ? "chevron.down" : "chevron.right",
@@ -497,6 +508,10 @@ final class UpdateCheckViewController: UIViewController {
             lastOfferBuild = updater.latestBuild
             notesExpanded = false
         }
+        // Without an offer there is nothing to fold: the header
+        // opens the changelog viewer instead, so the notes stay
+        // tucked away.
+        if !updater.updateFound { notesExpanded = false }
         offerNotesLabel.isHidden = !notesExpanded
         if updater.updateFound {
             offerNotesLabel.text = updater.releaseNotes.isEmpty ? "本次更新：优化体验，修复已知问题。" : updater.releaseNotes

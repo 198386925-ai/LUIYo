@@ -49,6 +49,7 @@ enum SettingsContent {
             ChangelogEntry(tag: "优化", text: "外观设置精简：移除「背景颜色」选项，背景固定为默认颜色；「卡片材质」选项保留，可切换液态玻璃与原生磨砂。"),
             ChangelogEntry(tag: "优化", text: "启动图背景颜色调淡：两个启动图的背景渐变整体调淡，系统启动屏同步保持一致。"),
             ChangelogEntry(tag: "优化", text: "「我的」页面行标题字号改为 13 号，与设置页统一。"),
+            ChangelogEntry(tag: "优化", text: "更新日志改为独立查看页，按版本分卡展示，上下滑动浏览全部版本。"),
             ChangelogEntry(tag: "修复", text: "修复新版启动闪退（签名库加载路径问题）。"),
             ChangelogEntry(tag: "修复", text: "修复版本弹窗首次出现时背景、图标与按钮不显示、需切到后台再切回才恢复的问题；弹窗画面按设计图一比一还原。"),
             ChangelogEntry(tag: "修复", text: "修复注册 / 登录切换时白色面板变形、卡片高度不随表单变化的问题。"),
