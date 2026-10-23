@@ -35,7 +35,9 @@ import UIKit
 /// in Build 56, frosted again since Build 57 — the user wants
 /// to watch the content slide up through the frost; it is the
 /// sheet's clip, not the strip's opacity, that keeps text out
-/// of the transparent zone above the sheet), so scrolled
+/// of the transparent zone above the sheet; Build 58 raises
+/// the strip's light tint to white 0.45 so the frost does not
+/// let the beige background's colour show through it), so scrolled
 /// cards travel up through the header zone and clip at the
 /// sheet's top edge; the title and close button keep their
 /// exact positions and appearance from Builds 46–54.
@@ -203,12 +205,19 @@ final class ChangelogViewController: UIViewController {
         // the sheet's top edge; what must never happen is text
         // appearing in the transparent zone above the sheet).
         // Same construction as the sheet's own film: one light
-        // system blur plus a colour-neutral tint laid in its
-        // content view (light: plain white sheen 0.15; dark:
-        // the #121214 tint at 0.5). Pinned over the header
-        // zone, above the scroll view, so cards scrolling up
-        // under the title show through it, blurred, rising to
-        // the sheet's top edge.
+        // system blur plus a tint laid in its content view
+        // (dark: the #121214 tint at 0.5, unchanged). Build 58
+        // (the user, on the reference video: 毛玻璃不要透出背景
+        // 颜色 — the frost must not let the background colour
+        // show through it): the strip's light-mode tint is
+        // raised from the film's white 0.15 to white 0.45, so
+        // the strip reads a clean milky white of its own
+        // instead of taking the warm beige sheet's cast through
+        // the blur — scrolled text still ghosts through it,
+        // blurred, but the beige does not. Pinned over the
+        // header zone, above the scroll view, so cards
+        // scrolling up under the title show through it,
+        // blurred, rising to the sheet's top edge.
         // The hard guarantee against escape: the strip and the
         // scroll view are both subviews of the sheet, whose
         // clipsToBounds — with the 34 pt radius masked to the
@@ -227,7 +236,7 @@ final class ChangelogViewController: UIViewController {
         headerStripTint.backgroundColor = UIColor { traits in
             traits.userInterfaceStyle == .dark
                 ? UIColor(red: 18.0 / 255.0, green: 18.0 / 255.0, blue: 20.0 / 255.0, alpha: 0.5)
-                : UIColor.white.withAlphaComponent(0.15)
+                : UIColor.white.withAlphaComponent(0.45)
         }
         headerStripTint.isUserInteractionEnabled = false
         headerStrip.contentView.addSubview(headerStripTint)
