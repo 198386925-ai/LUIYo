@@ -5,19 +5,19 @@ import UIKit
 /// screen with its top corners rounded ≈34 pt (Build 49, matched
 /// to the reference). The root view is fully transparent — the
 /// live page underneath shows through above the sheet and in the
-/// corner notches, and the sheet itself is a frosted veil:
-/// one light blur + a page-background wash at 0.90 (Build 51;
-/// Build 50 had 0.78), dense enough to read as the sheet's own
-/// background — the page underneath only washes through as a
-/// soft, illegible colour glow, the way the reference's
-/// wallpaper sits inside its sheet.
+/// corner notches. The sheet's own background is TWO layers
+/// (Build 51, the reference's construction): an opaque fill in
+/// the page background colour — the live page does not ghost
+/// through the sheet's body at all — plus a frosted-glass film
+/// over it (light blur + white tint 0.45), so the sheet reads
+/// soft while transparency exists only above it.
 /// Presentation is a CHILD OVERLAY of the app shell (Build 51,
 /// see `show(from:)`): Builds 49–50 presented this modally
 /// (.overFullScreen) from the embedded settings child and on
 /// device the modal's top read as flat opaque page colour —
 /// what sits behind a modal here is the window/shell painted
 /// with the background colour, not the live page render, so a
-/// 0.78 wash of that colour over a blur of itself is
+/// translucent wash of that colour over a blur of itself is
 /// indistinguishable from a solid fill. As a shell child the
 /// viewer sits directly on top of the attached live page,
 /// the way the bottom-search overlay does.
@@ -82,40 +82,52 @@ final class ChangelogViewController: UIViewController {
             sheet.bottomAnchor.constraint(equalTo: view.bottomAnchor),
         ])
 
-        // Frosted veil (Build 50, coverage raised in Build 51):
-        // the sheet's background is one light system blur under a
-        // page-background wash at 0.90 — dense enough to read as
-        // the sheet's own background layer, with the page below
-        // washing through only as a soft, illegible colour glow
-        // behind the header and around the cards, the way the
-        // reference app's wallpaper sits inside its sheet. The
-        // wash is the page background pair (#EFEFF3 light /
-        // #121214 dark), resolved per appearance. The sheet's
-        // clipsToBounds keeps both layers inside the rounded-top
-        // shape; the header and scroll view are added after, so
-        // they sit on top of the veil.
-        let veil = UIVisualEffectView(effect: UIBlurEffect(style: .systemMaterialLight))
-        veil.isUserInteractionEnabled = false
-        sheet.addSubview(veil)
-        veil.translatesAutoresizingMaskIntoConstraints = false
-        let veilWash = UIView()
-        veilWash.backgroundColor = UIColor { traits in
+        // Sheet background (Build 51 — the reference's TWO-layer
+        // construction, per the user's correction): layer 1 is an
+        // OPAQUE fill in the page background colour (#EFEFF3
+        // light / #121214 dark, resolved per appearance) — the
+        // live page does NOT ghost through the sheet's body at
+        // all; layer 2, on top of it, is a frosted-glass film: one
+        // light system blur carrying a translucent white tint at
+        // 0.45. The pair (solid background + frost over it) is
+        // what makes the reference's sheet read soft: its
+        // wallpaper is crisp above the sheet and soft inside it
+        // because inside there is a frost layer over the same
+        // background. Transparency exists ONLY above the sheet
+        // (the clear root). The sheet's clipsToBounds keeps both
+        // layers inside the rounded-top shape; the header and
+        // scroll view are added after, so they sit on top.
+        let sheetBackground = UIView()
+        sheetBackground.backgroundColor = UIColor { traits in
             traits.userInterfaceStyle == .dark
-                ? UIColor(red: 18.0 / 255.0, green: 18.0 / 255.0, blue: 20.0 / 255.0, alpha: 0.90)
-                : UIColor(red: 239.0 / 255.0, green: 239.0 / 255.0, blue: 243.0 / 255.0, alpha: 0.90)
+                ? UIColor(red: 18.0 / 255.0, green: 18.0 / 255.0, blue: 20.0 / 255.0, alpha: 1)
+                : UIColor(red: 239.0 / 255.0, green: 239.0 / 255.0, blue: 243.0 / 255.0, alpha: 1)
         }
-        veilWash.isUserInteractionEnabled = false
-        sheet.addSubview(veilWash)
-        veilWash.translatesAutoresizingMaskIntoConstraints = false
+        sheetBackground.isUserInteractionEnabled = false
+        sheet.addSubview(sheetBackground)
+        sheetBackground.translatesAutoresizingMaskIntoConstraints = false
+        let frost = UIVisualEffectView(effect: UIBlurEffect(style: .systemMaterialLight))
+        frost.isUserInteractionEnabled = false
+        let frostTint = UIView()
+        frostTint.backgroundColor = UIColor.white.withAlphaComponent(0.45)
+        frostTint.isUserInteractionEnabled = false
+        frost.contentView.addSubview(frostTint)
+        frostTint.translatesAutoresizingMaskIntoConstraints = false
+        sheet.addSubview(frost)
+        frost.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            veil.leadingAnchor.constraint(equalTo: sheet.leadingAnchor),
-            veil.trailingAnchor.constraint(equalTo: sheet.trailingAnchor),
-            veil.topAnchor.constraint(equalTo: sheet.topAnchor),
-            veil.bottomAnchor.constraint(equalTo: sheet.bottomAnchor),
-            veilWash.leadingAnchor.constraint(equalTo: sheet.leadingAnchor),
-            veilWash.trailingAnchor.constraint(equalTo: sheet.trailingAnchor),
-            veilWash.topAnchor.constraint(equalTo: sheet.topAnchor),
-            veilWash.bottomAnchor.constraint(equalTo: sheet.bottomAnchor),
+            sheetBackground.leadingAnchor.constraint(equalTo: sheet.leadingAnchor),
+            sheetBackground.trailingAnchor.constraint(equalTo: sheet.trailingAnchor),
+            sheetBackground.topAnchor.constraint(equalTo: sheet.topAnchor),
+            sheetBackground.bottomAnchor.constraint(equalTo: sheet.bottomAnchor),
+            frost.leadingAnchor.constraint(equalTo: sheet.leadingAnchor),
+            frost.trailingAnchor.constraint(equalTo: sheet.trailingAnchor),
+            frost.topAnchor.constraint(equalTo: sheet.topAnchor),
+            frost.bottomAnchor.constraint(equalTo: sheet.bottomAnchor),
+            frostTint.leadingAnchor.constraint(equalTo: frost.contentView.leadingAnchor),
+            frostTint.trailingAnchor.constraint(equalTo: frost.contentView.trailingAnchor),
+            frostTint.topAnchor.constraint(equalTo: frost.contentView.topAnchor),
+            frostTint.bottomAnchor.constraint(equalTo: frost.contentView.bottomAnchor),
         ])
 
         let header = UIView()
@@ -184,9 +196,10 @@ final class ChangelogViewController: UIViewController {
     /// Shows the viewer as a child overlay of the app shell — the
     /// construction the bottom-search overlay uses
     /// (`showSearchOverlay`) — so the live page and tab bar stay
-    /// attached directly underneath and every translucent layer
-    /// (transparent root, frosted veil, glass cards) has the real
-    /// page behind it. Falls back to an over-current-context
+    /// attached directly underneath: the clear root shows the
+    /// raw page above the sheet, and the glass cards blur the
+    /// sheet's own frost layer beneath them. Falls back to an
+    /// over-current-context
     /// modal (presenter stays in the hierarchy) only if no shell
     /// is reachable from the presenter.
     func show(from presenter: UIViewController) {
