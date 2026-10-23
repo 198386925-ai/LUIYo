@@ -4,10 +4,11 @@ import UIKit
 /// presenting page and comes to rest ≈54 pt below the top of the
 /// screen with its top corners rounded ≈30 pt, so a strip of the
 /// page underneath stays visible. Inside: a fixed header (centered
-/// title, glass close button) over a scrolling stack of per-version
-/// cards. The cards are frosted GLASS — iOS 26 `UIGlassEffect` in
-/// its regular, non-interactive form, pinned on purpose: they do
-/// NOT follow the 卡片材质 (liquid / blur) setting. Content is
+/// title, frosted-glass close button) over a scrolling stack of
+/// per-version cards. The cards are true frosted glass （毛玻璃）:
+/// a light system blur pushed milky-white with a white overlay and
+/// a bright rim (Build 47 recipe), pinned on purpose: they do NOT
+/// follow the 卡片材质 (liquid / blur) setting. Content is
 /// `SettingsContent.changelog`, newest first, rendered in the same
 /// type sizes the old inline fold used.
 final class ChangelogViewController: UIViewController {
@@ -199,38 +200,51 @@ final class ChangelogViewController: UIViewController {
     }
 }
 
-/// One changelog card: a frosted-glass surface under a content
-/// container, with only a whisper of shadow beneath (the user
-/// asked for the shadow kept very light). The glass is pinned —
-/// iOS 26 native glass on current systems, the system material
-/// blur only where glass does not exist — and never follows the
-/// 卡片材质 setting.
+/// One changelog card: a true frosted-glass （毛玻璃） surface
+/// under a content container — a light system blur pushed
+/// milky-white by a 60% white overlay, finished with a bright
+/// 1 pt rim, so the card reads almost white against the sheet
+/// while keeping a hint of translucency (Build 47; the Build 46
+/// iOS 26 liquid-glass surface read as a gray-lavender wash over
+/// the sheet and was rejected). Only a whisper of shadow beneath
+/// (the user asked for the shadow kept very light). The recipe
+/// is pinned and never follows the 卡片材质 setting. Structure:
+/// this wrapper owns the shadow, border and radius; the effect
+/// view pinned inside clips itself to the same radius.
 private final class ChangelogGlassCardView: UIView {
     let content = UIView()
-    private let surface = UIVisualEffectView()
+    private let surface = UIVisualEffectView(effect: UIBlurEffect(style: .systemMaterialLight))
+    private let whitewash = UIView()
 
     init() {
         super.init(frame: .zero)
         backgroundColor = .clear
+        layer.cornerRadius = 26
+        layer.borderWidth = 1
+        layer.borderColor = UIColor.white.withAlphaComponent(0.85).cgColor
         layer.shadowColor = UIColor.black.cgColor
         layer.shadowOpacity = 0.05
         layer.shadowRadius = 16
         layer.shadowOffset = CGSize(width: 0, height: 6)
-        if #available(iOS 26.0, *) {
-            surface.effect = UIGlassEffect(style: .regular)
-        } else {
-            surface.effect = UIBlurEffect(style: .systemMaterial)
-        }
         surface.isUserInteractionEnabled = false
+        surface.clipsToBounds = true
+        whitewash.backgroundColor = UIColor.white.withAlphaComponent(0.60)
+        whitewash.isUserInteractionEnabled = false
+        surface.contentView.addSubview(whitewash)
         addSubview(surface)
         addSubview(content)
         surface.translatesAutoresizingMaskIntoConstraints = false
         content.translatesAutoresizingMaskIntoConstraints = false
+        whitewash.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             surface.leadingAnchor.constraint(equalTo: leadingAnchor),
             surface.trailingAnchor.constraint(equalTo: trailingAnchor),
             surface.topAnchor.constraint(equalTo: topAnchor),
             surface.bottomAnchor.constraint(equalTo: bottomAnchor),
+            whitewash.leadingAnchor.constraint(equalTo: surface.contentView.leadingAnchor),
+            whitewash.trailingAnchor.constraint(equalTo: surface.contentView.trailingAnchor),
+            whitewash.topAnchor.constraint(equalTo: surface.contentView.topAnchor),
+            whitewash.bottomAnchor.constraint(equalTo: surface.contentView.bottomAnchor),
             content.leadingAnchor.constraint(equalTo: leadingAnchor),
             content.trailingAnchor.constraint(equalTo: trailingAnchor),
             content.topAnchor.constraint(equalTo: topAnchor),
@@ -244,35 +258,37 @@ private final class ChangelogGlassCardView: UIView {
         super.layoutSubviews()
         layer.shadowPath = UIBezierPath(roundedRect: bounds, cornerRadius: 26).cgPath
         surface.layer.cornerRadius = 26
-        if #available(iOS 26.0, *), surface.effect is UIGlassEffect {
-            surface.cornerConfiguration = .uniformCorners(radius: .fixed(26))
-            surface.clipsToBounds = false
-        } else {
-            surface.clipsToBounds = true
-        }
-        removeExtraLayerShadows(surface.layer)
     }
 }
 
-/// The header's circular glass close button (≈34 pt).
+/// The header's circular close button (≈34 pt), in the same
+/// frosted-glass （毛玻璃） recipe as the cards (Build 47): light
+/// system blur + milky-white overlay + bright rim.
 private final class ChangelogCloseButton: UIControl {
-    private let surface = UIVisualEffectView()
+    private let surface = UIVisualEffectView(effect: UIBlurEffect(style: .systemMaterialLight))
+    private let whitewash = UIView()
 
     override init(frame: CGRect) {
         super.init(frame: frame)
-        if #available(iOS 26.0, *) {
-            surface.effect = UIGlassEffect(style: .regular)
-        } else {
-            surface.effect = UIBlurEffect(style: .systemMaterial)
-        }
+        layer.borderWidth = 1
+        layer.borderColor = UIColor.white.withAlphaComponent(0.85).cgColor
         surface.isUserInteractionEnabled = false
+        surface.clipsToBounds = true
+        whitewash.backgroundColor = UIColor.white.withAlphaComponent(0.60)
+        whitewash.isUserInteractionEnabled = false
+        surface.contentView.addSubview(whitewash)
         addSubview(surface)
         surface.translatesAutoresizingMaskIntoConstraints = false
+        whitewash.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             surface.leadingAnchor.constraint(equalTo: leadingAnchor),
             surface.trailingAnchor.constraint(equalTo: trailingAnchor),
             surface.topAnchor.constraint(equalTo: topAnchor),
             surface.bottomAnchor.constraint(equalTo: bottomAnchor),
+            whitewash.leadingAnchor.constraint(equalTo: surface.contentView.leadingAnchor),
+            whitewash.trailingAnchor.constraint(equalTo: surface.contentView.trailingAnchor),
+            whitewash.topAnchor.constraint(equalTo: surface.contentView.topAnchor),
+            whitewash.bottomAnchor.constraint(equalTo: surface.contentView.bottomAnchor),
         ])
         let icon = UIImageView(image: UIImage(systemName: "xmark", withConfiguration: UIImage.SymbolConfiguration(pointSize: 12.5, weight: .semibold)))
         icon.tintColor = UIAppColors.inkDynamic
@@ -293,13 +309,7 @@ private final class ChangelogCloseButton: UIControl {
     override func layoutSubviews() {
         super.layoutSubviews()
         let radius = bounds.height / 2
+        layer.cornerRadius = radius
         surface.layer.cornerRadius = radius
-        if #available(iOS 26.0, *), surface.effect is UIGlassEffect {
-            surface.cornerConfiguration = .uniformCorners(radius: .fixed(Double(radius)))
-            surface.clipsToBounds = false
-        } else {
-            surface.clipsToBounds = true
-        }
-        removeExtraLayerShadows(surface.layer)
     }
 }
