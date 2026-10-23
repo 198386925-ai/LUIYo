@@ -139,14 +139,15 @@ final class FoldView: UIView {
 }
 
 /// Settings page (UIKit): identity hero, theme / guide / changelog
-/// folds and the update check row — same content and behaviour as
-/// the previous settings page, rendered with UIKit and the UIKit
-/// material. (Authorization lives in the account system now; the
-/// hero card shows its state — there is no activation form here.)
+/// folds — same content and behaviour as the previous settings
+/// page, rendered with UIKit and the UIKit material. (Authorization
+/// lives in the account system now; the hero card shows its state —
+/// there is no activation form here. The 检查更新 entry moved to
+/// the 设置 page in Build 35; the background auto-check itself is
+/// unchanged.)
 final class SettingsViewController: UIViewController {
     let model: SettingsNativeModel
     let homeModel: NativeHomeModel
-    private let updater = AppUpdateChecker.shared
 
     private let scrollView = UIScrollView()
     private let stack = UIStackView()
@@ -155,8 +156,6 @@ final class SettingsViewController: UIViewController {
     private var themeFold: FoldView!
     private var guideFold: FoldView!
     private var changelogFold: FoldView!
-    private let updateCard = GlassCardView(radius: 26)
-    private var updateBadge: UIView?
     private let appSettingsCard = GlassCardView(radius: 26)
     private var changelogCards: [GlassCardView] = []
     private var backgroundWell: UIColorWell!
@@ -260,9 +259,6 @@ final class SettingsViewController: UIViewController {
         ])
         stack.addArrangedSubview(changelogFold)
 
-        buildUpdateCard()
-        stack.addArrangedSubview(updateCard)
-
         buildAppSettingsCard()
         stack.addArrangedSubview(appSettingsCard)
 
@@ -273,7 +269,6 @@ final class SettingsViewController: UIViewController {
         footer.font = UIFont.systemFont(ofSize: 12)
         footer.textColor = UIAppColors.secondary
         stack.addArrangedSubview(footer)
-        stack.setCustomSpacing(8, after: updateCard)
         stack.setCustomSpacing(8, after: appSettingsCard)
 
         model.objectWillChange
@@ -302,10 +297,6 @@ final class SettingsViewController: UIViewController {
         homeModel.objectWillChange
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in self?.refreshTheme() }
-            .store(in: &cancellables)
-        updater.$updateFound
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] found in self?.updateBadge?.isHidden = !found }
             .store(in: &cancellables)
         refreshTheme()
         refreshFromModel()
@@ -652,66 +643,6 @@ final class SettingsViewController: UIViewController {
         return paddedContent(inner)
     }
 
-    // MARK: - Update row
-
-    private func buildUpdateCard() {
-        let tap = UIControl()
-        tap.addTarget(self, action: #selector(updateTapped), for: .touchUpInside)
-        updateCard.content.addSubview(tap)
-        tap.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            tap.leadingAnchor.constraint(equalTo: updateCard.content.leadingAnchor),
-            tap.trailingAnchor.constraint(equalTo: updateCard.content.trailingAnchor),
-            tap.topAnchor.constraint(equalTo: updateCard.content.topAnchor),
-            tap.bottomAnchor.constraint(equalTo: updateCard.content.bottomAnchor),
-            tap.heightAnchor.constraint(equalToConstant: 42),
-        ])
-        let icon = UIImageView(image: luiyoBundledIcon("update"))
-        icon.tintColor = UIAppColors.inkDynamic
-        icon.contentMode = .scaleAspectFit
-        let title = UILabel()
-        title.text = "检查更新"
-        title.font = UIFont.systemFont(ofSize: 12, weight: .semibold)
-        title.textColor = UIAppColors.inkDynamic
-        let chevron = UIImageView(image: UIImage(systemName: "chevron.right", withConfiguration: UIImage.SymbolConfiguration(pointSize: 13, weight: .semibold)))
-        chevron.tintColor = UIAppColors.inkDynamic
-        // Red dot shown while the shared update checker knows a
-        // newer build exists (launch auto-check / manual check).
-        let badge = UIView()
-        badge.backgroundColor = .systemRed
-        badge.layer.cornerRadius = 5
-        badge.isHidden = !updater.updateFound
-        updateBadge = badge
-        tap.addSubview(icon)
-        tap.addSubview(title)
-        tap.addSubview(chevron)
-        tap.addSubview(badge)
-        icon.translatesAutoresizingMaskIntoConstraints = false
-        title.translatesAutoresizingMaskIntoConstraints = false
-        chevron.translatesAutoresizingMaskIntoConstraints = false
-        badge.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            icon.leadingAnchor.constraint(equalTo: tap.leadingAnchor, constant: 16),
-            icon.centerYAnchor.constraint(equalTo: tap.centerYAnchor),
-            icon.widthAnchor.constraint(equalToConstant: 21),
-            icon.heightAnchor.constraint(equalToConstant: 21),
-            title.leadingAnchor.constraint(equalTo: icon.trailingAnchor, constant: 10),
-            title.centerYAnchor.constraint(equalTo: tap.centerYAnchor),
-            chevron.trailingAnchor.constraint(equalTo: tap.trailingAnchor, constant: -16),
-            chevron.centerYAnchor.constraint(equalTo: tap.centerYAnchor),
-            badge.leadingAnchor.constraint(equalTo: title.trailingAnchor, constant: 8),
-            badge.centerYAnchor.constraint(equalTo: tap.centerYAnchor),
-            badge.widthAnchor.constraint(equalToConstant: 10),
-            badge.heightAnchor.constraint(equalToConstant: 10),
-        ])
-    }
-
-    @objc private func updateTapped() {
-        let page = UpdateCheckViewController(updater: updater, homeModel: homeModel)
-        page.applyPageFont(pageFont)
-        present(page, animated: true)
-    }
-
     private func buildAppSettingsCard() {
         let tap = UIControl()
         tap.addTarget(self, action: #selector(appSettingsTapped), for: .touchUpInside)
@@ -802,7 +733,6 @@ final class SettingsViewController: UIViewController {
             ? UIColor(nativeHex: homeModel.theme.background)
             : .clear
         let tint = UIColor(nativeHex: homeModel.theme.card)
-        updateCard.configure(useBlur: homeModel.useBlur, tint: tint)
         appSettingsCard.configure(useBlur: homeModel.useBlur, tint: tint)
         themeFold?.configureGlass(useBlur: homeModel.useBlur, tint: tint)
         guideFold?.configureGlass(useBlur: homeModel.useBlur, tint: tint)
