@@ -12,11 +12,12 @@ import UIKit
 /// the page background colour — the live page does not ghost
 /// through the sheet's body at all — plus a frosted-glass film
 /// over it, so the sheet reads soft while transparency exists
-/// only above it. Build 54: the light-mode background layer is
-/// a vertical gradient in the user's #BAD0EB family and the
-/// film is back to a colour-neutral frost (light blur + plain
-/// white sheen 0.15) so the gradient shows through undyed;
-/// dark mode keeps its flat #121214 background and film.
+/// only above it. Build 55: the light-mode background layer is
+/// a FLAT warm beige #F0EEE8 (the reference app's paper colour,
+/// the user's pick over Build 54's #BAD0EB-family gradient)
+/// and the film stays a colour-neutral frost (light blur +
+/// plain white sheen 0.15) over it; dark mode keeps its flat
+/// #121214 background and film.
 /// Presentation is a CHILD OVERLAY of the app shell (Build 51,
 /// see `show(from:)`): Builds 49–50 presented this modally
 /// (.overFullScreen) from the embedded settings child and on
@@ -29,7 +30,11 @@ import UIKit
 /// the way the bottom-search overlay does.
 /// Inside: a fixed header (centered title, native-glass
 /// close button since Build 52) over a scrolling stack of
-/// per-version cards.
+/// per-version cards. Build 55: the scroll view spans the
+/// full sheet under a frosted header strip, so scrolled cards
+/// travel up through the header zone and clip at the sheet's
+/// top edge; the title and close button keep their exact
+/// positions and appearance from Builds 46–54.
 /// The cards are true frosted glass （毛玻璃）: a light system
 /// blur pushed milky-white with a white overlay and a bright rim
 /// (Build 47 recipe, overlay lightened to 0.38 in Build 48),
@@ -93,22 +98,20 @@ final class ChangelogViewController: UIViewController {
         // construction, per the user's correction): layer 1 is an
         // OPAQUE background — the live page does NOT ghost through
         // the sheet's body at all; layer 2, on top of it, is a
-        // frosted-glass film. Build 54 (the user's colour call):
-        // the gradient colour belongs to the BACKGROUND layer
-        // only — light mode is a vertical gradient in his
-        // #BAD0EB family (#E3EEFA at the top, #BAD0EB at 55%,
-        // #A8C4E4 at the bottom; dark mode keeps the flat
-        // #121214, the colour being a light-mode identity) — and
-        // the film is colour-NEUTRAL: one light system blur plus
-        // a plain white sheen at 0.15 (dark: the #121214 tint at
-        // 0.5 as before), so the gradient shows through the
-        // frost undyed. (Build 53 had tinted the film with the
-        // flat background colour at 0.5 to keep the sheet exactly
-        // #EFEFF3; that washes a gradient flat, so it goes.)
+        // frosted-glass film. Build 55 (the user's colour call):
+        // the colour belongs to the BACKGROUND layer only —
+        // light mode is a FLAT warm beige #F0EEE8 (the reference
+        // app's paper colour, sampled from its sheet; he picked
+        // it over Build 54's #BAD0EB-family gradient; dark mode
+        // keeps the flat #121214) — and the film is
+        // colour-NEUTRAL: one light system blur plus a plain
+        // white sheen at 0.15 (dark: the #121214 tint at 0.5 as
+        // before), so the beige shows through the frost undyed.
         // Transparency exists ONLY above the sheet (the clear
         // root). The sheet's clipsToBounds keeps both layers
-        // inside the rounded-top shape; the header and scroll
-        // view are added after, so they sit on top.
+        // inside the rounded-top shape; the scroll view, header
+        // frost strip and header are added after, so they sit
+        // on top.
         let sheetBackground = ChangelogSheetBackgroundView()
         sheetBackground.isUserInteractionEnabled = false
         sheet.addSubview(sheetBackground)
@@ -141,6 +144,78 @@ final class ChangelogViewController: UIViewController {
             frostTint.bottomAnchor.constraint(equalTo: frost.contentView.bottomAnchor),
         ])
 
+        // Scroll view (Build 55): spans the FULL sheet — its top
+        // is the sheet's top edge — so scrolled cards travel up
+        // through the header zone and clip at the sheet's top
+        // edge (the user's red line) instead of being cut off at
+        // the header's bottom edge. A 74 pt top content inset
+        // keeps the resting layout pixel-identical to Builds
+        // 46–54: the first card still begins at sheet top + 74.
+        // The header frost strip and the header are added after
+        // the scroll view so they render above it; the title
+        // and close button keep their original constraints.
+        let scrollView = UIScrollView()
+        scrollView.alwaysBounceVertical = true
+        scrollView.showsVerticalScrollIndicator = false
+        scrollView.contentInsetAdjustmentBehavior = .never
+        scrollView.contentInset.top = 74
+        scrollView.verticalScrollIndicatorInsets.top = 74
+        sheet.addSubview(scrollView)
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            scrollView.leadingAnchor.constraint(equalTo: sheet.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: sheet.trailingAnchor),
+            scrollView.topAnchor.constraint(equalTo: sheet.topAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: sheet.bottomAnchor),
+        ])
+        let stack = UIStackView()
+        stack.axis = .vertical
+        stack.spacing = 16
+        scrollView.addSubview(stack)
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            stack.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor, constant: 18),
+            stack.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor, constant: -18),
+            stack.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor, constant: 0),
+            stack.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor, constant: -28),
+            stack.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor, constant: -36),
+        ])
+        for version in SettingsContent.changelog {
+            stack.addArrangedSubview(makeCard(version))
+        }
+
+        // Header frost strip (Build 55): the sheet film's recipe
+        // (light system blur + colour-neutral tint) pinned over
+        // the header zone, above the scroll view, so cards
+        // scrolling up under the title are frosted, not shown
+        // raw; the sheet's own clipsToBounds keeps the strip
+        // inside the rounded top corners. Non-interactive — the
+        // header (title + close button) is added next and
+        // renders above it, unmoved.
+        let headerFrost = UIVisualEffectView(effect: UIBlurEffect(style: .systemMaterialLight))
+        headerFrost.isUserInteractionEnabled = false
+        let headerFrostTint = UIView()
+        headerFrostTint.backgroundColor = UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? UIColor(red: 18.0 / 255.0, green: 18.0 / 255.0, blue: 20.0 / 255.0, alpha: 0.5)
+                : UIColor.white.withAlphaComponent(0.15)
+        }
+        headerFrostTint.isUserInteractionEnabled = false
+        headerFrost.contentView.addSubview(headerFrostTint)
+        headerFrostTint.translatesAutoresizingMaskIntoConstraints = false
+        sheet.addSubview(headerFrost)
+        headerFrost.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            headerFrost.leadingAnchor.constraint(equalTo: sheet.leadingAnchor),
+            headerFrost.trailingAnchor.constraint(equalTo: sheet.trailingAnchor),
+            headerFrost.topAnchor.constraint(equalTo: sheet.topAnchor),
+            headerFrost.heightAnchor.constraint(equalToConstant: 74),
+            headerFrostTint.leadingAnchor.constraint(equalTo: headerFrost.contentView.leadingAnchor),
+            headerFrostTint.trailingAnchor.constraint(equalTo: headerFrost.contentView.trailingAnchor),
+            headerFrostTint.topAnchor.constraint(equalTo: headerFrost.contentView.topAnchor),
+            headerFrostTint.bottomAnchor.constraint(equalTo: headerFrost.contentView.bottomAnchor),
+        ])
+
         let header = UIView()
         sheet.addSubview(header)
         header.translatesAutoresizingMaskIntoConstraints = false
@@ -171,33 +246,6 @@ final class ChangelogViewController: UIViewController {
             closeButton.heightAnchor.constraint(equalToConstant: 33),
             title.trailingAnchor.constraint(lessThanOrEqualTo: closeButton.leadingAnchor, constant: -12),
         ])
-
-        let scrollView = UIScrollView()
-        scrollView.alwaysBounceVertical = true
-        scrollView.showsVerticalScrollIndicator = false
-        sheet.addSubview(scrollView)
-        scrollView.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            scrollView.leadingAnchor.constraint(equalTo: sheet.leadingAnchor),
-            scrollView.trailingAnchor.constraint(equalTo: sheet.trailingAnchor),
-            scrollView.topAnchor.constraint(equalTo: header.bottomAnchor),
-            scrollView.bottomAnchor.constraint(equalTo: sheet.bottomAnchor),
-        ])
-        let stack = UIStackView()
-        stack.axis = .vertical
-        stack.spacing = 16
-        scrollView.addSubview(stack)
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            stack.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor, constant: 18),
-            stack.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor, constant: -18),
-            stack.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor, constant: 0),
-            stack.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor, constant: -28),
-            stack.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor, constant: -36),
-        ])
-        for version in SettingsContent.changelog {
-            stack.addArrangedSubview(makeCard(version))
-        }
     }
 
     @objc private func closeTapped() { dismissViewer() }
@@ -490,59 +538,24 @@ private final class ChangelogCloseButton: UIControl {
 }
 
 /// The sheet's background layer (layer 1 of the two-layer
-/// construction). Light mode (Build 54, the user's colour call):
-/// a vertical gradient in his #BAD0EB family — #E3EEFA at the
-/// top, #BAD0EB at 55%, #A8C4E4 at the bottom — opaque, so the
-/// live page never ghosts through the sheet's body. Dark mode
-/// keeps the flat #121214 of Builds 51–53: #BAD0EB is a
-/// light-mode identity colour and no dark gradient was asked
-/// for. The colour lives ONLY in this layer; the frost film
-/// laid over it is colour-neutral.
+/// construction). Light mode (Build 55, the user's colour
+/// call): a FLAT warm beige #F0EEE8 — the reference app's
+/// paper colour, sampled from its sheet (RGB 240, 238, 232) —
+/// which he picked over Build 54's #BAD0EB-family gradient;
+/// opaque, so the live page never ghosts through the sheet's
+/// body. Dark mode keeps the flat #121214 of Builds 51–54.
+/// The colour lives ONLY in this layer; the frost film laid
+/// over it is colour-neutral. A dynamic colour provider
+/// keeps the fill correct across appearance changes.
 private final class ChangelogSheetBackgroundView: UIView {
-    private let gradient = CAGradientLayer()
-
     override init(frame: CGRect) {
         super.init(frame: frame)
-        gradient.colors = [
-            UIColor(red: 227.0 / 255.0, green: 238.0 / 255.0, blue: 250.0 / 255.0, alpha: 1).cgColor, // #E3EEFA
-            UIColor(red: 186.0 / 255.0, green: 208.0 / 255.0, blue: 235.0 / 255.0, alpha: 1).cgColor, // #BAD0EB
-            UIColor(red: 168.0 / 255.0, green: 196.0 / 255.0, blue: 228.0 / 255.0, alpha: 1).cgColor, // #A8C4E4
-        ]
-        gradient.locations = [0, 0.55, 1]
-        gradient.startPoint = CGPoint(x: 0.5, y: 0)
-        gradient.endPoint = CGPoint(x: 0.5, y: 1)
-        layer.addSublayer(gradient)
-        refresh()
+        backgroundColor = UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? UIColor(red: 18.0 / 255.0, green: 18.0 / 255.0, blue: 20.0 / 255.0, alpha: 1) // #121214
+                : UIColor(red: 240.0 / 255.0, green: 238.0 / 255.0, blue: 232.0 / 255.0, alpha: 1) // #F0EEE8
+        }
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        gradient.frame = bounds
-    }
-
-    override func didMoveToWindow() {
-        super.didMoveToWindow()
-        refresh()
-    }
-
-    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
-        super.traitCollectionDidChange(previousTraitCollection)
-        if traitCollection.userInterfaceStyle != previousTraitCollection?.userInterfaceStyle {
-            refresh()
-        }
-    }
-
-    private func refresh() {
-        if traitCollection.userInterfaceStyle == .dark {
-            backgroundColor = UIColor(red: 18.0 / 255.0, green: 18.0 / 255.0, blue: 20.0 / 255.0, alpha: 1)
-            gradient.isHidden = true
-        } else {
-            // Base under the gradient is the gradient's own mid
-            // stop, so any unpainted edge reads as the same blue.
-            backgroundColor = UIColor(red: 186.0 / 255.0, green: 208.0 / 255.0, blue: 235.0 / 255.0, alpha: 1)
-            gradient.isHidden = false
-        }
-    }
 }
