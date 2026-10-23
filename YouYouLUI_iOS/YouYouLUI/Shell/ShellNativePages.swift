@@ -14,6 +14,12 @@ extension MainShellViewController {
         model.hasCustomFont = self.fontController.library.hasAnyCustomSelection
         model.customFontName = self.fontController.library.summary()
         model.onAppearanceChanged = { [weak self] mode in self?.applyAppearance(mode) }
+        model.onCardMaterialChanged = { [weak self] mode in self?.setCardMaterialMode(mode) }
+        // Apply the stored material now: assigning cardMaterial in
+        // the model's init does not fire its didSet, so without this
+        // the home model would keep its initial value until the
+        // user next touches the segmented control.
+        setCardMaterialMode(model.cardMaterial)
         model.onColorsChanged = { [weak self] in self?.applyStoredPalette() }
         model.onMinimizeChanged = { [weak self] enabled in self?.setScrollMinimize(enabled) }
         model.onBottomSearchLayoutChanged = { [weak self] layout in

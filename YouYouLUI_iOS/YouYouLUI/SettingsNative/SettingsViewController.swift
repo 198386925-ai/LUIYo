@@ -199,6 +199,7 @@ final class SettingsViewController: UIViewController {
     private var changelogCards: [SolidCardView] = []
     private var minimizeSwitch: UISwitch!
     private var appearanceSeg: PillSegmentedControl!
+    private var materialSeg: PillSegmentedControl!
     private var bottomSearchSeg: PillSegmentedControl!
     private var fontSubtitleLabel: UILabel?
     private var cancellables = Set<AnyCancellable>()
@@ -254,7 +255,7 @@ final class SettingsViewController: UIViewController {
         stack.addArrangedSubview(heroContainer)
         rebuildHero()
 
-        themeFold = FoldView(icon: "circle.lefthalf.filled", iconImage: luiyoBundledIcon("theme"), title: "外观", subtitle: "外观模式、按钮与字体")
+        themeFold = FoldView(icon: "circle.lefthalf.filled", iconImage: luiyoBundledIcon("theme"), title: "外观", subtitle: "卡片材质、按钮与字体")
         themeFold.onToggle = { [weak self] in
             guard let self else { return }
             self.model.themeExpanded.toggle()
@@ -458,6 +459,14 @@ final class SettingsViewController: UIViewController {
         appearanceSeg.translatesAutoresizingMaskIntoConstraints = false
         appearanceSeg.widthAnchor.constraint(equalToConstant: 140).isActive = true
         inner.addArrangedSubview(themeRow(title: "外观模式", subtitle: "跟随系统或固定浅色 / 深色", control: appearanceSeg, divider: true))
+
+        materialSeg = PillSegmentedControl()
+        materialSeg.options = [("liquid", "液态玻璃"), ("blur", "原生磨砂")]
+        materialSeg.setSelectedValue(model.cardMaterial)
+        materialSeg.onChange = { [weak self] value in self?.model.cardMaterial = value }
+        materialSeg.translatesAutoresizingMaskIntoConstraints = false
+        materialSeg.widthAnchor.constraint(equalToConstant: 132).isActive = true
+        inner.addArrangedSubview(themeRow(title: "卡片材质", subtitle: "iOS 26+ 原生液态玻璃 / UIKit 原生磨砂", control: materialSeg, divider: true))
 
         bottomSearchSeg = PillSegmentedControl()
         bottomSearchSeg.options = [("off", "关闭"), ("merged", "合并"), ("separate", "分开")]
@@ -711,6 +720,7 @@ final class SettingsViewController: UIViewController {
     private func refreshFromModel() {
         minimizeSwitch?.setOn(model.minimizeBottomBar, animated: false)
         appearanceSeg?.setSelectedValue(model.appearanceMode)
+        materialSeg?.setSelectedValue(model.cardMaterial)
         bottomSearchSeg?.setSelectedValue(model.bottomSearchLayout)
         fontSubtitleLabel?.text = model.customFontName
         refreshHero()

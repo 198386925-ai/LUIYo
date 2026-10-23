@@ -9,10 +9,12 @@ final class NativeHomeModel: ObservableObject {
     @Published var images: [Int: UIImage] = [:]
     @Published var status = ""
     @Published var query = ""
-    /// Card material, pinned to the native frosted ("blur")
-    /// behaviour — Build 41 removed the 卡片材质 setting, so this
-    /// never changes at runtime anymore.
-    @Published var useBlur = true
+    /// Card material: follows the 外观「卡片材质」setting
+    /// (ThemePreferences.cardMaterialMode) — true = 原生磨砂，
+    /// false = 液态玻璃. Initialised from the stored preference so
+    /// the first frame already matches the setting; the shell
+    /// re-applies it on every change (setCardMaterialMode).
+    @Published var useBlur = ThemePreferences.shared.cardMaterialMode == "blur"
     @Published var backgroundImage: UIImage?
     @Published var theme = NativeHomeTheme()
     @Published var fontName: String?

@@ -49,7 +49,15 @@ final class EntryGateViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = splashHex("#6a54c8")
+        // The gate's own background is only visible in the frames
+        // before the splash child embeds (the splash is embedded
+        // from viewDidAppear), so it wears the incoming splash's
+        // own base colour — Splash04 paints #2f63c8 behind its
+        // gradient, Splash03 paints #2f4f9e. Build 42: this used to
+        // be a solid #6a54c8 (the purple end stop of both splash
+        // gradients), which flashed as a full-screen purple moment
+        // at every launch before the splash composed.
+        view.backgroundColor = splashHex(AccountSession.isLoggedIn ? "#2f63c8" : "#2f4f9e")
         NotificationCenter.default.addObserver(
             self, selector: #selector(startIfNeeded),
             name: UIApplication.didBecomeActiveNotification, object: nil)
@@ -83,6 +91,7 @@ final class EntryGateViewController: UIViewController {
     // MARK: Splash 03 gate
 
     private func showSplash03() {
+        view.backgroundColor = splashHex("#2f4f9e")
         let splash = Splash03ViewController()
         splash.onRegisterTap = { [weak self] in self?.presentAccount() }
         embed(splash)
@@ -154,6 +163,7 @@ final class EntryGateViewController: UIViewController {
     // MARK: Splash 04 + status verdict
 
     private func showSplash04() {
+        view.backgroundColor = splashHex("#2f63c8")
         let splash = Splash04ViewController()
         embed(splash)
         splash04 = splash

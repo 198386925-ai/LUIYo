@@ -13,6 +13,7 @@ final class SettingsNativeModel: ObservableObject {
     /// Set by hero buttons: which fold to scroll to after expanding.
     @Published var pendingScroll: String?
     var onAppearanceChanged: ((String) -> Void)?
+    var onCardMaterialChanged: ((String) -> Void)?
     var onColorsChanged: (() -> Void)?
     var onMinimizeChanged: ((Bool) -> Void)?
     var onBottomSearchLayoutChanged: ((String) -> Void)?
@@ -23,13 +24,17 @@ final class SettingsNativeModel: ObservableObject {
         didSet { prefs.appearanceMode = appearanceMode; onAppearanceChanged?(appearanceMode) }
     }
 
+    // MARK: - Card material
+    /// "liquid" or "blur"
+    @Published var cardMaterial: String {
+        didSet { prefs.cardMaterialMode = cardMaterial; onCardMaterialChanged?(cardMaterial) }
+    }
+
     // MARK: - Colors (hex strings)
-    // Build 41: the 卡片材质 and 背景颜色 settings were removed.
-    // The material is pinned to the native frosted behaviour
-    // (NativeHomeModel.useBlur is permanently true) and the page
-    // background is pinned to the factory flat colour, so neither
-    // has model state anymore; only the card/button colour slots
-    // remain.
+    // Build 41 removed the 背景颜色 setting and that stays removed:
+    // the page background is pinned to the factory flat colour and
+    // has no model state. (Build 41 also removed 卡片材质； Build 42
+    // restored it above at the user's request.)
     @Published var cardColorHex: String = "#FFFFFF"
     @Published var buttonColorHex: String = "#FFFFFF"
 
@@ -54,6 +59,7 @@ final class SettingsNativeModel: ObservableObject {
 
     init() {
         self.appearanceMode = prefs.appearanceMode
+        self.cardMaterial = prefs.cardMaterialMode
         self.bottomSearchLayout = prefs.bottomSearchLayout
         self.minimizeBottomBar = prefs.minimizeBottomBar
         // Load saved colors for current appearance

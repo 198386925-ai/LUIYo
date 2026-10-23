@@ -138,6 +138,10 @@ extension MainShellViewController {
         LUIYoSetSettingsHeroFont(hero, fontController.font)
     }
 
+    func setCardMaterialMode(_ rawMode: String) {
+        homeModel.useBlur = rawMode == "blur"
+    }
+
     /// Applies the theme font to the tab bar, the search overlay, the hero card
     /// and every native control the material layer draws.
     func applyFont(_ font: UIFont?) {
