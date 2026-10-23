@@ -3,10 +3,12 @@ import UIKit
 /// 更新日志 viewer (Build 46): a sheet that slides up over the
 /// presenting page and comes to rest ≈54 pt below the top of the
 /// screen with its top corners rounded ≈34 pt (Build 49, matched
-/// to the reference). The root view is fully transparent — only
-/// the sheet region carries the page background, so the live page
-/// underneath shows through above the sheet and in the corner
-/// notches. Inside: a fixed header (centered title, frosted-glass
+/// to the reference). The root view is fully transparent — the
+/// live page underneath shows through above the sheet and in the
+/// corner notches, and the sheet itself is a frosted veil
+/// (Build 50): one light blur + a 0.78 page-background wash, so
+/// the page also glows through the whole sheet, blurred.
+/// Inside: a fixed header (centered title, frosted-glass
 /// close button) over a scrolling stack of per-version cards.
 /// The cards are true frosted glass （毛玻璃）: a light system
 /// blur pushed milky-white with a white overlay and a bright rim
@@ -52,7 +54,6 @@ final class ChangelogViewController: UIViewController {
         view.isOpaque = false
 
         let sheet = UIView()
-        sheet.backgroundColor = backgroundColor
         sheet.layer.cornerRadius = 34
         sheet.layer.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
         sheet.clipsToBounds = true
@@ -63,6 +64,40 @@ final class ChangelogViewController: UIViewController {
             sheet.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             sheet.topAnchor.constraint(equalTo: view.topAnchor, constant: 54),
             sheet.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+        ])
+
+        // Frosted veil (Build 50): the sheet's background is one
+        // light system blur under a page-background wash at 0.78,
+        // so the presenting page glows through the WHOLE sheet —
+        // behind the header and around the cards — the way the
+        // reference app's sheet veils the page behind it. The
+        // wash is the page background pair (#EFEFF3 light /
+        // #121214 dark), resolved per appearance. The sheet's
+        // clipsToBounds keeps both layers inside the rounded-top
+        // shape; the header and scroll view are added after, so
+        // they sit on top of the veil.
+        let veil = UIVisualEffectView(effect: UIBlurEffect(style: .systemMaterialLight))
+        veil.isUserInteractionEnabled = false
+        sheet.addSubview(veil)
+        veil.translatesAutoresizingMaskIntoConstraints = false
+        let veilWash = UIView()
+        veilWash.backgroundColor = UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? UIColor(red: 18.0 / 255.0, green: 18.0 / 255.0, blue: 20.0 / 255.0, alpha: 0.78)
+                : UIColor(red: 239.0 / 255.0, green: 239.0 / 255.0, blue: 243.0 / 255.0, alpha: 0.78)
+        }
+        veilWash.isUserInteractionEnabled = false
+        sheet.addSubview(veilWash)
+        veilWash.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            veil.leadingAnchor.constraint(equalTo: sheet.leadingAnchor),
+            veil.trailingAnchor.constraint(equalTo: sheet.trailingAnchor),
+            veil.topAnchor.constraint(equalTo: sheet.topAnchor),
+            veil.bottomAnchor.constraint(equalTo: sheet.bottomAnchor),
+            veilWash.leadingAnchor.constraint(equalTo: sheet.leadingAnchor),
+            veilWash.trailingAnchor.constraint(equalTo: sheet.trailingAnchor),
+            veilWash.topAnchor.constraint(equalTo: sheet.topAnchor),
+            veilWash.bottomAnchor.constraint(equalTo: sheet.bottomAnchor),
         ])
 
         let header = UIView()
