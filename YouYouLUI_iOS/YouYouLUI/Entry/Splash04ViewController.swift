@@ -22,7 +22,7 @@ final class Splash04ViewController: UIViewController {
     /// Everything stageOut dissolves lives in `inner`.
     private let inner = UIView()
     private let backgroundView = CSSGradientView(angle: 150, stops: [
-        (splashHex("#6a54c8"), 0), (splashHex("#4e7de0"), 0.5), (splashHex("#2f63c8"), 1)
+        (splashHex("#9d8edb"), 0), (splashHex("#8aa9eb"), 0.5), (splashHex("#7698db"), 1)
     ])
     private let blob1 = RadialGlowView(stops: [
         (splashHex("#f0cffb"), 0), (splashHex("#f0cffb", 0), 0.65)
@@ -44,7 +44,7 @@ final class Splash04ViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = splashHex("#2f63c8")
+        view.backgroundColor = splashHex("#7698db")
         blob1.layer.opacity = 0.7
         blob2.layer.opacity = 0.7
         view.addSubview(inner)

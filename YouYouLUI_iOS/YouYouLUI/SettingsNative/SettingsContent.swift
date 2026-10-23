@@ -47,6 +47,7 @@ enum SettingsContent {
             ChangelogEntry(tag: "优化", text: "「我的」页面行改用纯色卡片：外观、使用说明、更新日志、设置四行使用纯色卡片，尺寸与设置页卡片一致；顶部账号卡片保持原有效果。"),
             ChangelogEntry(tag: "优化", text: "启动更稳定：等待服务器确认最多 1.5 秒，启动图时长基本固定。"),
             ChangelogEntry(tag: "优化", text: "外观设置精简：移除「背景颜色」选项，背景固定为默认颜色；「卡片材质」选项保留，可切换液态玻璃与原生磨砂。"),
+            ChangelogEntry(tag: "优化", text: "启动图背景颜色调淡：两个启动图的背景渐变整体调淡，系统启动屏同步保持一致。"),
             ChangelogEntry(tag: "修复", text: "修复新版启动闪退（签名库加载路径问题）。"),
             ChangelogEntry(tag: "修复", text: "修复版本弹窗首次出现时背景、图标与按钮不显示、需切到后台再切回才恢复的问题；弹窗画面按设计图一比一还原。"),
             ChangelogEntry(tag: "修复", text: "修复注册 / 登录切换时白色面板变形、卡片高度不随表单变化的问题。"),
@@ -55,6 +56,7 @@ enum SettingsContent {
             ChangelogEntry(tag: "修复", text: "修复启动图在打开瞬间闪过紫色的问题。"),
             ChangelogEntry(tag: "修复", text: "修复切换注册 / 登录时白色面板底部闪现直角的问题。"),
             ChangelogEntry(tag: "修复", text: "修复打开 App 时系统启动屏闪紫的问题：启动屏改用与启动图一致的蓝色渐变。"),
+            ChangelogEntry(tag: "修复", text: "修复切换登录 / 注册时表单内容短暂空白的问题。"),
         ]),
         ChangelogVersion(title: "Version 1.0.7-1", isCurrent: false, entries: [
             ChangelogEntry(tag: "新增", text: "自定义颜色新增「深色模式」分组：可单独开关深色图标反转，并自定义深色颜色。"),

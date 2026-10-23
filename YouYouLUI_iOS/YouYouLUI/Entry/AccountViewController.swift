@@ -1071,12 +1071,11 @@ final class AccountViewController: AccountFormBaseViewController {
     private let signupForm = UIView()
     private let loginForm = UIView()
     private var activeTab = 0
-    /// The tab switch's three animators (panel crossfade + height,
-    /// outgoing form fade, incoming formIn). A new tap first snaps
-    /// any in-flight switch to its end state, so the choreography
-    /// can never stack or be left half-applied.
+    /// The tab switch's two animators (panel crossfade + height;
+    /// the two forms' cross-fade). A new tap first snaps any
+    /// in-flight switch to its end state, so the choreography can
+    /// never stack or be left half-applied.
     private var switchAnimator: UIViewPropertyAnimator?
-    private var fadeOutAnimator: UIViewPropertyAnimator?
     private var formInAnimator: UIViewPropertyAnimator?
 
     override func viewWillAppear(_ animated: Bool) {
@@ -1141,6 +1140,16 @@ final class AccountViewController: AccountFormBaseViewController {
         panelView.addSubview(signupForm)
         panelView.addSubview(loginForm)
         loginForm.isHidden = true
+        // Build 44: clip each form to its own bounds. During a tab
+        // switch the layout prices BOTH forms at the incoming tab's
+        // panel height while the outgoing form's children keep their
+        // natural offsets, so unclipped, the outgoing form's lower
+        // rows would spill past the panel's bottom edge while it
+        // cross-fades out (part of the old ghosting). At rest each
+        // form's height is priced to its own content, so the clip
+        // is a no-op when settled.
+        signupForm.clipsToBounds = true
+        loginForm.clipsToBounds = true
         // Signup form
         let (emailF, emailChip) = makeEmailField()
         suEmail = emailF; suChip = emailChip
@@ -1393,13 +1402,12 @@ final class AccountViewController: AccountFormBaseViewController {
     /// alphas, final layout, outgoing form hidden) so a new switch
     /// always starts from a coherent state.
     private func finishSwitchAnimations() {
-        for animator in [fadeOutAnimator, switchAnimator, formInAnimator] {
+        for animator in [switchAnimator, formInAnimator] {
             if let animator, animator.isRunning {
                 animator.stopAnimation(false)
                 animator.finishAnimation(at: .end)
             }
         }
-        fadeOutAnimator = nil
         switchAnimator = nil
         formInAnimator = nil
     }
@@ -1427,36 +1435,37 @@ final class AccountViewController: AccountFormBaseViewController {
         let outgoing = index == 0 ? loginForm : signupForm
         clearErrors(of: outgoing)
         // Build 19 switch choreography (the Build 18 instant snap
-        // read as fake/abrupt on device): the old form fades out
-        // and hides; the panel bitmaps CROSSFADE while the sheet
-        // layout (panel + card heights, so the sheet below
-        // contracts/expands with the form) animates on the design's
-        // panel curve cubic-bezier(.4,.05,.2,1); the new form runs
-        // the design's formIn (cubic-bezier(.25,.8,.3,1), opacity
-        // 0→1 with a flat 7px rise) overlapping the height
-        // animation's tail. The panel bitmaps are pinned at natural
-        // size inside the clipping panel for the whole switch —
-        // only frames, clip and opacity ever move, so no frame of
-        // the switch can shear or squash (and with the formsPath
-        // point order fixed, the bitmaps themselves are exact).
+        // read as fake/abrupt on device): the panel bitmaps
+        // CROSSFADE while the sheet layout (panel + card heights,
+        // so the sheet below contracts/expands with the form)
+        // animates on the design's panel curve
+        // cubic-bezier(.4,.05,.2,1); the two forms cross-fade
+        // across the same interval (Build 44, below). The panel
+        // bitmaps are pinned at natural size inside the clipping
+        // panel for the whole switch — only frames, clip and
+        // opacity ever move, so no frame of the switch can shear or
+        // squash (and with the formsPath point order fixed, the
+        // bitmaps themselves are exact).
         // Build 21: the whole switch slowed down — on device the
-        // Build 19/20 timings (0.12 / 0.30 / 0.18+0.32 ≈ 0.5s)
-        // still read fast and snappy. Same relationships, stretched:
-        // fade-out 0.22s, height + crossfade 0.55s, formIn starts
-        // at 0.25s and runs 0.35s; the switch settles at ≈0.6s in
-        // both directions.
+        // Build 19/20 timings still read fast and snappy, so the
+        // panel runs 0.55s and the switch settles with it.
+        // Build 44: the FORM swap is now a true cross-fade over the
+        // panel's full 0.55s. Builds 19–43 ran it SEQUENTIALLY: the
+        // outgoing form faded out over 0.22s and hid, and the
+        // incoming form's formIn only STARTED at 0.25s (its alpha
+        // pinned at 0 until then) — between ≈0.22s and the new
+        // form's fade-in getting going, NEITHER form was visible
+        // and the white panel sat completely blank mid-switch (the
+        // user's Build 43 recording, worst in the login→signup
+        // direction where the panel is also growing). Now one
+        // animator drives outgoing alpha 1→0, incoming alpha 0→1
+        // and the incoming form's design 7px rise on the design's
+        // formIn curve, all from t=0: both alphas ride the same
+        // fraction and sum to ~1 at every frame, so the panel is
+        // never empty, and the overlap never exceeds a clean
+        // cross-fade.
         outgoing.isHidden = false
-        let fadeOut = UIViewPropertyAnimator(duration: 0.22, curve: .easeOut) {
-            outgoing.alpha = 0
-        }
-        fadeOut.addCompletion { position in
-            if position == .end {
-                outgoing.isHidden = true
-            }
-        }
-        fadeOut.startAnimation()
-        fadeOutAnimator = fadeOut
-
+        outgoing.alpha = 1
         incoming.isHidden = false
         incoming.alpha = 0
         incoming.transform = CGAffineTransform(translationX: 0, y: 7)
@@ -1471,17 +1480,23 @@ final class AccountViewController: AccountFormBaseViewController {
         panelAnim.startAnimation()
         switchAnimator = panelAnim
 
-        let formIn = UIViewPropertyAnimator(
-            duration: 0.35,
+        let formsAnim = UIViewPropertyAnimator(
+            duration: 0.55,
             timingParameters: UICubicTimingParameters(
                 controlPoint1: CGPoint(x: 0.25, y: 0.8),
                 controlPoint2: CGPoint(x: 0.3, y: 1)))
-        formIn.addAnimations {
+        formsAnim.addAnimations {
+            outgoing.alpha = 0
             incoming.alpha = 1
             incoming.transform = .identity
         }
-        formIn.startAnimation(afterDelay: 0.25)
-        formInAnimator = formIn
+        formsAnim.addCompletion { position in
+            if position == .end {
+                outgoing.isHidden = true
+            }
+        }
+        formsAnim.startAnimation()
+        formInAnimator = formsAnim
     }
 
     private func clearErrors(of form: UIView) {

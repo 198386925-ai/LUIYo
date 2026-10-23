@@ -44,7 +44,7 @@ final class Splash03ViewController: UIViewController {
     private var startTime: CFTimeInterval = 0
 
     private let backgroundView = CSSGradientView(angle: 160, stops: [
-        (splashHex("#2f4f9e"), 0), (splashHex("#3d6fd0"), 0.4), (splashHex("#6a54c8"), 1)
+        (splashHex("#768bbf"), 0), (splashHex("#7fa0e0"), 0.4), (splashHex("#9d8edb"), 1)
     ])
     private let blob1 = RadialGlowView(stops: [
         (splashHex("#c9aaf7"), 0), (splashHex("#c9aaf7", 0), 0.65)
@@ -67,7 +67,7 @@ final class Splash03ViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = splashHex("#2f4f9e")
+        view.backgroundColor = splashHex("#768bbf")
         blob1.layer.opacity = 0.6
         blob2.layer.opacity = 0.6
         view.addSubview(backgroundView)
