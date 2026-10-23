@@ -2,15 +2,19 @@ import UIKit
 
 /// 更新日志 viewer (Build 46): a sheet that slides up over the
 /// presenting page and comes to rest ≈54 pt below the top of the
-/// screen with its top corners rounded ≈30 pt, so a strip of the
-/// page underneath stays visible. Inside: a fixed header (centered
-/// title, frosted-glass close button) over a scrolling stack of
-/// per-version cards. The cards are true frosted glass （毛玻璃）:
-/// a light system blur pushed milky-white with a white overlay and
-/// a bright rim (Build 47 recipe), pinned on purpose: they do NOT
-/// follow the 卡片材质 (liquid / blur) setting. Content is
-/// `SettingsContent.changelog`, newest first, rendered in the same
-/// type sizes the old inline fold used.
+/// screen with its top corners rounded ≈34 pt (Build 49, matched
+/// to the reference). The root view is fully transparent — only
+/// the sheet region carries the page background, so the live page
+/// underneath shows through above the sheet and in the corner
+/// notches. Inside: a fixed header (centered title, frosted-glass
+/// close button) over a scrolling stack of per-version cards.
+/// The cards are true frosted glass （毛玻璃）: a light system
+/// blur pushed milky-white with a white overlay and a bright rim
+/// (Build 47 recipe, overlay lightened to 0.38 in Build 48),
+/// pinned on purpose: they do NOT follow the 卡片材质 (liquid /
+/// blur) setting. Content is `SettingsContent.changelog`, newest
+/// first, rendered in the same type sizes the old inline fold
+/// used.
 final class ChangelogViewController: UIViewController {
     private let backgroundColor: UIColor
     private var pageFont: UIFont?
@@ -40,11 +44,16 @@ final class ChangelogViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        // Fully transparent root: nothing outside the sheet is
+        // painted or dimmed, so the presenting page stays live and
+        // visible above the sheet and in its rounded corner
+        // notches (Build 49).
         view.backgroundColor = .clear
+        view.isOpaque = false
 
         let sheet = UIView()
         sheet.backgroundColor = backgroundColor
-        sheet.layer.cornerRadius = 30
+        sheet.layer.cornerRadius = 34
         sheet.layer.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
         sheet.clipsToBounds = true
         view.addSubview(sheet)
@@ -63,7 +72,7 @@ final class ChangelogViewController: UIViewController {
             header.leadingAnchor.constraint(equalTo: sheet.leadingAnchor),
             header.trailingAnchor.constraint(equalTo: sheet.trailingAnchor),
             header.topAnchor.constraint(equalTo: sheet.topAnchor),
-            header.heightAnchor.constraint(equalToConstant: 64),
+            header.heightAnchor.constraint(equalToConstant: 74),
         ])
         let title = UILabel()
         title.text = "更新日志"
@@ -82,8 +91,8 @@ final class ChangelogViewController: UIViewController {
         NSLayoutConstraint.activate([
             closeButton.trailingAnchor.constraint(equalTo: header.trailingAnchor, constant: -18),
             closeButton.centerYAnchor.constraint(equalTo: header.centerYAnchor),
-            closeButton.widthAnchor.constraint(equalToConstant: 34),
-            closeButton.heightAnchor.constraint(equalToConstant: 34),
+            closeButton.widthAnchor.constraint(equalToConstant: 33),
+            closeButton.heightAnchor.constraint(equalToConstant: 33),
             title.trailingAnchor.constraint(lessThanOrEqualTo: closeButton.leadingAnchor, constant: -12),
         ])
 
@@ -106,7 +115,7 @@ final class ChangelogViewController: UIViewController {
         NSLayoutConstraint.activate([
             stack.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor, constant: 18),
             stack.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor, constant: -18),
-            stack.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor, constant: 8),
+            stack.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor, constant: 0),
             stack.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor, constant: -28),
             stack.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor, constant: -36),
         ])
@@ -202,7 +211,7 @@ final class ChangelogViewController: UIViewController {
 
 /// One changelog card: a true frosted-glass （毛玻璃） surface
 /// under a content container — a light system blur pushed
-/// milky-white by a 60% white overlay, finished with a bright
+/// milky-white by a white overlay (0.38 since Build 48), finished with a bright
 /// 1 pt rim, so the card reads almost white against the sheet
 /// while keeping a hint of translucency (Build 47; the Build 46
 /// iOS 26 liquid-glass surface read as a gray-lavender wash over
@@ -261,7 +270,7 @@ private final class ChangelogGlassCardView: UIView {
     }
 }
 
-/// The header's circular close button (≈34 pt), in the same
+/// The header's circular close button (≈33 pt), in the same
 /// frosted-glass （毛玻璃） recipe as the cards (Build 47): light
 /// system blur + milky-white overlay + bright rim.
 private final class ChangelogCloseButton: UIControl {
