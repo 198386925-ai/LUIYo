@@ -1,8 +1,9 @@
 import UIKit
 
 /// 更新日志 viewer (Build 46): a sheet that slides up over the
-/// current page and comes to rest ≈64 pt below the top of the
-/// screen (54 pt until Build 52 lowered it 10 pt) with its top
+/// current page and comes to rest ≈84 pt below the top of the
+/// screen (54 pt originally, lowered 10 pt in Build 52 and
+/// another 20 pt in Build 53) with its top
 /// corners rounded ≈34 pt (Build 49, matched
 /// to the reference). The root view is fully transparent — the
 /// live page underneath shows through above the sheet and in the
@@ -10,7 +11,8 @@ import UIKit
 /// (Build 51, the reference's construction): an opaque fill in
 /// the page background colour — the live page does not ghost
 /// through the sheet's body at all — plus a frosted-glass film
-/// over it (light blur + white tint 0.45), so the sheet reads
+/// over it (light blur + background-colour tint 0.5 since
+/// Build 53 — white 0.45 before), so the sheet reads
 /// soft while transparency exists only above it.
 /// Presentation is a CHILD OVERLAY of the app shell (Build 51,
 /// see `show(from:)`): Builds 49–50 presented this modally
@@ -80,7 +82,7 @@ final class ChangelogViewController: UIViewController {
         NSLayoutConstraint.activate([
             sheet.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             sheet.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            sheet.topAnchor.constraint(equalTo: view.topAnchor, constant: 64),
+            sheet.topAnchor.constraint(equalTo: view.topAnchor, constant: 84),
             sheet.bottomAnchor.constraint(equalTo: view.bottomAnchor),
         ])
 
@@ -90,8 +92,13 @@ final class ChangelogViewController: UIViewController {
         // light / #121214 dark, resolved per appearance) — the
         // live page does NOT ghost through the sheet's body at
         // all; layer 2, on top of it, is a frosted-glass film: one
-        // light system blur carrying a translucent white tint at
-        // 0.45. The pair (solid background + frost over it) is
+        // light system blur carrying a translucent tint at 0.5
+        // in the page background colour itself (Build 53 — it
+        // was a white tint at 0.45 until the user pointed out
+        // the white lifted the sheet off his background colour;
+        // tinting with the background colour keeps the sheet's
+        // rendered tone exactly that colour). The pair (solid
+        // background + frost over it) is
         // what makes the reference's sheet read soft: its
         // wallpaper is crisp above the sheet and soft inside it
         // because inside there is a frost layer over the same
@@ -111,7 +118,11 @@ final class ChangelogViewController: UIViewController {
         let frost = UIVisualEffectView(effect: UIBlurEffect(style: .systemMaterialLight))
         frost.isUserInteractionEnabled = false
         let frostTint = UIView()
-        frostTint.backgroundColor = UIColor.white.withAlphaComponent(0.45)
+        frostTint.backgroundColor = UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? UIColor(red: 18.0 / 255.0, green: 18.0 / 255.0, blue: 20.0 / 255.0, alpha: 0.5)
+                : UIColor(red: 239.0 / 255.0, green: 239.0 / 255.0, blue: 243.0 / 255.0, alpha: 0.5)
+        }
         frostTint.isUserInteractionEnabled = false
         frost.contentView.addSubview(frostTint)
         frostTint.translatesAutoresizingMaskIntoConstraints = false
@@ -220,7 +231,7 @@ final class ChangelogViewController: UIViewController {
         didMove(toParent: shell)
         view.layoutIfNeeded()
         // Slide the sheet up from below the screen to its rest
-        // position (top at 64 pt), keeping the cover-vertical feel
+        // position (top at 84 pt), keeping the cover-vertical feel
         // the modal version had.
         guard let sheet = sheetView else { return }
         let travel = view.bounds.height + 60
