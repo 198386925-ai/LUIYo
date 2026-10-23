@@ -17,12 +17,13 @@ enum AccountAPI {
 
     static func post(_ action: String,
                      _ params: [String: Any],
+                     timeout: TimeInterval = 20,
                      completion: @escaping (Result<[String: Any], Failure>) -> Void) {
         var components = URLComponents(url: endpoint, resolvingAgainstBaseURL: false)!
         components.queryItems = [URLQueryItem(name: "action", value: action)]
         var request = URLRequest(url: components.url!)
         request.httpMethod = "POST"
-        request.timeoutInterval = 20
+        request.timeoutInterval = timeout
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try? JSONSerialization.data(withJSONObject: params)
         URLSession.shared.dataTask(with: request) { data, _, error in
@@ -177,12 +178,13 @@ enum AccountStatus {
 }
 
 extension AccountAPI {
-    static func fetchStatus(completion: @escaping (AccountStatus) -> Void) {
+    static func fetchStatus(timeout: TimeInterval = 20,
+                            completion: @escaping (AccountStatus) -> Void) {
         guard let token = AccountSession.token else {
             completion(.invalid)
             return
         }
-        post("status", ["token": token]) { result in
+        post("status", ["token": token], timeout: timeout) { result in
             switch result {
             case .failure:
                 completion(.unreachable)

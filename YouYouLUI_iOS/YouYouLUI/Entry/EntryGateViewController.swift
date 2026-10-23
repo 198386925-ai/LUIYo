@@ -11,7 +11,12 @@ import UIKit
 ///   register/login returns here. There is no other way in.
 /// - Token present → splash 04 （玻璃呼吸）: a `status` check runs
 ///   behind the design timeline; the splash plays once (~3.6 s incl.
-///   stageOut) and dissolves into the home shell. A banned verdict
+///   stageOut) and dissolves into the home shell. The wait for the
+///   verdict is capped at 1.5 s (Build 40): past that, the shell
+///   installs with the cached account state and the verdict, when
+///   it lands, is applied exactly like a heartbeat verdict. A 7 s
+///   backstop abandons a still-pending launch request and forces
+///   one fresh check with a 5 s timeout. A banned verdict
 ///   swaps in the blocking red ban popup instead (Build 20: the
 ///   same fig2 popup as the version ban — the plain ban page is
 ///   gone); an invalid/kicked token is cleared and the flow falls
@@ -36,6 +41,11 @@ final class EntryGateViewController: UIViewController {
     private var heartbeatTimer: Timer?
     private var began = false
     private var statusVerdict: AccountStatus?
+    private var launchWaitCap: DispatchWorkItem?
+    private var enteredPendingVerdict = false
+    private var launchBackstop: DispatchWorkItem?
+    private var launchVerdictResolved = false
+    private var launchFetchGeneration = 0
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -118,6 +128,13 @@ final class EntryGateViewController: UIViewController {
     /// `AccountAuthorization` — see `AccountSession.clear()`.)
     private func tearDownToGate() {
         stopHeartbeat()
+        launchWaitCap?.cancel()
+        launchWaitCap = nil
+        launchBackstop?.cancel()
+        launchBackstop = nil
+        launchVerdictResolved = true
+        launchFetchGeneration += 1
+        enteredPendingVerdict = false
         if presentedViewController != nil {
             dismiss(animated: false)
         }
@@ -141,14 +158,72 @@ final class EntryGateViewController: UIViewController {
         embed(splash)
         splash04 = splash
         splash.begin()
+        enteredPendingVerdict = false
+        launchVerdictResolved = false
+        launchFetchGeneration += 1
+        let generation = launchFetchGeneration
         AccountAPI.fetchStatus { [weak self] status in
-            self?.statusVerdict = status
-            self?.applyVerdict()
+            guard let self, self.launchFetchGeneration == generation,
+                  !self.launchVerdictResolved else { return }
+            self.launchVerdictResolved = true
+            self.launchBackstop?.cancel()
+            self.launchBackstop = nil
+            if self.enteredPendingVerdict {
+                self.enteredPendingVerdict = false
+                self.applyLateLaunchVerdict(status)
+            } else {
+                self.statusVerdict = status
+                self.applyVerdict()
+            }
+        }
+        // Build 40 （方案二）: cap the launch wait at 1.5 s. If the
+        // verdict has not landed by then, enter with the cached
+        // account state and let the verdict land in the background.
+        // The splash's own 10t minimum keeps the total entry time
+        // at the animation's length either way.
+        let cap = DispatchWorkItem { [weak self] in self?.enterWithCachedState() }
+        launchWaitCap = cap
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5, execute: cap)
+        // Build 40 backstop: at 7 s after launch, a still-pending
+        // launch request is abandoned and one fresh check with a
+        // short timeout is forced (see resolveLaunchWindow).
+        let backstop = DispatchWorkItem { [weak self] in self?.resolveLaunchWindow() }
+        launchBackstop = backstop
+        DispatchQueue.main.asyncAfter(deadline: .now() + 7, execute: backstop)
+    }
+
+    /// The 7 s launch-window backstop: abandon the pending launch
+    /// request (the generation bump makes its completion a no-op
+    /// whenever it eventually returns) and issue one fresh status
+    /// check with a 5 s timeout. Its verdict is applied the moment
+    /// it lands, through the same paths as the original request.
+    /// If the forced check also fails, the cached state stands and
+    /// the steady 30 s heartbeat owns the verdict from here — the
+    /// launch window is over either way.
+    private func resolveLaunchWindow() {
+        guard !launchVerdictResolved else { return }
+        launchFetchGeneration += 1
+        let generation = launchFetchGeneration
+        AccountAPI.fetchStatus(timeout: 5) { [weak self] status in
+            guard let self, self.launchFetchGeneration == generation,
+                  !self.launchVerdictResolved else { return }
+            self.launchVerdictResolved = true
+            if self.enteredPendingVerdict {
+                self.enteredPendingVerdict = false
+                self.applyLateLaunchVerdict(status)
+            } else {
+                self.statusVerdict = status
+                self.applyVerdict()
+            }
         }
     }
 
     private func applyVerdict() {
         guard let splash = splash04, let verdict = statusVerdict else { return }
+        launchWaitCap?.cancel()
+        launchWaitCap = nil
+        launchBackstop?.cancel()
+        launchBackstop = nil
         switch verdict {
         case .ok(let email, let svip, let svipExpiresAt, let displayName):
             AccountAuthorization.update(email: email, svip: svip, svipExpiresAt: svipExpiresAt, displayName: displayName)
@@ -182,6 +257,41 @@ final class EntryGateViewController: UIViewController {
                 self.splash04 = nil
                 showSplash03()
             }
+        }
+    }
+
+    /// The 1.5 s cap fired before the launch verdict: install the
+    /// shell under the splash with the cached account state (the
+    /// shell seeds itself from the `AccountAuthorization` mirror)
+    /// and let the splash finish on its own timeline.
+    private func enterWithCachedState() {
+        guard let splash = splash04, statusVerdict == nil,
+              contentViewController == nil else { return }
+        enteredPendingVerdict = true
+        addContentView()
+        splash.finish { [weak self] in
+            guard let self, let splash = self.splash04 else { return }
+            self.splash04 = nil
+            self.remove(splash)
+        }
+    }
+
+    /// The launch verdict arriving after the capped entry: applied
+    /// exactly like a heartbeat verdict — the red ban popup over
+    /// the shell, a kick back to the 03 gate, or an authorization
+    /// refresh. A network failure keeps failing open.
+    private func applyLateLaunchVerdict(_ status: AccountStatus) {
+        guard contentViewController != nil, accountBanController == nil else { return }
+        switch status {
+        case .banned(let title, let subtitle, let reason):
+            showAccountBanned(title: title, subtitle: subtitle, reason: reason)
+        case .invalid:
+            AccountSession.clear()
+            tearDownToGate()
+        case .ok(let email, let svip, let svipExpiresAt, let displayName):
+            applyAccountAuthorization(email: email, svip: svip, svipExpiresAt: svipExpiresAt, displayName: displayName)
+        case .unreachable:
+            break
         }
     }
 

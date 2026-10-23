@@ -215,7 +215,7 @@ final class Splash04ViewController: UIViewController {
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
             guard let self else { return }
             stripAnimations(from: view.layer)
-            UIView.animate(withDuration: reduceMotion ? 0.3 : 0.7,
+            UIView.animate(withDuration: reduceMotion ? 0.3 : 0.5,
                            delay: 0,
                            options: [.curveEaseOut, .beginFromCurrentState],
                            animations: { self.view.alpha = 0 },
