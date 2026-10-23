@@ -14,17 +14,6 @@ enum FontArea: String, CaseIterable {
     }
 }
 
-/// A bundled font family. `files` maps a style key ("regular", "medium",
-/// "semibold", "bold", "italic", ...) to a bundle file base name.
-struct FontFamilyDef {
-    let id: String
-    let displayName: String
-    let group: String
-    let chinese: Bool
-    let variable: Bool
-    let files: [String: String]
-}
-
 /// One selectable face of a user-imported font file (TTC files yield several).
 struct ImportedFont {
     let id: String
@@ -37,63 +26,17 @@ struct ImportedFont {
     let sizeBytes: Int
 }
 
-/// Font catalog (bundled + imported), per-area Latin/Chinese selections and
+/// Font catalog (user-imported fonts only — the app ships no bundled
+/// picker fonts since Build 38), per-area Latin/Chinese selections and
 /// cascaded font vending. Latin and Chinese faces are chosen independently;
 /// the cascade keeps Latin glyphs on the Latin face and CJK glyphs on the
 /// Chinese face, like the reference implementation this is ported from.
 final class FontLibrary {
     var onSelectionsChanged: (() -> Void)?
 
-    // MARK: - Catalog
-
-    static let latinFamilies: [FontFamilyDef] = [
-        FontFamilyDef(id: "inter", displayName: "Inter", group: "Inter", chinese: false, variable: false, files: [
-            "regular": "Inter-Regular", "medium": "Inter-Medium", "semibold": "Inter-SemiBold", "bold": "Inter-Bold",
-            "italic": "Inter-Italic", "mediumItalic": "Inter-MediumItalic", "semiboldItalic": "Inter-SemiBoldItalic", "boldItalic": "Inter-BoldItalic",
-        ]),
-        FontFamilyDef(id: "plexSans", displayName: "IBM Plex Sans", group: "IBM Plex", chinese: false, variable: false, files: [
-            "regular": "IBMPlexSans-Regular", "medium": "IBMPlexSans-Medium", "semibold": "IBMPlexSans-SemiBold", "bold": "IBMPlexSans-Bold",
-            "italic": "IBMPlexSans-Italic", "mediumItalic": "IBMPlexSans-MediumItalic", "semiboldItalic": "IBMPlexSans-SemiBoldItalic", "boldItalic": "IBMPlexSans-BoldItalic",
-        ]),
-        FontFamilyDef(id: "plexSerif", displayName: "IBM Plex Serif", group: "IBM Plex", chinese: false, variable: false, files: [
-            "regular": "IBMPlexSerif-Regular", "medium": "IBMPlexSerif-Medium", "semibold": "IBMPlexSerif-SemiBold", "bold": "IBMPlexSerif-Bold",
-            "italic": "IBMPlexSerif-Italic", "mediumItalic": "IBMPlexSerif-MediumItalic", "semiboldItalic": "IBMPlexSerif-SemiBoldItalic", "boldItalic": "IBMPlexSerif-BoldItalic",
-        ]),
-        FontFamilyDef(id: "plexMono", displayName: "IBM Plex Mono", group: "IBM Plex", chinese: false, variable: false, files: [
-            "regular": "IBMPlexMono-Regular", "medium": "IBMPlexMono-Medium", "semibold": "IBMPlexMono-SemiBold", "bold": "IBMPlexMono-Bold",
-            "italic": "IBMPlexMono-Italic", "mediumItalic": "IBMPlexMono-MediumItalic", "semiboldItalic": "IBMPlexMono-SemiBoldItalic", "boldItalic": "IBMPlexMono-BoldItalic",
-        ]),
-        FontFamilyDef(id: "googleSans", displayName: "Google Sans", group: "Google Sans", chinese: false, variable: true, files: [
-            "regular": "GoogleSans-Variable",
-        ]),
-        FontFamilyDef(id: "googleSansFlex", displayName: "Google Sans Flex", group: "Google Sans", chinese: false, variable: true, files: [
-            "regular": "GoogleSansFlex-Variable",
-        ]),
-        FontFamilyDef(id: "googleSansCode", displayName: "Google Sans Code", group: "Google Sans", chinese: false, variable: true, files: [
-            "regular": "GoogleSansCode-Variable", "italic": "GoogleSansCode-VariableItalic",
-        ]),
-    ]
-
-    static let chineseFamilies: [FontFamilyDef] = [
-        FontFamilyDef(id: "plexSansSC", displayName: "IBM Plex Sans SC", group: "IBM Plex", chinese: true, variable: false, files: [
-            "regular": "IBMPlexSansSC-Regular", "medium": "IBMPlexSansSC-Regular", "semibold": "IBMPlexSansSC-SemiBold", "bold": "IBMPlexSansSC-SemiBold",
-        ]),
-    ]
-
-    func families(chinese: Bool) -> [FontFamilyDef] { chinese ? Self.chineseFamilies : Self.latinFamilies }
-
-    func family(id: String) -> FontFamilyDef? {
-        (Self.latinFamilies + Self.chineseFamilies).first { $0.id == id }
-    }
-
     // MARK: - Registration / face resolution
 
     private var registeredFiles: Set<String> = []
-
-    private func bundleURL(forBase base: String) -> URL? {
-        Bundle.main.url(forResource: base, withExtension: "ttf", subdirectory: "Fonts")
-            ?? Bundle.main.url(forResource: base, withExtension: "ttf")
-    }
 
     private func registerFile(_ url: URL) {
         let key = url.path
@@ -104,45 +47,6 @@ final class FontLibrary {
 
     private func descriptors(for url: URL) -> [CTFontDescriptor] {
         (CTFontManagerCreateFontDescriptorsFromURL(url as CFURL) as? [CTFontDescriptor]) ?? []
-    }
-
-    private func styleKey(weight: UIFont.Weight, italic: Bool) -> String {
-        var base = "regular"
-        if weight >= .bold { base = "bold" }
-        else if weight >= .semibold { base = "semibold" }
-        else if weight >= .medium { base = "medium" }
-        if italic { return base == "regular" ? "italic" : base + "Italic" }
-        return base
-    }
-
-    private func fileBase(for family: FontFamilyDef, weight: UIFont.Weight, italic: Bool) -> String? {
-        let key = styleKey(weight: weight, italic: italic)
-        if let exact = family.files[key] { return exact }
-        let plain = styleKey(weight: weight, italic: false)
-        if let plainFile = family.files[plain] { return plainFile }
-        if let semibold = family.files["semibold"], weight >= .semibold { return semibold }
-        return family.files["regular"]
-    }
-
-    /// Builds a CTFont for a bundled family face, honouring the wght axis of
-    /// variable fonts when present.
-    private func familyFont(_ family: FontFamilyDef, size: CGFloat, weight: UIFont.Weight, italic: Bool) -> CTFont? {
-        guard let base = fileBase(for: family, weight: weight, italic: italic),
-              let url = bundleURL(forBase: base) else { return nil }
-        registerFile(url)
-        guard let descriptor = descriptors(for: url).first else { return nil }
-        var ct = CTFontCreateWithFontDescriptor(descriptor, size, nil)
-        if family.variable {
-            let axes = (CTFontCopyVariationAxes(ct) as? [[String: Any]]) ?? []
-            let wghtTag = 0x77676874
-            if axes.contains(where: { ($0[kCTFontVariationAxisIdentifierKey as String] as? NSNumber)?.intValue == wghtTag }) {
-                let target: Double = weight >= .bold ? 700 : weight >= .semibold ? 600 : weight >= .medium ? 500 : 400
-                let variation = [NSNumber(value: wghtTag): NSNumber(value: target)] as CFDictionary
-                let varied = CTFontDescriptorCreateCopyWithAttributes(CTFontCopyFontDescriptor(ct), [kCTFontVariationAttribute: variation] as CFDictionary)
-                ct = CTFontCreateCopyWithAttributes(ct, size, nil, varied)
-            }
-        }
-        return ct
     }
 
     // MARK: - Imported fonts
@@ -156,6 +60,7 @@ final class FontLibrary {
 
     func loadImported() {
         migrateLegacySelectionsIfNeeded()
+        sanitizeSelections()
         imported = []
         let dir = importedDirectory
         guard let files = try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil) else { return }
@@ -239,19 +144,6 @@ final class FontLibrary {
         return total
     }
 
-    var bundledTotalBytes: Int {
-        var total = 0
-        for family in Self.latinFamilies + Self.chineseFamilies {
-            for base in Set(family.files.values) {
-                if let url = bundleURL(forBase: base) {
-                    let size = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int) ?? 0
-                    total += size
-                }
-            }
-        }
-        return total
-    }
-
     // MARK: - Selections (one Latin + one Chinese choice, gated per page)
 
     private func selectionKey(chinese: Bool) -> String {
@@ -285,6 +177,16 @@ final class FontLibrary {
             for area in FontArea.allCases where customAreas[area] != true {
                 defaults.set(true, forKey: offKey(area))
             }
+        }
+    }
+
+    /// Selections saved by older builds can still point at a bundled
+    /// family ("fam:<id>"). The bundled catalog was removed in Build 38,
+    /// so any such selection is rewritten to the system font instead of
+    /// dangling over a face that no longer exists.
+    private func sanitizeSelections() {
+        for chinese in [false, true] where selection(chinese: chinese).hasPrefix("fam:") {
+            setSelection(chinese: chinese, value: "system", notify: false)
         }
     }
 
@@ -332,7 +234,6 @@ final class FontLibrary {
 
     func displayName(forSelection value: String) -> String? {
         if value == "system" { return nil }
-        if value.hasPrefix("fam:") { return family(id: String(value.dropFirst(4)))?.displayName }
         if value.hasPrefix("imp:") {
             let id = String(value.dropFirst(4))
             return imported.first { $0.id == id }?.name
@@ -343,10 +244,6 @@ final class FontLibrary {
     // MARK: - Font vending
 
     private func face(forSelection value: String, chinese: Bool, size: CGFloat, weight: UIFont.Weight, italic: Bool) -> CTFont? {
-        if value.hasPrefix("fam:") {
-            guard let def = family(id: String(value.dropFirst(4))) else { return nil }
-            return familyFont(def, size: size, weight: weight, italic: italic)
-        }
         if value.hasPrefix("imp:") {
             let id = String(value.dropFirst(4))
             guard let face = imported.first(where: { $0.id == id }) else { return nil }
@@ -380,11 +277,7 @@ final class FontLibrary {
         return nil
     }
 
-    /// Preview font for one catalog row.
-    func previewFont(family def: FontFamilyDef, size: CGFloat) -> UIFont? {
-        familyFont(def, size: size, weight: .regular, italic: false).map { $0 as UIFont }
-    }
-
+    /// Preview font for one imported-font row.
     func previewFont(imported face: ImportedFont, size: CGFloat) -> UIFont? {
         UIFont(name: face.postScriptName, size: size)
     }

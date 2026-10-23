@@ -76,6 +76,23 @@ static UIFont *LUIYoLoadThemeFontFromDisk(void) {
     return [UIFont fontWithName:fontName size:16.0];
 }
 void LUIYoSetSettingsHeroFont(UIView *view, UIFont * _Nullable font);
+/// Build 38: the 我的 page dropped liquid glass. The hero card body was
+/// already a solid-filled background view; the two bottom buttons still
+/// carried a UIVisualEffectView glass surface (tag 90210, created and
+/// laid out by the cell). Neutralise it in place — no effect, flat
+/// control-track fill — so the buttons read as solid chips over the
+/// solid card, without touching the supplied cell file.
+static void LUIYoSolidifyHeroButtons(LUISettingsHeroCell *cell) {
+    for (UIButton *button in @[cell.infoButton, cell.logButton]) {
+        UIView *surface = [button viewWithTag:90210];
+        if ([surface isKindOfClass:UIVisualEffectView.class]) {
+            UIVisualEffectView *effectView = (UIVisualEffectView *)surface;
+            effectView.effect = nil;
+            effectView.backgroundColor = LUISettingsControlTrackColor();
+            effectView.contentView.backgroundColor = LUISettingsControlTrackColor();
+        }
+    }
+}
 void LUIYoRefreshSettingsHero(UIView *view) {
     if (![view isKindOfClass:LUISettingsHeroCell.class]) return;
     LUISettingsHeroCell *cell = (LUISettingsHeroCell *)view;
@@ -95,6 +112,7 @@ void LUIYoRefreshSettingsHero(UIView *view) {
     NSString *buildNum = [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleVersion"] ?: @"";
     NSString *version = [NSString stringWithFormat:@"Version%@ Build%@", shortVer, buildNum];
     [cell configureWithTitle:name version:version key:@"luiyo.hero.enabled"];
+    LUIYoSolidifyHeroButtons(cell);
     // Use custom theme font if set, otherwise default system font.
     cell.nameLabel.font = _LUIYoHeroCustomFont ? [_LUIYoHeroCustomFont fontWithSize:18.0] : [UIFont systemFontOfSize:18 weight:UIFontWeightSemibold];
     cell.nameLabel.attributedText = nil;

@@ -2,11 +2,46 @@ import Combine
 import UIKit
 import UniformTypeIdentifiers
 
-/// A settings fold: glass card with a tappable header (icon in a circle,
+/// A plain solid-colour card for the 我的 page (Build 38: this page
+/// dropped liquid glass). Same shape contract as GlassCardView — a
+/// content container pinned to the card's edges over a flat fill — but
+/// the fill is the theme card colour, fully opaque, following the same
+/// precedent as the 更改字体 page's solid cards.
+final class SolidCardView: UIView {
+    let content = UIView()
+    private(set) var radius: CGFloat
+
+    init(radius: CGFloat = 22) {
+        self.radius = radius
+        super.init(frame: .zero)
+        backgroundColor = .white
+        layer.cornerRadius = radius
+        clipsToBounds = true
+        addSubview(content)
+        content.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            content.leadingAnchor.constraint(equalTo: leadingAnchor),
+            content.trailingAnchor.constraint(equalTo: trailingAnchor),
+            content.topAnchor.constraint(equalTo: topAnchor),
+            content.bottomAnchor.constraint(equalTo: bottomAnchor),
+        ])
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    func setRadius(_ value: CGFloat) {
+        radius = value
+        layer.cornerRadius = value
+    }
+
+    func configure(tint: UIColor) { backgroundColor = tint }
+}
+
+/// A settings fold: solid card with a tappable header (icon in a circle,
 /// title, subtitle, chevron) and a collapsible content area. Collapsed it is
 /// capsule-shaped like the reference design; expanded it opens to radius 22.
 final class FoldView: UIView {
-    let card = GlassCardView(radius: 24)
+    let card = SolidCardView(radius: 24)
     let contentView = UIView()
     private let iconView = UIImageView()
     private let titleLabel = UILabel()
@@ -14,7 +49,6 @@ final class FoldView: UIView {
     private let chevron = UIImageView()
     private(set) var expanded = false
     var onToggle: (() -> Void)?
-    private var lastUseBlur = false
     private var lastTint: UIColor = .white
 
     init(icon: String, iconImage: UIImage? = nil, title: String, subtitle: String) {
@@ -97,16 +131,15 @@ final class FoldView: UIView {
 
     func setExpanded(_ value: Bool, animated: Bool) {
         expanded = value
-        // No height animation: stretching a glass surface frame-by-frame
-        // makes its backdrop sampling lag, so neighbouring folds' text
-        // shows through the card mid-animation (the overlap/ghosting seen
-        // on device). The layout switches instantly instead; only the
-        // chevron turns and the content fades in, which stays clean.
+        // No height animation: the layout switches instantly instead;
+        // only the chevron turns and the content fades in, which stays
+        // clean. (Kept from the glass era, where stretching the surface
+        // frame-by-frame ghosted neighbouring folds' text through it.)
         contentView.isHidden = !value
         subtitleLabel.isHidden = !value
-        card.surface.glassRadius = value ? 26 : 24
+        card.setRadius(value ? 26 : 24)
         card.content.layer.cornerRadius = value ? 26 : 24
-        card.configure(useBlur: lastUseBlur, tint: lastTint)
+        card.configure(tint: lastTint)
         superview?.layoutIfNeeded()
         if animated {
             UIView.animate(withDuration: 0.2, delay: 0, options: [.curveEaseInOut, .beginFromCurrentState]) {
@@ -121,10 +154,11 @@ final class FoldView: UIView {
         }
     }
 
+    /// The 我的 page's cards are solid now (Build 38): the card-material
+    /// choice no longer applies on this page, only the card colour does.
     func configureGlass(useBlur: Bool, tint: UIColor) {
-        lastUseBlur = useBlur
         lastTint = tint
-        card.configure(useBlur: useBlur, tint: tint)
+        card.configure(tint: tint)
     }
 
     func refreshAppearance() {
@@ -156,8 +190,8 @@ final class SettingsViewController: UIViewController {
     private var themeFold: FoldView!
     private var guideFold: FoldView!
     private var changelogFold: FoldView!
-    private let appSettingsCard = GlassCardView(radius: 26)
-    private var changelogCards: [GlassCardView] = []
+    private let appSettingsCard = SolidCardView(radius: 26)
+    private var changelogCards: [SolidCardView] = []
     private var backgroundWell: UIColorWell!
     private var minimizeSwitch: UISwitch!
     private var appearanceSeg: PillSegmentedControl!
@@ -585,8 +619,8 @@ final class SettingsViewController: UIViewController {
         inner.axis = .vertical
         inner.spacing = 12
         for version in SettingsContent.changelog {
-            let cardView = GlassCardView(radius: 26)
-            cardView.configure(useBlur: homeModel.useBlur, tint: UIColor(nativeHex: homeModel.theme.card))
+            let cardView = SolidCardView(radius: 26)
+            cardView.configure(tint: UIColor(nativeHex: homeModel.theme.card))
             changelogCards.append(cardView)
             let block = UIStackView()
             block.axis = .vertical
@@ -733,11 +767,11 @@ final class SettingsViewController: UIViewController {
             ? UIColor(nativeHex: homeModel.theme.background)
             : .clear
         let tint = UIColor(nativeHex: homeModel.theme.card)
-        appSettingsCard.configure(useBlur: homeModel.useBlur, tint: tint)
+        appSettingsCard.configure(tint: tint)
         themeFold?.configureGlass(useBlur: homeModel.useBlur, tint: tint)
         guideFold?.configureGlass(useBlur: homeModel.useBlur, tint: tint)
         changelogFold?.configureGlass(useBlur: homeModel.useBlur, tint: tint)
-        for card in changelogCards { card.configure(useBlur: homeModel.useBlur, tint: tint) }
+        for card in changelogCards { card.configure(tint: tint) }
     }
 }
 

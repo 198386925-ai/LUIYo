@@ -75,7 +75,7 @@ func luiyoPageHeader(title: String, backAction: Selector, target: Any?) -> UIVie
 }
 
 /// The 更改字体 page (modelled on the reference design): one Latin and one
-/// Chinese font are picked from the bundled catalog or imported files, and
+/// Chinese font are picked from the user's imported files, and
 /// the 应用位置 checkboxes choose which pages （首页/规则页/设置页） use them.
 /// Opened from the settings theme fold's 自定义字体 entry.
 final class FontSettingsViewController: UIViewController {
@@ -98,7 +98,6 @@ final class FontSettingsViewController: UIViewController {
     private var checkboxImages: [FontArea: UIImageView] = [:]
     private let listStack = UIStackView()
     private var searchField: UITextField!
-    private var downloadedSizeLabel: UILabel!
     private var importedSizeLabel: UILabel!
 
     init(fontController: ThemeFontController, homeModel: NativeHomeModel) {
@@ -411,21 +410,6 @@ final class FontSettingsViewController: UIViewController {
                 value: "system",
                 fileKey: nil))
         }
-        var lastGroup: String?
-        for def in library.families(chinese: chineseTab) where matches(def.displayName) {
-            if def.group != lastGroup {
-                lastGroup = def.group
-                listStack.addArrangedSubview(groupHeader(def.group))
-            }
-            let preview = library.previewFont(family: def, size: 12)
-            listStack.addArrangedSubview(fontRowCard(
-                name: def.displayName,
-                preview: preview == nil ? "下载后显示此字体预览" : (chineseTab ? "中文字体示例：你好，世界。" : "The quick brown fox 0123"),
-                previewFont: preview,
-                selected: current == "fam:" + def.id,
-                value: "fam:" + def.id,
-                fileKey: nil))
-        }
         let faces = library.imported.filter { chineseTab ? $0.coversChinese : $0.coversLatin }
         let visibleFaces = faces.filter { matches($0.name) }
         if !visibleFaces.isEmpty {
@@ -599,10 +583,6 @@ final class FontSettingsViewController: UIViewController {
         title.font = UIFont.systemFont(ofSize: 13, weight: .semibold)
         title.textColor = UIAppColors.inkDynamic
         inner.addArrangedSubview(title)
-        downloadedSizeLabel = UILabel()
-        downloadedSizeLabel.font = UIFont.systemFont(ofSize: 12)
-        downloadedSizeLabel.textColor = UIAppColors.secondary
-        inner.addArrangedSubview(downloadedSizeLabel)
         importedSizeLabel = UILabel()
         importedSizeLabel.font = UIFont.systemFont(ofSize: 12)
         importedSizeLabel.textColor = UIAppColors.secondary
@@ -620,7 +600,6 @@ final class FontSettingsViewController: UIViewController {
     private func refreshStorage() {
         let formatter = ByteCountFormatter()
         formatter.countStyle = .file
-        downloadedSizeLabel?.text = "内置字体 · " + formatter.string(fromByteCount: Int64(library.bundledTotalBytes))
         importedSizeLabel?.text = "已导入字体 · " + formatter.string(fromByteCount: Int64(library.importedTotalBytes))
     }
 
