@@ -388,6 +388,11 @@ final class HomeHeaderCell: UICollectionViewCell {
         statusRow.axis = .horizontal
         statusRow.spacing = 6
         statusRow.alignment = .center
+        // The symbol's glyph box is not square (the seal is wider
+        // than tall, the lock taller than wide); with the default
+        // scale-to-fill the 15 pt square slot stretched the glyph —
+        // aspect-fit keeps its natural proportions in the same slot.
+        authIcon.contentMode = .scaleAspectFit
         authIcon.translatesAutoresizingMaskIntoConstraints = false
         authIcon.widthAnchor.constraint(equalToConstant: 15).isActive = true
         authIcon.heightAnchor.constraint(equalToConstant: 15).isActive = true

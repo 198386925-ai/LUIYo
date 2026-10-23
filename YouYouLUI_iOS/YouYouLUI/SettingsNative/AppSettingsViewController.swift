@@ -249,8 +249,10 @@ final class AppSettingsViewController: UIViewController {
         // exists; the behavior is unchanged — confirmation, clear
         // the account session, and the entry gate hears the
         // notification and swaps the app back to splash 03 at once.
-        logoutCard.backgroundColor = UIColor(nativeHex: homeModel.theme.card)
-        logoutCard.layer.cornerRadius = 26
+        // Build 40: no card surface — the row sits directly on the
+        // page background; height matches the 我的 rows (48 pt).
+        logoutCard.backgroundColor = .clear
+        logoutCard.layer.cornerRadius = 24
         logoutCard.clipsToBounds = true
         view.addSubview(logoutCard)
         logoutCard.translatesAutoresizingMaskIntoConstraints = false
@@ -258,7 +260,7 @@ final class AppSettingsViewController: UIViewController {
             logoutCard.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 14),
             logoutCard.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -14),
             logoutCard.topAnchor.constraint(equalTo: updateCard.bottomAnchor, constant: 12),
-            logoutCard.heightAnchor.constraint(equalToConstant: 52),
+            logoutCard.heightAnchor.constraint(equalToConstant: 48),
         ])
         let logoutTap = UIControl()
         logoutTap.addTarget(self, action: #selector(accountLogoutTapped), for: .touchUpInside)
@@ -314,8 +316,10 @@ final class AppSettingsViewController: UIViewController {
     // MARK: - 检查更新 card (Build 35: moved from the 我的 page)
 
     private func buildUpdateCard(below card: UIView) {
-        updateCard.backgroundColor = UIColor(nativeHex: homeModel.theme.card)
-        updateCard.layer.cornerRadius = 26
+        // Build 40: no card surface — the row sits directly on the
+        // page background; height matches the 我的 rows (48 pt).
+        updateCard.backgroundColor = .clear
+        updateCard.layer.cornerRadius = 24
         updateCard.clipsToBounds = true
         view.addSubview(updateCard)
         updateCard.translatesAutoresizingMaskIntoConstraints = false
@@ -323,7 +327,7 @@ final class AppSettingsViewController: UIViewController {
             updateCard.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 14),
             updateCard.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -14),
             updateCard.topAnchor.constraint(equalTo: card.bottomAnchor, constant: 12),
-            updateCard.heightAnchor.constraint(equalToConstant: 52),
+            updateCard.heightAnchor.constraint(equalToConstant: 48),
         ])
         let tap = UIControl()
         tap.addTarget(self, action: #selector(updateTapped), for: .touchUpInside)

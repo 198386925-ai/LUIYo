@@ -118,6 +118,10 @@ final class SplashDotsView: UIView {
             invalidateIntrinsicContentSize()
         }
     }
+    /// When true, `start` unhides the dots synchronously instead of
+    /// at their jump delays (Build 40: splash 04 shows its dots from
+    /// the first frame; splash 03 keeps the delayed entrance).
+    var showImmediately = false
     private var s: CGFloat { scale }
 
     init() {
@@ -157,8 +161,12 @@ final class SplashDotsView: UIView {
         let delays: [CFTimeInterval] = [10.4, 10.9, 11.4]
         for (i, dot) in dots.enumerated() {
             let begin = startTime + delays[i] * 0.24
-            DispatchQueue.main.asyncAfter(deadline: .now() + max(0, begin - CACurrentMediaTime())) {
+            if showImmediately {
                 dot.isHidden = false
+            } else {
+                DispatchQueue.main.asyncAfter(deadline: .now() + max(0, begin - CACurrentMediaTime())) {
+                    dot.isHidden = false
+                }
             }
             let group = CAAnimationGroup()
             let opacity = CAKeyframeAnimation(keyPath: "opacity")

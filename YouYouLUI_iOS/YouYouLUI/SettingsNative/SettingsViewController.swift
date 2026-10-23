@@ -37,14 +37,15 @@ final class SolidCardView: UIView {
     func configure(tint: UIColor) { backgroundColor = tint }
 }
 
-/// A settings fold: solid card with a tappable header (icon in a circle,
-/// title, subtitle, chevron) and a collapsible content area. Build 39: the
-/// row takes the 设置 page's card metrics — a 52 pt header height and a
-/// fixed 26 pt corner radius, collapsed or expanded (the same values as
-/// the 设置 page's 检查更新 card; the page stack's 14 pt side insets
-/// already matched).
+/// A settings fold: tappable header (icon in a circle, title, subtitle,
+/// chevron) and a collapsible content area. Build 39: the row took the
+/// 设置 page's card metrics. Build 40: the row height is 48 pt and the
+/// card surface is gone entirely — no fill, no material — so the
+/// content sits directly on the page background, collapsed or expanded
+/// (the 设置 page's single-row cards match: 48 pt, transparent). The
+/// page stack's 14 pt side insets remain.
 final class FoldView: UIView {
-    let card = SolidCardView(radius: 26)
+    let card = SolidCardView(radius: 24)
     let contentView = UIView()
     private let iconView = UIImageView()
     private let titleLabel = UILabel()
@@ -57,6 +58,7 @@ final class FoldView: UIView {
     init(icon: String, iconImage: UIImage? = nil, title: String, subtitle: String) {
         super.init(frame: .zero)
         addSubview(card)
+        card.configure(tint: .clear)
         card.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             card.leadingAnchor.constraint(equalTo: leadingAnchor),
@@ -97,7 +99,7 @@ final class FoldView: UIView {
         ])
         inner.addArrangedSubview(header)
         header.translatesAutoresizingMaskIntoConstraints = false
-        header.heightAnchor.constraint(equalToConstant: 52).isActive = true
+        header.heightAnchor.constraint(equalToConstant: 48).isActive = true
         header.addSubview(iconView)
         header.addSubview(titleLabel)
         header.addSubview(subtitleLabel)
@@ -121,7 +123,7 @@ final class FoldView: UIView {
         contentView.isHidden = true
         contentView.clipsToBounds = true
         card.content.clipsToBounds = true
-        card.content.layer.cornerRadius = 26
+        card.content.layer.cornerRadius = 24
         inner.addArrangedSubview(contentView)
         refreshAppearance()
     }
@@ -140,9 +142,9 @@ final class FoldView: UIView {
         // frame-by-frame ghosted neighbouring folds' text through it.)
         contentView.isHidden = !value
         subtitleLabel.isHidden = !value
-        card.setRadius(26)
-        card.content.layer.cornerRadius = 26
-        card.configure(tint: lastTint)
+        card.setRadius(24)
+        card.content.layer.cornerRadius = 24
+        card.configure(tint: .clear)
         superview?.layoutIfNeeded()
         if animated {
             UIView.animate(withDuration: 0.2, delay: 0, options: [.curveEaseInOut, .beginFromCurrentState]) {
@@ -157,11 +159,12 @@ final class FoldView: UIView {
         }
     }
 
-    /// The 我的 page's cards are solid now (Build 38): the card-material
-    /// choice no longer applies on this page, only the card colour does.
+    /// Build 40: the folds have no card surface at all — the tint is
+    /// remembered but the card itself stays transparent in both the
+    /// collapsed and expanded states.
     func configureGlass(useBlur: Bool, tint: UIColor) {
         lastTint = tint
-        card.configure(tint: tint)
+        card.configure(tint: .clear)
     }
 
     func refreshAppearance() {
@@ -193,7 +196,7 @@ final class SettingsViewController: UIViewController {
     private var themeFold: FoldView!
     private var guideFold: FoldView!
     private var changelogFold: FoldView!
-    private let appSettingsCard = SolidCardView(radius: 26)
+    private let appSettingsCard = SolidCardView(radius: 24)
     private var changelogCards: [SolidCardView] = []
     private var backgroundWell: UIColorWell!
     private var minimizeSwitch: UISwitch!
@@ -681,6 +684,7 @@ final class SettingsViewController: UIViewController {
     }
 
     private func buildAppSettingsCard() {
+        appSettingsCard.configure(tint: .clear)
         let tap = UIControl()
         tap.addTarget(self, action: #selector(appSettingsTapped), for: .touchUpInside)
         appSettingsCard.content.addSubview(tap)
@@ -690,7 +694,7 @@ final class SettingsViewController: UIViewController {
             tap.trailingAnchor.constraint(equalTo: appSettingsCard.content.trailingAnchor),
             tap.topAnchor.constraint(equalTo: appSettingsCard.content.topAnchor),
             tap.bottomAnchor.constraint(equalTo: appSettingsCard.content.bottomAnchor),
-            tap.heightAnchor.constraint(equalToConstant: 52),
+            tap.heightAnchor.constraint(equalToConstant: 48),
         ])
         let icon = UIImageView(image: UIImage(named: "tab-settings")?.withRenderingMode(.alwaysTemplate))
         icon.tintColor = UIAppColors.inkDynamic
@@ -770,7 +774,7 @@ final class SettingsViewController: UIViewController {
             ? UIColor(nativeHex: homeModel.theme.background)
             : .clear
         let tint = UIColor(nativeHex: homeModel.theme.card)
-        appSettingsCard.configure(tint: tint)
+        appSettingsCard.configure(tint: .clear)
         themeFold?.configureGlass(useBlur: homeModel.useBlur, tint: tint)
         guideFold?.configureGlass(useBlur: homeModel.useBlur, tint: tint)
         changelogFold?.configureGlass(useBlur: homeModel.useBlur, tint: tint)

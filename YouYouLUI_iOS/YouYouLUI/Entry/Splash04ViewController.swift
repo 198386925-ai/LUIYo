@@ -6,8 +6,9 @@ import UIKit
 /// icon (his PNG, shipped as an asset) inside a rotating conic glass
 /// ring (pre-rendered offline from the design's conic-gradient stops)
 /// with a pulsing halo, over the 150° gradient with two drifting
-/// blobs; iconIn's elastic entrance, then breathe; the dots; the
-/// BREATHE IN tag at 10.6t; and stageOut at 10t dissolving the whole
+/// blobs; iconIn's elastic entrance, then breathe; the dots and the
+/// BREATHE IN tag (Build 40: enlarged 1.5× and visible from the first
+/// frame instead of fading in at ~10.6t); and stageOut at 10t dissolving the whole
 /// stage into what comes next. `--t = .24s`; the full timeline is
 /// 3.6 s. The gate drives the exit: `finish` never starts stageOut
 /// before 10t and waits if the status verdict is still out.
@@ -56,6 +57,11 @@ final class Splash04ViewController: UIViewController {
         ringWrap.addSubview(ringInner)
         inner.addSubview(ringWrap)
         inner.addSubview(dotsView)
+        // Build 40: the dots and the tag read too small on device and
+        // only appeared at ~10.5t; both are enlarged 1.5× here and
+        // stay visible from the first frame until dismissal.
+        dotsView.sizeBoost = 1.5
+        dotsView.showImmediately = true
         tagLabel.text = "BREATHE IN"
         tagLabel.textColor = UIColor.white.withAlphaComponent(0.9)
         tagLabel.textAlignment = .center
@@ -92,8 +98,9 @@ final class Splash04ViewController: UIViewController {
         // 166 around icon 128, halo 290 across). Verified by a
         // measured simulation frame (build18/sim04.py).
         let u = bounds.width * 0.27 / (451.0 / 512.0) / 128
-        let tagHeight = 14.4 * s
-        let columnHeight = 128 * u + (26 + 7 + 26) * s + tagHeight
+        let tagHeight = 21.6 * s
+        let dotsHeight = 7 * s * dotsView.sizeBoost
+        let columnHeight = 128 * u + (26 + 26) * s + dotsHeight + tagHeight
         let columnTop = (bounds.height - columnHeight) / 2
         let ringFrame = CGRect(x: (bounds.width - 128 * u) / 2, y: columnTop,
                                width: 128 * u, height: 128 * u)
@@ -109,11 +116,11 @@ final class Splash04ViewController: UIViewController {
         dotsView.scale = s
         dotsView.frame = CGRect(x: (bounds.width - dotsView.intrinsicContentSize.width) / 2,
                                 y: dotsY, width: dotsView.intrinsicContentSize.width,
-                                height: 7 * s)
-        tagLabel.frame = CGRect(x: 0, y: dotsY + 7 * s + 26 * s,
+                                height: dotsHeight)
+        tagLabel.frame = CGRect(x: 0, y: dotsY + dotsHeight + 26 * s,
                                 width: bounds.width, height: tagHeight)
-        tagLabel.font = .systemFont(ofSize: 12 * s, weight: .bold)
-        tagLabel.addTracking(4 * s)
+        tagLabel.font = .systemFont(ofSize: 18 * s, weight: .bold)
+        tagLabel.addTracking(6 * s)
     }
 
     /// Starts the design timeline (called once, on screen + active).
@@ -177,9 +184,9 @@ final class Splash04ViewController: UIViewController {
         breathe.timingFunction = SplashTiming.cssEaseInOut
         breathe.repeatCount = .infinity
         ringWrap.layer.add(breathe, forKey: "breathe")
-        // Tag fadeUp at 10.6t.
-        addFadeUp(to: tagLabel.layer, beginTime: startTime + 10.6 * 0.24,
-                  duration: 5 * 0.24, distance: 12 * s)
+        // Build 40: no tag fadeUp — the tag is on screen from the
+        // first frame and stays until the exit fade dismisses the
+        // whole splash.
     }
 
     /// Exits the splash (never before the design's stageOut point
