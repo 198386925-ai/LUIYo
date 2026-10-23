@@ -215,7 +215,9 @@ final class AppUpdateChecker: NSObject, ObservableObject {
     func prepareForBackgroundDelivery() {
         let session = downloadSession
         session.getAllTasks { [weak self] tasks in
-            guard let self, let task = tasks.downloadTasks.first else { return }
+            guard let self,
+                  let task = tasks.compactMap({ $0 as? URLSessionDownloadTask }).first
+            else { return }
             DispatchQueue.main.async {
                 guard self.downloadTask == nil, self.phase != .downloaded else { return }
                 self.restorePendingDownloadMetadata()
