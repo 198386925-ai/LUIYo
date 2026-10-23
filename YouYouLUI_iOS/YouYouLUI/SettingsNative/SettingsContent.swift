@@ -40,10 +40,12 @@ enum SettingsContent {
             ChangelogEntry(tag: "优化", text: "证书管理整合：导入合并为一个「导入证书」入口；证书集中在设备 UDID 页管理，可侧滑导出或删除；检查更新页卡片圆角改小。"),
             ChangelogEntry(tag: "优化", text: "设备 UDID 新增复制按钮：设备 UDID 页点一下即可复制 UDID。"),
             ChangelogEntry(tag: "优化", text: "检查更新入口移至设置页：检查更新改为设置页内声音下方的一张独立卡片，发现新版本时仍有红点提醒；「我的」页不再显示该入口。"),
+            ChangelogEntry(tag: "优化", text: "自动检查更新间隔由六小时改为一小时：打开 LUIYo 时检查更新服务，每一小时最多一次。"),
             ChangelogEntry(tag: "修复", text: "修复新版启动闪退（签名库加载路径问题）。"),
             ChangelogEntry(tag: "修复", text: "修复版本弹窗首次出现时背景、图标与按钮不显示、需切到后台再切回才恢复的问题；弹窗画面按设计图一比一还原。"),
             ChangelogEntry(tag: "修复", text: "修复注册 / 登录切换时白色面板变形、卡片高度不随表单变化的问题。"),
             ChangelogEntry(tag: "修复", text: "修复 App 内签名完成后校验误报「签名校验失败」、签名文件被删除的问题。"),
+            ChangelogEntry(tag: "修复", text: "修复签名后安装过程中多余弹出分享面板、可能导致安装失败的问题。"),
         ]),
         ChangelogVersion(title: "Version 1.0.7-1", isCurrent: false, entries: [
             ChangelogEntry(tag: "新增", text: "自定义颜色新增「深色模式」分组：可单独开关深色图标反转，并自定义深色颜色。"),

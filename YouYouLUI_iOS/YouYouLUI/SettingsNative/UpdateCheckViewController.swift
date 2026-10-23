@@ -30,32 +30,13 @@ final class UpdateCheckViewController: UIViewController {
     private var progressView: UIProgressView!
     private var progressBytesLabel: UILabel!
     private var downloadButton: UIButton!
-    private var signingInProgress = false
-    /// Marks a chain started by tapping 立即下载 (its failures
-    /// alert, like the old manual signing), as opposed to the
-    /// 自动下载并签名 switch's silent chain, whose failures land
-    /// on the status line only.
-    private var manualChain = false
-    /// The signed IPA the on-device install was already handed
-    /// to (the auto-install trigger fires once per signed
-    /// download), and the one whose install hand-off failed (no
-    /// auto-retry — the button falls back to sharing the signed
-    /// file instead).
-    private var installAttemptedFor: URL?
-    private var installFailedFor: URL?
-    /// The signed IPA from the last successful in-app signing of
-    /// the CURRENT download, and the bookkeeping that keeps the
-    /// post-sign card state (and the auto-sign chain) honest when
-    /// the download changes underneath it.
-    private var signedIPAURL: URL?
-    private var signedForDownloadURL: URL?
-    private var lastSeenDownloadURL: URL?
-    private var autoSignAttemptedFor: URL?
-    private var autoSignFailureText: String?
-    /// The on-device install server while an install hand-off
-    /// is in flight (nil otherwise). Retained here so it keeps
-    /// serving until it reports itself stopped.
-    private var installServer: LocalInstallServer?
+    // The download → sign → install chain itself (its state,
+    // bookkeeping and the install server) lives in
+    // AppUpdateChecker: it has to run to completion even when
+    // this page is not on screen — the download continues in
+    // the background and the chain fires when the system wakes
+    // the app for it. This page only renders the checker's
+    // published chain state and forwards taps.
 
 
 
@@ -135,7 +116,7 @@ final class UpdateCheckViewController: UIViewController {
 
         stack.addArrangedSubview(versionCheckCard())
         stack.addArrangedSubview(togglesCard())
-        let togglesNote = footnoteLabel("打开 LUIYo 时检查更新服务，每六小时最多一次。开启自动下载后，发现新版会在后台下载，准备完成后再次确认安装。")
+        let togglesNote = footnoteLabel("打开 LUIYo 时检查更新服务，每一小时最多一次。开启自动下载后，发现新版会在后台下载，准备完成后再次确认安装。")
         stack.addArrangedSubview(togglesNote)
         stack.addArrangedSubview(certificateCard())
         let certNote = footnoteLabel("选择证书 zip 压缩包，或同时选择一份 P12 证书和描述文件，再输入密码，验证成功后保存。证书、密码与文件仅保存在本机钥匙串，不会上传。")
@@ -147,6 +128,17 @@ final class UpdateCheckViewController: UIViewController {
                 // @Published fires before the value lands; hop one
                 // tick so refresh() reads the settled state.
                 DispatchQueue.main.async { self?.refresh() }
+            }
+            .store(in: &cancellables)
+        updater.$alertSequence
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                // Chain failures the user has to see (a tap-started
+                // chain's sign failure, an install failure) arrive
+                // as one-shot alerts from the checker; present them
+                // only while this page is actually on screen.
+                guard let self, let alert = self.updater.userAlert, self.view.window != nil else { return }
+                self.showMessage(title: alert.title, message: alert.message)
             }
             .store(in: &cancellables)
         refresh()
@@ -515,7 +507,6 @@ final class UpdateCheckViewController: UIViewController {
         if updater.latestBuild != lastOfferBuild {
             lastOfferBuild = updater.latestBuild
             notesExpanded = false
-            manualChain = false
         }
         offerNotesLabel.isHidden = !notesExpanded
         if updater.updateFound {
@@ -525,21 +516,9 @@ final class UpdateCheckViewController: UIViewController {
         }
         offerChevron.image = UIImage(systemName: notesExpanded ? "chevron.down" : "chevron.right",
                                      withConfiguration: UIImage.SymbolConfiguration(pointSize: 12, weight: .semibold))
-        // A signed result belongs to one specific download; when
-        // the downloaded file changes, the signed state (and the
-        // chain bookkeeping) starts over.
-        if updater.downloadedFileURL != lastSeenDownloadURL {
-            lastSeenDownloadURL = updater.downloadedFileURL
-            autoSignAttemptedFor = nil
-            autoSignFailureText = nil
-            installAttemptedFor = nil
-            installFailedFor = nil
-        }
-        // manualChain is NOT reset here: this very refresh may
-        // be the one that has to carry a tap-started chain into
-        // signing. It resets when a new build is discovered
-        // (above) instead.
-        if updater.downloadedFileURL != signedForDownloadURL { signedIPAURL = nil }
+        // The signed state and the chain bookkeeping belong to
+        // one specific download and live in the checker, which
+        // resets them itself when the download changes.
         guard updater.updateFound else {
             // No offer: the progress + action button stay out of
             // the card; only the 更新日志 section above shows.
@@ -565,13 +544,13 @@ final class UpdateCheckViewController: UIViewController {
             progressView.isHidden = false
             progressView.progress = 1
             progressBytesLabel.isHidden = false
-            if signingInProgress {
+            if updater.signingInProgress {
                 progressBytesLabel.text = "正在签名…"
                 downloadButton.configuration = filledButtonConfiguration()
                 downloadButton.configuration?.title = "立即下载"
                 downloadButton.isEnabled = false
-            } else if let signedIPAURL {
-                if installFailedFor == signedIPAURL {
+            } else if updater.signedFileURL != nil {
+                if updater.installFailed {
                     // The install hand-off failed (its alert has
                     // already been shown): no auto-retry — the
                     // signed file stays reachable through 分享.
@@ -579,15 +558,15 @@ final class UpdateCheckViewController: UIViewController {
                     downloadButton.configuration = secondaryButtonConfiguration()
                     downloadButton.configuration?.title = "分享"
                     downloadButton.isEnabled = true
-                } else if installAttemptedFor == signedIPAURL {
-                    // The chain already handed this file to the
-                    // on-device install. While its server is up
-                    // the install flow owns the bytes line
-                    // （安装已发起…); before it is ready, the
+                } else if updater.installInFlight {
+                    // The chain has this file at the on-device
+                    // install: while its server is up the install
+                    // flow owns the bytes line （安装已发起… /
+                    // 已准备好安装）; before it reports, the
                     // signed line stands.
-                    if installServer == nil {
-                        progressBytesLabel.text = "签名完成 · 已通过签名校验"
-                    }
+                    progressBytesLabel.text = updater.installStatusText.isEmpty
+                        ? "签名完成 · 已通过签名校验"
+                        : updater.installStatusText
                     downloadButton.configuration = filledButtonConfiguration()
                     downloadButton.configuration?.title = "安装"
                     downloadButton.isEnabled = false
@@ -600,8 +579,8 @@ final class UpdateCheckViewController: UIViewController {
                     downloadButton.configuration?.title = "分享"
                     downloadButton.isEnabled = true
                 }
-            } else if let autoSignFailureText {
-                progressBytesLabel.text = autoSignFailureText
+            } else if let chainFailureText = updater.chainFailureText {
+                progressBytesLabel.text = chainFailureText
                 downloadButton.configuration = secondaryButtonConfiguration()
                 downloadButton.configuration?.title = "分享"
                 downloadButton.isEnabled = true
@@ -614,7 +593,7 @@ final class UpdateCheckViewController: UIViewController {
                 downloadButton.configuration = secondaryButtonConfiguration()
                 downloadButton.configuration?.title = "分享"
                 downloadButton.isEnabled = true
-            } else if updater.downloadedFileURL == autoSignAttemptedFor {
+            } else if updater.chainSettledForCurrentDownload {
                 // A chain attempt already ran for this download
                 // and produced no signed file (its failure was
                 // surfaced then): rest on the 分享 fallback.
@@ -622,11 +601,23 @@ final class UpdateCheckViewController: UIViewController {
                 downloadButton.configuration = secondaryButtonConfiguration()
                 downloadButton.configuration?.title = "分享"
                 downloadButton.isEnabled = true
+            } else if !updater.chainEngaged {
+                // Downloaded, but no chain was ever engaged for
+                // it (the 自动下载并签名 switch is off and
+                // nobody tapped): the button is the 立即下载
+                // action itself — tapping engages the chain on
+                // the file that is already here.
+                progressBytesLabel.text = "下载完成 · \(AppUpdateChecker.formatBytes(updater.totalBytes > 0 ? updater.totalBytes : updater.downloadedBytes))"
+                downloadButton.configuration = filledButtonConfiguration()
+                downloadButton.configuration?.title = "立即下载"
+                downloadButton.isEnabled = true
             } else {
-                // A chain (switch or tap) is about to carry this
-                // download into signing — the chaining block at
-                // the end of refresh() fires it. The button
-                // rests disabled meanwhile.
+                // An engaged chain is about to carry this
+                // download into signing — driveChain() at the
+                // end of refresh() fires it (and the checker
+                // fires it on its own when the download lands
+                // with this page closed). The button rests
+                // disabled meanwhile.
                 progressBytesLabel.text = "下载完成 · \(AppUpdateChecker.formatBytes(updater.totalBytes > 0 ? updater.totalBytes : updater.downloadedBytes))"
                 downloadButton.configuration = filledButtonConfiguration()
                 downloadButton.configuration?.title = "立即下载"
@@ -640,26 +631,15 @@ final class UpdateCheckViewController: UIViewController {
             downloadButton.isEnabled = true
         }
 
-        // The chain: with the 自动下载并签名 switch on, or after
-        // a tap on 立即下载 (manualChain), a finished download
-        // goes straight into in-app signing, and a successful
-        // sign straight into the on-device install — the only
-        // prompt left is the system's own install confirmation.
-        // Without usable cert material the chain stops at the
-        // downloaded state （请先导入证书 + 分享）, rendered above.
-        let chainEngaged = UpdateSettings.autoDownload || manualChain
-        if updater.phase == .downloaded, chainEngaged, UpdateSigner.canSign,
-           !signingInProgress, signedIPAURL == nil,
-           let downloaded = updater.downloadedFileURL, autoSignAttemptedFor != downloaded {
-            autoSignAttemptedFor = downloaded
-            startSigning(auto: !manualChain)
-        }
-        if updater.phase == .downloaded, chainEngaged,
-           let signed = signedIPAURL, LocalInstallServer.isAvailable,
-           installAttemptedFor != signed, installFailedFor != signed {
-            installAttemptedFor = signed
-            beginInstall()
-        }
+        // The chain itself — a finished download going into
+        // in-app signing, a successful sign going into the
+        // on-device install, only the system's own install
+        // confirmation as a prompt — is driven by the checker
+        // (it has to run with this page closed and the app
+        // backgrounded too). This nudge just re-offers the
+        // current state to it, e.g. after a cert import
+        // unblocked the sign step. driveChain() is idempotent.
+        updater.driveChain()
     }
 
     private func refreshCertificate() {
@@ -691,120 +671,32 @@ final class UpdateCheckViewController: UIViewController {
         case .downloading:
             updater.cancelDownload()
         case .downloaded:
-            // In the downloaded state the button rests as 分享:
-            // it shares the SIGNED file once one exists, and the
-            // plain downloaded IPA before that (the no-cert and
-            // sign-failure fallbacks — the file is never
-            // stranded).
-            if let signedIPAURL {
-                presentShareSheet(fileURL: signedIPAURL)
+            // In the downloaded state the button mostly rests as
+            // 分享 (mirroring refresh()'s states): it shares the
+            // SIGNED file once one exists, and the plain
+            // downloaded IPA in the no-cert / sign-failure /
+            // settled fallbacks — the file is never stranded.
+            // The one exception is a download no chain was ever
+            // engaged for: there the button reads 立即下载 and
+            // the tap engages the chain on the file already here.
+            if updater.signedFileURL != nil || updater.chainFailureText != nil
+                || !UpdateSigner.canSign || updater.chainSettledForCurrentDownload {
+                if let signed = updater.signedFileURL {
+                    presentShareSheet(fileURL: signed)
+                } else {
+                    updater.shareDownloaded()
+                }
             } else {
-                updater.shareDownloaded()
+                updater.startManualChain()
             }
         default:
             // 立即下载: start the chain — download, then signing,
-            // then the install hand-off, all driven from
-            // refresh(). A tap-started chain surfaces failures
-            // with an alert, like the old manual signing did.
-            manualChain = true
-            updater.startDownload()
-        }
-    }
-
-    /// Signs the downloaded update in-app with the stored P12 +
-    /// profile (vendored zsign engine) and verifies the result.
-    /// Runs only as part of a chain (the 自动下载并签名 switch,
-    /// or a tap on 立即下载): on success the chain carries the
-    /// signed file into the on-device install from refresh();
-    /// if the install cannot run, the card rests on 分享 for
-    /// the signed file. `auto` marks the switch's chain: it
-    /// never raises an alert and never presents anything; its
-    /// outcome lands on the card's status line. A tap-started
-    /// chain (auto == false) alerts on failure instead.
-    private func startSigning(auto: Bool) {
-        guard let downloaded = updater.downloadedFileURL, !signingInProgress else { return }
-        signingInProgress = true
-        progressBytesLabel.isHidden = false
-        progressBytesLabel.text = "正在签名…"
-        UpdateSigner.signDownloadedUpdate(
-            ipa: downloaded, version: updater.latestVersion, build: updater.latestBuild
-        ) { [weak self] result in
-            guard let self else { return }
-            self.signingInProgress = false
-            switch result {
-            case .success(let signedURL):
-                self.signedIPAURL = signedURL
-                self.signedForDownloadURL = downloaded
-                self.autoSignFailureText = nil
-                self.refresh()
-            case .failure(let failure):
-                if auto {
-                    self.autoSignFailureText = "自动签名失败：\(failure.message)"
-                    self.refresh()
-                } else {
-                    self.refresh()
-                    self.showMessage(title: "签名失败", message: failure.message)
-                }
-            }
-        }
-    }
-
-    /// Starts the on-device install server with the signed IPA
-    /// and, once it is listening, hands the system's itms-services
-    /// installer a manifest URL whose host resolves (via its DNS
-    /// A record) to this very phone — the whole hand-off stays
-    /// on-device, no server of ours involved. The chain calls
-    /// this once signing succeeds, so the system's own install
-    /// confirmation is the only prompt the user ever sees. A
-    /// failure alerts and leaves the signed file reachable via
-    /// 分享.
-    private func beginInstall() {
-        guard let signedIPAURL else { return }
-        let signedURL = signedIPAURL
-        // One install server at a time: a previous server is
-        // stopped first (its onStopped is then ignored by the
-        // identity check below).
-        installServer?.stop()
-        let metadata = LocalInstallServer.metadata(
-            forIPA: signedIPAURL, fallbackVersion: updater.latestVersion)
-        let server = LocalInstallServer()
-        installServer = server
-        server.onReady = { [weak self] port in
-            guard let self else { return }
-            let manifestURL = "https://\(LocalInstallServer.host):\(port)/manifest.plist"
-            self.progressBytesLabel.isHidden = false
-            self.progressBytesLabel.text = "安装已发起，请按系统提示完成。"
-            self.downloadButton.configuration = self.filledButtonConfiguration()
-            self.downloadButton.configuration?.title = "安装"
-            self.downloadButton.isEnabled = false
-            self.openInstallManifest(manifestURL)
-        }
-        server.onStopped = { [weak self, weak server] reason in
-            guard let self, let server, self.installServer === server else { return }
-            self.installServer = nil
-            if case .failed(let failure) = reason {
-                // No auto-retry: the card falls back to sharing
-                // the signed file.
-                self.installFailedFor = signedURL
-                self.installAttemptedFor = nil
-                self.refresh()
-                self.showMessage(title: "安装失败", message: failure.message)
-            }
-        }
-        server.start(ipaURL: signedIPAURL, metadata: metadata)
-    }
-
-    private func openInstallManifest(_ manifestURLString: String) {
-        let allowed = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~")
-        guard let encoded = manifestURLString.addingPercentEncoding(withAllowedCharacters: allowed),
-              let url = URL(string: "itms-services://?action=download-manifest&url=\(encoded)") else {
-            showMessage(title: "安装失败", message: "安装链接无效。")
-            return
-        }
-        UIApplication.shared.open(url, options: [:]) { [weak self] success in
-            if !success {
-                self?.showMessage(title: "安装失败", message: "无法打开系统安装入口，请改用分享安装。")
-            }
+            // then the install hand-off, all driven by the
+            // checker (with this page closed the same chain runs
+            // when the background download lands). A tap-started
+            // chain surfaces failures with an alert, like the
+            // old manual signing did.
+            updater.startManualChain()
         }
     }
 

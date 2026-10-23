@@ -62,6 +62,11 @@ final class LocalInstallServer {
     var onReady: ((UInt16) -> Void)?
     /// Fires once (main queue) when the server has fully stopped.
     var onStopped: ((StopReason) -> Void)?
+    /// Fires once (main queue) when the IPA has been fully
+    /// served to the installer. Only after this point may the
+    /// caller consider the install hand-off complete (the
+    /// update chain's auto-exit waits for it).
+    var onIPAServed: (() -> Void)?
 
     private let queue = DispatchQueue(label: "luiyo.local-install-server")
     private var listener: NWListener?
@@ -203,6 +208,7 @@ final class LocalInstallServer {
         let handler = onStopped
         onStopped = nil
         onReady = nil
+        onIPAServed = nil
         DispatchQueue.main.async { handler?(reason) }
     }
 
@@ -379,6 +385,9 @@ final class LocalInstallServer {
         connection.cancel()
         connections.removeValue(forKey: ObjectIdentifier(connection))
         ipaServed = true
+        if let servedHandler = onIPAServed {
+            DispatchQueue.main.async { servedHandler() }
+        }
         graceTimer?.cancel()
         let item = DispatchWorkItem { [weak self] in self?.finish(.finished) }
         graceTimer = item

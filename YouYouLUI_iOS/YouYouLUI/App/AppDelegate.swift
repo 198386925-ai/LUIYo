@@ -27,6 +27,25 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         window.makeKeyAndVisible()
         self.window = window
         VersionPopup.checkIfNeeded(hostWindow: window)
+        // Recreate the update checker's background download
+        // session at every launch: transfers started by a
+        // previous process reconnect to it, and a transfer that
+        // finished while the app was gone delivers its
+        // completion (and runs the sign/install chain) here.
+        AppUpdateChecker.shared.prepareForBackgroundDelivery()
         return true
+    }
+
+    /// The system relaunched the app to deliver a background
+    /// download session's events: hand the completion handler
+    /// to the checker, which invokes it once the session has
+    /// delivered everything (urlSessionDidFinishEvents).
+    func application(
+        _ application: UIApplication,
+        handleEventsForBackgroundURLSession identifier: String,
+        completionHandler: @escaping () -> Void
+    ) {
+        AppUpdateChecker.shared.backgroundSessionCompletionHandler = completionHandler
+        AppUpdateChecker.shared.prepareForBackgroundDelivery()
     }
 }
