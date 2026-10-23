@@ -32,10 +32,13 @@ import UIKit
 /// close button since Build 52) over a scrolling stack of
 /// per-version cards. Build 55: the scroll view spans the
 /// full sheet under a header strip (frosted in Build 55, solid
-/// since Build 56), so scrolled cards travel up through the
-/// header zone and clip at the sheet's top edge; the title and
-/// close button keep their exact positions and appearance
-/// from Builds 46–54.
+/// in Build 56, frosted again since Build 57 — the user wants
+/// to watch the content slide up through the frost; it is the
+/// sheet's clip, not the strip's opacity, that keeps text out
+/// of the transparent zone above the sheet), so scrolled
+/// cards travel up through the header zone and clip at the
+/// sheet's top edge; the title and close button keep their
+/// exact positions and appearance from Builds 46–54.
 /// The cards wear the frosted-glass （毛玻璃） LOOK — a milky,
 /// almost-white surface with a bright rim (the Build 47 recipe,
 /// overlay lightened to 0.38 in Build 48) — pinned on purpose:
@@ -43,8 +46,12 @@ import UIKit
 /// Build 56 (the user: 毛玻璃可以不用透明的效果吗): the card
 /// surface is a SOLID fill baked to the exact colour the live
 /// blur + white overlay produced over the flat sheet, and the
-/// header strip is likewise solid — no live blur in the cards
-/// or the strip, so nothing ghosts through them. Content is
+/// header strip was likewise solid. Build 57 (the user's
+/// clarification — sliding up, he wants to SEE it, but the
+/// text must never reach the transparent zone): the CARDS
+/// stay solid; the STRIP returns to live frost, and the
+/// sheet's own clipsToBounds is the hard clip that keeps
+/// every scrolled pixel inside the sheet. Content is
 /// `SettingsContent.changelog`, newest first, rendered in the
 /// same type sizes the old inline fold used.
 final class ChangelogViewController: UIViewController {
@@ -189,25 +196,42 @@ final class ChangelogViewController: UIViewController {
         }
 
         // Header strip (Build 55: a frosted strip in the sheet
-        // film's recipe; Build 56: SOLID — the user asked for
-        // the frost without the see-through). Filled with the
-        // sheet's own baked surface colour — the flat
-        // background under the sheet's white-0.15 film: light
-        // (242, 241, 237); dark the flat #121214 — pinned over
-        // the header zone, above the scroll view, so cards
-        // scrolling up under the title slide behind it and
-        // disappear cleanly at its bottom edge instead of
-        // ghosting through. The sheet's own clipsToBounds keeps
-        // the strip inside the rounded top corners.
+        // film's recipe; Build 56 made it SOLID at the user's
+        // "no see-through" word; Build 57 restores the FROST —
+        // the user's clarification: he wants to SEE the content
+        // sliding up through the header zone, all the way up to
+        // the sheet's top edge; what must never happen is text
+        // appearing in the transparent zone above the sheet).
+        // Same construction as the sheet's own film: one light
+        // system blur plus a colour-neutral tint laid in its
+        // content view (light: plain white sheen 0.15; dark:
+        // the #121214 tint at 0.5). Pinned over the header
+        // zone, above the scroll view, so cards scrolling up
+        // under the title show through it, blurred, rising to
+        // the sheet's top edge.
+        // The hard guarantee against escape: the strip and the
+        // scroll view are both subviews of the sheet, whose
+        // clipsToBounds — with the 34 pt radius masked to the
+        // top corners — clips ALL descendants at the sheet's
+        // bounds; the scroll view's frame is exactly the
+        // sheet's bounds (pinned edge to edge above) and
+        // UIScrollView clips its content to its own frame, so
+        // no card pixel can ever render above the sheet's top
+        // edge or outside its rounded corners, into the
+        // transparent zone where the live page shows through.
         // Non-interactive — the header (title + close button)
         // is added next and renders above it, unmoved.
-        let headerStrip = UIView()
+        let headerStrip = UIVisualEffectView(effect: UIBlurEffect(style: .systemMaterialLight))
         headerStrip.isUserInteractionEnabled = false
-        headerStrip.backgroundColor = UIColor { traits in
+        let headerStripTint = UIView()
+        headerStripTint.backgroundColor = UIColor { traits in
             traits.userInterfaceStyle == .dark
-                ? UIColor(red: 18.0 / 255.0, green: 18.0 / 255.0, blue: 20.0 / 255.0, alpha: 1)
-                : UIColor(red: 242.0 / 255.0, green: 241.0 / 255.0, blue: 237.0 / 255.0, alpha: 1)
+                ? UIColor(red: 18.0 / 255.0, green: 18.0 / 255.0, blue: 20.0 / 255.0, alpha: 0.5)
+                : UIColor.white.withAlphaComponent(0.15)
         }
+        headerStripTint.isUserInteractionEnabled = false
+        headerStrip.contentView.addSubview(headerStripTint)
+        headerStripTint.translatesAutoresizingMaskIntoConstraints = false
         sheet.addSubview(headerStrip)
         headerStrip.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
@@ -215,6 +239,10 @@ final class ChangelogViewController: UIViewController {
             headerStrip.trailingAnchor.constraint(equalTo: sheet.trailingAnchor),
             headerStrip.topAnchor.constraint(equalTo: sheet.topAnchor),
             headerStrip.heightAnchor.constraint(equalToConstant: 74),
+            headerStripTint.leadingAnchor.constraint(equalTo: headerStrip.contentView.leadingAnchor),
+            headerStripTint.trailingAnchor.constraint(equalTo: headerStrip.contentView.trailingAnchor),
+            headerStripTint.topAnchor.constraint(equalTo: headerStrip.contentView.topAnchor),
+            headerStripTint.bottomAnchor.constraint(equalTo: headerStrip.contentView.bottomAnchor),
         ])
 
         let header = UIView()
