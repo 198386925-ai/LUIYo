@@ -40,6 +40,7 @@ enum SettingsContent {
             ChangelogEntry(tag: "修复", text: "修复打开 App 时系统启动屏闪紫的问题：启动屏改用与启动图一致的蓝色渐变。"),
             ChangelogEntry(tag: "修复", text: "修复切换登录 / 注册时表单内容短暂空白的问题。"),
             ChangelogEntry(tag: "修复", text: "更新日志查看页的卡片改为毛玻璃效果"),
+            ChangelogEntry(tag: "修复", text: "修复气泡包批量导入时认不出的图被塞进文字气泡、导致导出文件名错乱的问题：认不出的图改为单独提示，不再进入导出。"),
         ]),
         ChangelogVersion(title: "Version 1.0.7-1", isCurrent: false, entries: [
             ChangelogEntry(tag: "新增", text: "自定义颜色新增「深色模式」分组：可单独开关深色图标反转，并自定义深色颜色。"),

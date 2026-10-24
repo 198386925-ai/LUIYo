@@ -240,6 +240,7 @@ final class BubblePackEditorViewController: UIViewController,
     private var otherChatStack: UIStackView!
 
     private var state: [String: PlacedImage] = [:]
+    private var unrecognized: [(name: String, image: UIImage)] = []  // 批量导入时文件名认不出的图：不进任何槽位、也不进 zip
     private var textBubbles: [String: BubbleView] = [:]
     private var textFileNames: [String: UILabel] = [:]
     private var otherBubbles: [String: BubbleView] = [:]
@@ -261,6 +262,7 @@ final class BubblePackEditorViewController: UIViewController,
         viewNight = false
         dark = false
         state = [:]
+        unrecognized = []
         textBubbles = [:]
         textFileNames = [:]
         otherBubbles = [:]
@@ -998,6 +1000,11 @@ final class BubblePackEditorViewController: UIViewController,
             txt += "   夜间 \(night)/\(need)"
         }
         txt += "   其它气泡 \(other)"
+        if !unrecognized.isEmpty {
+            let names = unrecognized.prefix(3).map { $0.name }.joined(separator: "、")
+            let more = unrecognized.count > 3 ? " 等 \(unrecognized.count) 张" : ""
+            txt += "\n⚠️ \(unrecognized.count) 张未识别（不导出）：\(names)\(more)"
+        }
         summaryLabel.text = "\(txt)\n\(tip)"
 
         let pct: CGFloat = need != 0 ? CGFloat(day) / CGFloat(need) : 0
@@ -1051,6 +1058,7 @@ final class BubblePackEditorViewController: UIViewController,
 
     @objc private func clearAll() {
         state.removeAll()
+        unrecognized.removeAll()
         refresh()
     }
 
@@ -1151,19 +1159,18 @@ final class BubblePackEditorViewController: UIViewController,
 
     private func placeImage(_ img: UIImage, fileName: String) {
         let m = BubbleNaming.shared.matchFileName(fileName, directories: [])
-        let sid = m.slot?.identifier
         let theme = (m.isNight && wantsNight) ? "night" : "day"
-        if let sid, state["\(sid)|\(theme)"] == nil {
+        if let sid = m.slot?.identifier {
+            // 认得出：直接放进对应槽位（已占满就覆盖，命名始终正确）。
+            // 旧逻辑在槽位已占满/认不出时会把图塞进下一个空文字气泡，
+            // 导致导出文件名错乱——这里改为精确归位。
             put(img, slotId: sid, theme: theme)
             return
         }
-        for s in BubbleNaming.shared.textSlots() {
-            let k = "\(s.identifier)|day"
-            if state[k] == nil {
-                put(img, slotId: s.identifier, theme: "day")
-                return
-            }
-        }
+        // 认不出名字：不偷偷塞进文字气泡，收进未识别清单，统计区提示用户手动处理。
+        // 这些图不会进入任何槽位，因此也不会被导出到 zip。
+        unrecognized.append((name: fileName, image: img))
+        refresh()
     }
 
     // MARK: - 导入 / 导出
