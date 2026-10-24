@@ -290,7 +290,7 @@ final class FontSettingsViewController: UIViewController {
     // MARK: - 应用位置 checkboxes
 
     private func areaCard() -> UIView {
-        let card = configuredCard(radius: 20)
+        let card = configuredCard(radius: 24)
         let inner = UIStackView()
         inner.axis = .horizontal
         inner.distribution = .fillEqually
@@ -355,7 +355,7 @@ final class FontSettingsViewController: UIViewController {
     // MARK: - Search
 
     private func searchCard() -> UIView {
-        let card = configuredCard(radius: 20)
+        let card = configuredCard(radius: 24)
         let icon = UIImageView(image: UIImage(systemName: "magnifyingglass", withConfiguration: UIImage.SymbolConfiguration(pointSize: 15, weight: .medium)))
         icon.tintColor = UIAppColors.secondary
         icon.contentMode = .scaleAspectFit
@@ -438,7 +438,7 @@ final class FontSettingsViewController: UIViewController {
     }
 
     private func fontRowCard(name: String, preview: String?, previewFont: UIFont?, selected: Bool, value: String, fileKey: String?) -> UIView {
-        let card = configuredCard(radius: 20)
+        let card = configuredCard(radius: 24)
         // Each row is a specimen of one candidate face.
         card.accessibilityIdentifier = "luiyo.fontExempt"
         let tap = UIControl()
@@ -494,7 +494,7 @@ final class FontSettingsViewController: UIViewController {
     }
 
     private func importCard() -> UIView {
-        let card = configuredCard(radius: 20)
+        let card = configuredCard(radius: 24)
         let tap = UIControl()
         tap.addTarget(self, action: #selector(importTapped), for: .touchUpInside)
         let title = UILabel()
@@ -566,7 +566,7 @@ final class FontSettingsViewController: UIViewController {
     // MARK: - Storage
 
     private func storageCard() -> UIView {
-        let card = configuredCard(radius: 20)
+        let card = configuredCard(radius: 24)
         let inner = UIStackView()
         inner.axis = .vertical
         inner.spacing = 8

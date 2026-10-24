@@ -79,7 +79,7 @@ final class FoldView: UIView {
         titleLabel.text = title
         titleLabel.font = UIFont.systemFont(ofSize: 13, weight: .semibold)
         subtitleLabel.text = subtitle
-        subtitleLabel.font = UIFont.systemFont(ofSize: 8)
+        subtitleLabel.font = UIFont.systemFont(ofSize: 10)
         subtitleLabel.textColor = UIAppColors.secondary
         subtitleLabel.isHidden = true
         chevron.image = UIImage(systemName: "chevron.down", withConfiguration: UIImage.SymbolConfiguration(pointSize: 13, weight: .semibold))
@@ -584,7 +584,7 @@ final class SettingsViewController: UIViewController {
         title.textColor = UIAppColors.inkDynamic
         let subtitle = UILabel()
         subtitle.text = "Version 1.0.8 · 当前版本"
-        subtitle.font = UIFont.systemFont(ofSize: 8)
+        subtitle.font = UIFont.systemFont(ofSize: 10)
         subtitle.textColor = UIAppColors.secondary
         subtitle.isHidden = true
         let chevron = UIImageView(image: UIImage(systemName: "chevron.right", withConfiguration: UIImage.SymbolConfiguration(pointSize: 13, weight: .semibold)))

@@ -16,7 +16,6 @@ extension MainShellViewController {
             attachNativePage(settingsHost, to: parent, host: host)
             bindNativeContentScroll(settingsHost.view, parent: parent)
         case .home:
-            lastFadedNativePage = nil
             attachNativeHome(to: parent, host: host)
             if let scroll = nativeHomeScrollView,
                boundScrollViews[ObjectIdentifier(parent)] !== scroll {
@@ -93,13 +92,7 @@ extension MainShellViewController {
             controller.didMove(toParent: parent)
         }
         controller.view.isHidden = false
-        if lastFadedNativePage != activePage {
-            lastFadedNativePage = activePage
-            controller.view.alpha = 0
-            UIView.animate(withDuration: 0.3, delay: 0.02, options: .curveEaseOut, animations: {
-                controller.view.alpha = 1
-            })
-        }
+        controller.view.alpha = 1
     }
 
     /// Binds the native page's scroll view for the bottom-bar behaviours.

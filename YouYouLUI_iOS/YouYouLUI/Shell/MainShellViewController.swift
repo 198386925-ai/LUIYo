@@ -55,7 +55,6 @@ final class MainShellViewController: UITabBarController {
     var switchingPage = false
     var suppressWebViewReveal = false
     var pageSwitchGeneration = 0
-    var lastFadedNativePage: ShellPage?
     var reportedTabTop: CGFloat = -1
     private var scrollOffsetObservation: NSKeyValueObservation?
     #if DEBUG

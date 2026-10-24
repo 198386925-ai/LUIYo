@@ -161,7 +161,7 @@ final class UpdateCheckViewController: UIViewController {
     private func makeCard() -> (card: UIView, inner: UIStackView) {
         let card = UIView()
         card.backgroundColor = UIColor(nativeHex: homeModel.theme.card)
-        card.layer.cornerRadius = 22
+        card.layer.cornerRadius = 24
         card.clipsToBounds = true
         let inner = UIStackView()
         inner.axis = .vertical
@@ -919,7 +919,7 @@ final class CertMaterialViewController: UIViewController {
     private func makeCard() -> (card: UIView, inner: UIStackView) {
         let card = UIView()
         card.backgroundColor = UIColor(nativeHex: homeModel.theme.card)
-        card.layer.cornerRadius = 22
+        card.layer.cornerRadius = 24
         card.clipsToBounds = true
         let inner = UIStackView()
         inner.axis = .vertical
@@ -1445,7 +1445,7 @@ final class CertDetailViewController: UIViewController {
     private func makeCard() -> (card: UIView, inner: UIStackView) {
         let card = UIView()
         card.backgroundColor = UIColor(nativeHex: homeModel.theme.card)
-        card.layer.cornerRadius = 22
+        card.layer.cornerRadius = 24
         card.clipsToBounds = true
         let inner = UIStackView()
         inner.axis = .vertical

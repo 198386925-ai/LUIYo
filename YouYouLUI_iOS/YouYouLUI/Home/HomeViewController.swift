@@ -590,7 +590,7 @@ final class HomeToolsCell: UICollectionViewCell {
         }
         // Color row: palette icon + two-line text + chevron (matches the old home).
         colorRow.configure(useBlur: model.useBlur, tint: tint,
-                           titleFont: hfont(13, .semibold), subtitleFont: hfont(8, .regular))
+                           titleFont: hfont(13, .semibold), subtitleFont: hfont(10, .regular))
 
         for (button, title, asset, hex) in [
             (clearButton, "清空", "ToolbarClear", "#007AFE"),
@@ -699,7 +699,7 @@ final class HomeHeadingCell: UICollectionViewCell {
 }
 
 final class HomeIconCell: UICollectionViewCell {
-    private let card = GlassCardView(radius: 20)
+    private let card = GlassCardView(radius: 24)
     private let thumbContainer = UIView()
     private let thumbImage = UIImageView()
     private let plusIcon = UIImageView()
@@ -774,7 +774,7 @@ final class HomeIconCell: UICollectionViewCell {
         title.font = hfont(12, .regular)
         title.textColor = .label
         state.text = image == nil ? "点击上传" : "已上传 · 点击替换"
-        state.font = hfont(8, .regular)
+        state.font = hfont(10, .regular)
         state.textColor = UIAppColors.secondary
         trash.isHidden = image == nil
         if let image {
