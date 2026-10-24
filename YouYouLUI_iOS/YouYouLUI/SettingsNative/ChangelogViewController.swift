@@ -445,11 +445,12 @@ final class ChangelogViewController: UIViewController {
 
 /// One changelog card: a frosted-glass surface under a
 /// content container, finished with a bright 1 pt rim.
-/// Build 74 (user order): light mode is now pure-white frost
-/// — the same whitest-frost recipe as the sheet film (thin
-/// material + white 0.5 sheen) — replacing the Build 60
-/// acrylic / Mica-style THICK glass (systemThickMaterialLight
-/// + white 0.10), which read grayish against the white sheet.
+/// Build 75 (user order): light cards are back to THICK
+/// material + white 0.5 sheen — Build 74's thin material +
+/// white 0.5 matched the sheet film exactly, so the cards
+/// blended into the background and could not be told apart.
+/// Thick material reads darker than the thin film, so the
+/// cards stand out again while keeping the white tint.
 /// Dark mode keeps its thick material + white 0.06 tint.
 /// History:
 /// a light system blur pushed milky-white by a white overlay
@@ -470,7 +471,7 @@ private final class ChangelogGlassCardView: UIView {
     private static func cardMaterial(for traits: UITraitCollection) -> UIBlurEffect {
         UIBlurEffect(style: traits.userInterfaceStyle == .dark
             ? .systemThickMaterialDark
-            : .systemThinMaterialLight)
+            : .systemThickMaterialLight)
     }
 
     init() {
