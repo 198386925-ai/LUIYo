@@ -443,17 +443,15 @@ final class ChangelogViewController: UIViewController {
     }
 }
 
-/// One changelog card: an acrylic / Mica-style THICK-glass
-/// surface under a content container, finished with a bright
-/// 1 pt rim (Build 60, the user's word: the cards use the
-/// Fluent-Acrylic / Windows-11-Mica effect — a thick frosted
-/// material, heavy blur, nearly opaque, softly tinted by what
-/// is behind it, muted and wallpaper-like). Apple's native
-/// equivalent is the thick material family, so the surface is
-/// a `UIVisualEffectView` with `.systemThickMaterialLight` /
-/// `.systemThickMaterialDark` (swapped on appearance change),
-/// plus a faint acrylic-finish tint inside its contentView:
-/// white 0.10 in light mode, white 0.06 in dark mode. History:
+/// One changelog card: a frosted-glass surface under a
+/// content container, finished with a bright 1 pt rim.
+/// Build 74 (user order): light mode is now pure-white frost
+/// — the same whitest-frost recipe as the sheet film (thin
+/// material + white 0.5 sheen) — replacing the Build 60
+/// acrylic / Mica-style THICK glass (systemThickMaterialLight
+/// + white 0.10), which read grayish against the white sheet.
+/// Dark mode keeps its thick material + white 0.06 tint.
+/// History:
 /// a light system blur pushed milky-white by a white overlay
 /// (Builds 47–55; the Build 46 iOS 26 liquid-glass surface read
 /// as a gray-lavender wash over the sheet and was rejected),
@@ -469,10 +467,10 @@ private final class ChangelogGlassCardView: UIView {
     private let surface = UIVisualEffectView()
     private let tint = UIView()
 
-    private static func thickMaterial(for traits: UITraitCollection) -> UIBlurEffect {
+    private static func cardMaterial(for traits: UITraitCollection) -> UIBlurEffect {
         UIBlurEffect(style: traits.userInterfaceStyle == .dark
             ? .systemThickMaterialDark
-            : .systemThickMaterialLight)
+            : .systemThinMaterialLight)
     }
 
     init() {
@@ -487,12 +485,12 @@ private final class ChangelogGlassCardView: UIView {
         layer.shadowOffset = CGSize(width: 0, height: 6)
         surface.isUserInteractionEnabled = false
         surface.clipsToBounds = true
-        surface.effect = Self.thickMaterial(for: traitCollection)
+        surface.effect = Self.cardMaterial(for: traitCollection)
         tint.isUserInteractionEnabled = false
         tint.backgroundColor = UIColor { traits in
             traits.userInterfaceStyle == .dark
                 ? UIColor.white.withAlphaComponent(0.06)
-                : UIColor.white.withAlphaComponent(0.10)
+                : UIColor.white.withAlphaComponent(0.5)
         }
         surface.contentView.addSubview(tint)
         addSubview(surface)
@@ -521,7 +519,7 @@ private final class ChangelogGlassCardView: UIView {
     override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
         super.traitCollectionDidChange(previousTraitCollection)
         if traitCollection.hasDifferentColorAppearance(comparedTo: previousTraitCollection) {
-            surface.effect = Self.thickMaterial(for: traitCollection)
+            surface.effect = Self.cardMaterial(for: traitCollection)
         }
     }
 
