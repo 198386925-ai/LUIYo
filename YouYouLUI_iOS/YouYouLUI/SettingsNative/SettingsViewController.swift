@@ -194,7 +194,6 @@ final class SettingsViewController: UIViewController {
     private var heroView: UIView?
     private var themeFold: FoldView!
     private var guideFold: FoldView!
-    private var changelogRowCard: SolidCardView!
     private let appSettingsCard = SolidCardView(radius: 24)
     private var minimizeSwitch: UISwitch!
     private var appearanceSeg: PillSegmentedControl!
@@ -283,12 +282,9 @@ final class SettingsViewController: UIViewController {
         ])
         stack.addArrangedSubview(guideFold)
 
-        // 更新日志 is a plain push row since Build 46: tapping it
-        // presents the changelog viewer sheet; the log no longer
-        // expands inline on this page.
-        changelogRowCard = SolidCardView(radius: 24)
-        buildChangelogRow()
-        stack.addArrangedSubview(changelogRowCard)
+        // Build 69 (user order): the standalone 更新日志 row is
+        // removed; the hero account card's 更新日志 pill remains
+        // the only entry to the viewer.
 
         buildAppSettingsCard()
         stack.addArrangedSubview(appSettingsCard)
@@ -559,61 +555,6 @@ final class SettingsViewController: UIViewController {
         return paddedContent(inner)
     }
 
-    /// The 更新日志 row: a 48 pt solid card in the same shape as
-    /// the 设置 entry below it — bundled icon, 13 pt semibold
-    /// title, push chevron. Tapping it (like the hero's 更新日志
-    /// pill) presents the changelog viewer sheet.
-    private func buildChangelogRow() {
-        let tap = UIControl()
-        tap.addTarget(self, action: #selector(changelogRowTapped), for: .touchUpInside)
-        changelogRowCard.content.addSubview(tap)
-        tap.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            tap.leadingAnchor.constraint(equalTo: changelogRowCard.content.leadingAnchor),
-            tap.trailingAnchor.constraint(equalTo: changelogRowCard.content.trailingAnchor),
-            tap.topAnchor.constraint(equalTo: changelogRowCard.content.topAnchor),
-            tap.bottomAnchor.constraint(equalTo: changelogRowCard.content.bottomAnchor),
-            tap.heightAnchor.constraint(equalToConstant: 48),
-        ])
-        let icon = UIImageView(image: luiyoBundledIcon("changelog"))
-        icon.tintColor = UIAppColors.inkDynamic
-        icon.contentMode = .scaleAspectFit
-        let title = UILabel()
-        title.text = "更新日志"
-        title.font = UIFont.systemFont(ofSize: 13, weight: .semibold)
-        title.textColor = UIAppColors.inkDynamic
-        let subtitle = UILabel()
-        subtitle.text = "Version 1.0.8 · 当前版本"
-        subtitle.font = UIFont.systemFont(ofSize: 10)
-        subtitle.textColor = UIAppColors.secondary
-        subtitle.isHidden = true
-        let chevron = UIImageView(image: UIImage(systemName: "chevron.right", withConfiguration: UIImage.SymbolConfiguration(pointSize: 13, weight: .semibold)))
-        chevron.tintColor = UIAppColors.inkDynamic
-        chevron.contentMode = .scaleAspectFit
-        tap.addSubview(icon)
-        tap.addSubview(title)
-        tap.addSubview(subtitle)
-        tap.addSubview(chevron)
-        icon.translatesAutoresizingMaskIntoConstraints = false
-        title.translatesAutoresizingMaskIntoConstraints = false
-        subtitle.translatesAutoresizingMaskIntoConstraints = false
-        chevron.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            icon.leadingAnchor.constraint(equalTo: tap.leadingAnchor, constant: 16),
-            icon.centerYAnchor.constraint(equalTo: tap.centerYAnchor),
-            icon.widthAnchor.constraint(equalToConstant: 21),
-            icon.heightAnchor.constraint(equalToConstant: 21),
-            title.leadingAnchor.constraint(equalTo: icon.trailingAnchor, constant: 10),
-            title.centerYAnchor.constraint(equalTo: tap.centerYAnchor),
-            subtitle.leadingAnchor.constraint(equalTo: title.trailingAnchor, constant: 6),
-            subtitle.centerYAnchor.constraint(equalTo: tap.centerYAnchor),
-            chevron.trailingAnchor.constraint(equalTo: tap.trailingAnchor, constant: -16),
-            chevron.centerYAnchor.constraint(equalTo: tap.centerYAnchor),
-        ])
-    }
-
-    @objc private func changelogRowTapped() { openChangelogViewer() }
-
     private func openChangelogViewer() {
         let viewer = ChangelogViewController(backgroundColor: UIColor(nativeHex: homeModel.theme.background))
         viewer.applyPageFont(pageFont)
@@ -714,7 +655,6 @@ final class SettingsViewController: UIViewController {
         appSettingsCard.configure(tint: tint)
         themeFold?.configureGlass(useBlur: homeModel.useBlur, tint: tint)
         guideFold?.configureGlass(useBlur: homeModel.useBlur, tint: tint)
-        changelogRowCard?.configure(tint: tint)
     }
 }
 

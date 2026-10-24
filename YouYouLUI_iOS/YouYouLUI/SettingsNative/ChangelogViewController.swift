@@ -12,9 +12,10 @@ import UIKit
 /// the page background colour — the live page does not ghost
 /// through the sheet's body at all — plus a frosted-glass film
 /// over it, so the sheet reads soft while transparency exists
-/// only above it. Build 55: the light-mode background layer is
+/// only above it. Build 55: the light-mode background layer was
 /// a FLAT warm beige #F0EEE8 (the reference app's paper colour,
-/// the user's pick over Build 54's #BAD0EB-family gradient)
+/// the user's pick over Build 54's #BAD0EB-family gradient);
+/// Build 69 (user order): the light layer is now pure white #FFFFFF.
 /// and the film stays a colour-neutral frost (light blur +
 /// plain white sheen 0.15) over it; dark mode keeps its flat
 /// #121214 background and film.
@@ -119,10 +120,10 @@ final class ChangelogViewController: UIViewController {
         // the sheet's body at all; layer 2, on top of it, is a
         // frosted-glass film. Build 55 (the user's colour call):
         // the colour belongs to the BACKGROUND layer only —
-        // light mode is a FLAT warm beige #F0EEE8 (the reference
-        // app's paper colour, sampled from its sheet; he picked
-        // it over Build 54's #BAD0EB-family gradient; dark mode
-        // keeps the flat #121214) — and the film is
+        // light mode is pure white #FFFFFF since Build 69 (user
+        // order; it was a FLAT warm beige #F0EEE8 before, the
+        // reference app's paper colour; dark mode keeps the flat
+        // #121214) — and the film is
         // colour-NEUTRAL: one light system blur plus a plain
         // white sheen at 0.15 (dark: the #121214 tint at 0.5 as
         // before), so the beige shows through the frost undyed.
@@ -582,10 +583,8 @@ private final class ChangelogCloseButton: UIControl {
 }
 
 /// The sheet's background layer (layer 1 of the two-layer
-/// construction). Light mode (Build 55, the user's colour
-/// call): a FLAT warm beige #F0EEE8 — the reference app's
-/// paper colour, sampled from its sheet (RGB 240, 238, 232) —
-/// which he picked over Build 54's #BAD0EB-family gradient;
+/// construction). Light mode (Build 69, user order): pure white
+/// #FFFFFF — it was a FLAT warm beige #F0EEE8 in Builds 55–68;
 /// opaque, so the live page never ghosts through the sheet's
 /// body. Dark mode keeps the flat #121214 of Builds 51–54.
 /// The colour lives ONLY in this layer; the frost film laid
@@ -597,7 +596,7 @@ private final class ChangelogSheetBackgroundView: UIView {
         backgroundColor = UIColor { traits in
             traits.userInterfaceStyle == .dark
                 ? UIColor(red: 18.0 / 255.0, green: 18.0 / 255.0, blue: 20.0 / 255.0, alpha: 1) // #121214
-                : UIColor(red: 240.0 / 255.0, green: 238.0 / 255.0, blue: 232.0 / 255.0, alpha: 1) // #F0EEE8
+                : UIColor(red: 255.0 / 255.0, green: 255.0 / 255.0, blue: 255.0 / 255.0, alpha: 1) // #FFFFFF (Build 69)
         }
     }
 
