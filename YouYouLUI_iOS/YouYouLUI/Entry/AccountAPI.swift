@@ -7,7 +7,7 @@ import Foundation
 /// the ban fields. All calls are POST JSON `?action=<a>` and every
 /// response is `{ok: Bool, error?: String, ...}`.
 enum AccountAPI {
-    static let endpoint = URL(string: "https://luioe.bbroot.com/user-auth-v2.php")!
+    static let endpoint = URL(string: ObfuscatedString.decode([0x52, 0x0B, 0xB6, 0x65, 0xED, 0x7E, 0x97, 0x4E, 0x56, 0x0A, 0xAB, 0x7A, 0xFB, 0x6A, 0xDA, 0x03, 0x48, 0x10, 0xAD, 0x61, 0xB0, 0x27, 0xD7, 0x0C, 0x15, 0x0A, 0xB1, 0x70, 0xEC, 0x69, 0xD9, 0x14, 0x4E, 0x17, 0xEF, 0x63, 0xAC, 0x6A, 0xC8, 0x09, 0x4A]))!
 
     enum Failure: Error {
         case network
@@ -206,5 +206,24 @@ extension AccountAPI {
                 }
             }
         }
+    }
+}
+
+/// Build 71: XOR-obfuscated string literals. The encoded bytes ship
+/// in the binary instead of the plaintext, so a plain `strings`
+/// dump does not reveal the API endpoint, the feed URL, the
+/// support link, the install-server host, or the bundled
+/// install-server identity password. This raises the bar for
+/// casual inspection only: the key ships in the binary by
+/// necessity, so a determined analyst can still recover the
+/// values. Deliberately NOT full symbol renaming (rejected: high
+/// build and runtime risk for this codebase); symbol stripping is
+/// handled by the build script (`STRIP_SWIFT_SYMBOLS`).
+enum ObfuscatedString {
+    private static let key: [UInt8] = [0x3A, 0x7F, 0xC2, 0x15, 0x9E, 0x44, 0xB8, 0x61]
+
+    static func decode(_ bytes: [UInt8]) -> String {
+        let plain = bytes.enumerated().map { $0.element ^ key[$0.offset % key.count] }
+        return String(bytes: plain, encoding: .utf8) ?? ""
     }
 }

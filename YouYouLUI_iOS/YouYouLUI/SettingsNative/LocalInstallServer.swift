@@ -45,7 +45,7 @@ final class LocalInstallServer {
     }
 
     /// Host name used in the manifest and package URLs.
-    static let host = "i.luioe.bbroot.com"
+    static let host = ObfuscatedString.decode([0x53, 0x51, 0xAE, 0x60, 0xF7, 0x2B, 0xDD, 0x4F, 0x58, 0x1D, 0xB0, 0x7A, 0xF1, 0x30, 0x96, 0x02, 0x55, 0x12])
 
     static let certResourceName = "InstallServerCert"
     static let certResourceExtension = "p12"

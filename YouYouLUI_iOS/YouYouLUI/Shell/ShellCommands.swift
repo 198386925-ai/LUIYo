@@ -26,9 +26,38 @@ extension MainShellViewController {
         case "colors":
             engine.colorsUpdated()
         case "export":
-            engine.startExport()
+            verifyExportAuthorization()
         default:
             break
+        }
+    }
+
+    /// Build 71 export online verification (user rule): a locally
+    /// authorized export still asks the server first. A live verdict
+    /// rules: authorized → export; banned/invalid/unbound → block
+    /// and refresh the local mirror. Only a truly unreachable server
+    /// falls back to the cached local authorization (the user's
+    /// no-network choice: offline exports keep working).
+    private func verifyExportAuthorization() {
+        showNotice("正在验证授权…")
+        AccountAPI.fetchStatus(timeout: 8) { [weak self] status in
+            guard let self else { return }
+            switch status {
+            case .ok(let email, let svip, let svipExpiresAt, let displayName):
+                AccountAuthorization.update(email: email, svip: svip, svipExpiresAt: svipExpiresAt, displayName: displayName)
+                self.setAuthorization(AccountAuthorization.isAuthorized)
+                if AccountAuthorization.isAuthorized {
+                    self.engine.startExport()
+                } else {
+                    self.showAuthorizationRequired()
+                }
+            case .banned, .invalid:
+                AccountAuthorization.update(email: AccountSession.email ?? "", svip: false, svipExpiresAt: 0, displayName: "")
+                self.setAuthorization(false)
+                self.showAuthorizationRequired()
+            case .unreachable:
+                self.engine.startExport()
+            }
         }
     }
 

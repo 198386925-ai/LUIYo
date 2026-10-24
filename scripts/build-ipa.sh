@@ -42,7 +42,7 @@ xcodebuild \
   -scheme YouYouLUI -configuration Release \
   -sdk iphoneos -destination 'generic/platform=iOS' \
   -derivedDataPath build \
-  CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build
+  CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" STRIP_SWIFT_SYMBOLS=YES build
 APP=build/Build/Products/Release-iphoneos/YouYouLUI.app
 test -f "$APP/YouYouLUI"
 VERSION=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Info.plist")
