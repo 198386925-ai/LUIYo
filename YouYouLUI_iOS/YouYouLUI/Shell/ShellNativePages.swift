@@ -91,6 +91,9 @@ extension MainShellViewController {
         }
         let controller = BubblePackEditorViewController()
         controller.view.backgroundColor = .clear
+        controller.exportAuthorizationCheck = { [weak self] completion in
+            self?.verifyBubbleExportAuthorization(completion: completion)
+        }
         controller.onExport = { [weak controller] zipURL in
             guard let host = controller else { return }
             let sheet = UIActivityViewController(activityItems: [zipURL], applicationActivities: nil)

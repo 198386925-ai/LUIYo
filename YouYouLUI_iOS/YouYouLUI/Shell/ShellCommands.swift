@@ -61,6 +61,41 @@ extension MainShellViewController {
         }
     }
 
+    /// Bubble-pack export gate: the same two layers as the main export
+    /// (local fast-fail, then the Build 71 server re-check; unreachable
+    /// falls back to the cached local authorization, which already
+    /// passed the fast-fail above). Only the zip export is gated —
+    /// playing in the editor stays free, like every other page.
+    func verifyBubbleExportAuthorization(completion: @escaping (Bool) -> Void) {
+        if !AccountAuthorization.isAuthorized {
+            showAuthorizationRequired()
+            completion(false)
+            return
+        }
+        showNotice("正在验证授权…")
+        AccountAPI.fetchStatus(timeout: 8) { [weak self] status in
+            guard let self else { return }
+            switch status {
+            case .ok(let email, let svip, let svipExpiresAt, let displayName):
+                AccountAuthorization.update(email: email, svip: svip, svipExpiresAt: svipExpiresAt, displayName: displayName)
+                self.setAuthorization(AccountAuthorization.isAuthorized)
+                if AccountAuthorization.isAuthorized {
+                    completion(true)
+                } else {
+                    self.showAuthorizationRequired()
+                    completion(false)
+                }
+            case .banned, .invalid:
+                AccountAuthorization.update(email: AccountSession.email ?? "", svip: false, svipExpiresAt: 0, displayName: "")
+                self.setAuthorization(false)
+                self.showAuthorizationRequired()
+                completion(false)
+            case .unreachable:
+                completion(true)
+            }
+        }
+    }
+
     /// Commands raised by the native homepage.
     func handleHomeCommand(_ action: String, _ values: [String: Any]) {
         if action == "export", !isAuthorized { showAuthorizationRequired(); return }

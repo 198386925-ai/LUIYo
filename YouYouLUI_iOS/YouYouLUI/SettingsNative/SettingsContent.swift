@@ -33,7 +33,7 @@ enum SettingsContent {
             ChangelogEntry(tag: "新增", text: "新增 App 内签名与本机直接安装：在 LUIYo 内用导入的证书给新版本签名并校验，签名后可直接在本机安装，不再跳转其他签名工具。"),
             ChangelogEntry(tag: "新增", text: "新增证书详情查看：点证书可看证书名称、团队 ID、描述文件名称、到期时间与包含的设备 UDID；导入证书支持 zip 压缩包，导出同为 zip。"),
             ChangelogEntry(tag: "新增", text: "新增修改密码：我的账号资料页新增「修改密码」，输入原密码验证后即可设置新密码（至少 8 个字符，需含大写和小写字母各 1 个），修改后当前设备保持登录。"),
-            ChangelogEntry(tag: "新增", text: "新增气泡包：底栏新增「气泡包」页，点气泡放图，自动按规则命名，导出 zip 即可上传。"),
+            ChangelogEntry(tag: "新增", text: "新增气泡包：底栏新增「气泡包」页，点气泡放图，自动按规则命名，导出 zip 即可上传（导出需授权）。"),
             ChangelogEntry(tag: "修复", text: "修复 App 内签名完成后校验误报「签名校验失败」、签名文件被删除的问题。"),
             ChangelogEntry(tag: "修复", text: "修复启动图在打开瞬间闪过紫色的问题。"),
             ChangelogEntry(tag: "修复", text: "修复切换注册 / 登录时白色面板底部闪现直角的问题。"),

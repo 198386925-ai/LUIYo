@@ -202,6 +202,9 @@ final class BubblePackEditorViewController: UIViewController,
     UIImagePickerControllerDelegate, UINavigationControllerDelegate, PHPickerViewControllerDelegate {
     /// 导出完成回调，zipURL 是临时目录下的 气泡包.zip
     var onExport: ((URL) -> Void)?
+    /// 壳子设置的导出授权门：点导出时先问它，回调 true 才真正打包；
+    /// 没设置时（编辑器单用）直接导出。页内随便玩，只有导出 zip 过门。
+    var exportAuthorizationCheck: ((@escaping (Bool) -> Void) -> Void)?
 
     private struct PlacedImage {
         let image: UIImage
@@ -1172,6 +1175,19 @@ final class BubblePackEditorViewController: UIViewController,
     }
 
     @objc private func doExport() {
+        // 导出过门：壳子设了授权检查就先问它（未授权时壳子弹授权提示，
+        // 这里直接不导）；没设置时直接导出。
+        if let check = exportAuthorizationCheck {
+            check { [weak self] allowed in
+                guard allowed else { return }
+                DispatchQueue.main.async { self?.performExport() }
+            }
+            return
+        }
+        performExport()
+    }
+
+    private func performExport() {
         // 唯一一处有意改动：ObjC 版把 PNG 写到临时目录再调 SSZipArchive；
         // 这里直接用 App 现成的 ZipWriter 打包，输出文件名与静默行为一致。
         // 另按提示文案补了夜间 fallback：夜间没放图的槽位导出时沿用日间那张
