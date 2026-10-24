@@ -228,16 +228,16 @@ final class HomeViewController: UIViewController {
     private func layoutSection(_ index: Int) -> NSCollectionLayoutSection {
         let section = visibleSections.indices.contains(index) ? visibleSections[index] : .items
         if section == .items {
-            // Build 63: icon cells are a FIXED height, not estimated —
-            // estimated heights let 1-line titles render shorter than
-            // 2-line titles, so the grid looked ragged (some cells big,
-            // some small). Titles are already capped at 2 lines, so a
-            // fixed 76pt fits every title; content stays vertically
-            // centred inside the uniform card.
+            // Build 65 (supersedes Build 63's fixed 76pt): row-adaptive
+            // equal heights. The group height is estimated, so each row
+            // grows to fit its tallest cell; items fill the group
+            // height, so both cells in a row render at the same height.
+            // Rows stay regular AND adapt to content — no fixed height,
+            // no ragged cells.
             let item = NSCollectionLayoutItem(layoutSize: NSCollectionLayoutSize(
-                widthDimension: .fractionalWidth(0.5), heightDimension: .absolute(76)))
+                widthDimension: .fractionalWidth(0.5), heightDimension: .fractionalHeight(1.0)))
             let group = NSCollectionLayoutGroup.horizontal(
-                layoutSize: NSCollectionLayoutSize(widthDimension: .fractionalWidth(1), heightDimension: .absolute(76)),
+                layoutSize: NSCollectionLayoutSize(widthDimension: .fractionalWidth(1), heightDimension: .estimated(76)),
                 subitems: [item, item])
             group.interItemSpacing = .fixed(10)
             let result = NSCollectionLayoutSection(group: group)
