@@ -3,27 +3,15 @@ import UIKit
 /// Static native-glass surface for page cards — the exact recipe the shell's
 /// CardMaterialLayer used under the old Web UI: iOS 26 UIGlassEffect in its
 /// static (non-interactive) form, shaped by cornerConfiguration;
-/// UIBlurEffect + tint in blur mode / on older systems. Build 61
-/// (glassmorphism pass): in the LIGHT appearance the blur branch is
-/// the milky 毛玻璃 recipe — .systemMaterialLight blur, the card
-/// tint at 40%, and a 1 pt bright rim (white 0.85) — so cards read
-/// as frosted glass over the gradient wallpaper. The DARK
-/// appearance keeps the legacy recipe exactly (.systemMaterial +
-/// 24% tint, no rim), and the UIGlassEffect branch is unchanged in
-/// both appearances.
+/// UIBlurEffect + 24% tint in blur mode / on older systems.
 final class StaticGlassView: UIVisualEffectView {
     var glassRadius: CGFloat = 22 { didSet { setNeedsLayout() } }
     private var appliedSignature = ""
-    private var lastUseBlur = false
-    private var lastTint: UIColor?
 
     func configure(useBlur: Bool, tint: UIColor) {
-        lastUseBlur = useBlur
-        lastTint = tint
         var blur = useBlur
         if #available(iOS 26.0, *) {} else { blur = true }
-        let dark = traitCollection.userInterfaceStyle == .dark
-        let signature = "\(blur)|\(tint.nativeHex)|\(glassRadius)|\(dark ? "dark" : "light")"
+        let signature = "\(blur)|\(tint.nativeHex)|\(glassRadius)"
         guard signature != appliedSignature else { return }
         appliedSignature = signature
         if #available(iOS 26.0, *), !blur {
@@ -32,28 +20,11 @@ final class StaticGlassView: UIVisualEffectView {
             if !["#FFFFFF", "#1C1C1E"].contains(hex) { glass.tintColor = tint.withAlphaComponent(0.12) }
             effect = glass
             contentView.backgroundColor = .clear
-            layer.borderWidth = 0
-        } else if dark {
+        } else {
             effect = UIBlurEffect(style: .systemMaterial)
             contentView.backgroundColor = tint.withAlphaComponent(0.24)
-            layer.borderWidth = 0
-        } else {
-            effect = UIBlurEffect(style: .systemMaterialLight)
-            contentView.backgroundColor = tint.withAlphaComponent(0.40)
-            layer.borderWidth = 1
-            layer.borderColor = UIColor.white.withAlphaComponent(0.85).cgColor
         }
         setNeedsLayout()
-    }
-
-    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
-        super.traitCollectionDidChange(previousTraitCollection)
-        // A live light/dark switch re-skins the surface with the last
-        // configuration, so existing cards follow the appearance.
-        if previousTraitCollection?.userInterfaceStyle != traitCollection.userInterfaceStyle,
-           let tint = lastTint {
-            configure(useBlur: lastUseBlur, tint: tint)
-        }
     }
 
     override func layoutSubviews() {
@@ -102,39 +73,6 @@ final class GlassCardView: UIView {
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
     func configure(useBlur: Bool, tint: UIColor) { surface.configure(useBlur: useBlur, tint: tint) }
-}
-
-extension UIView {
-    /// Build 61 (glassmorphism pass): gives a plain theme-coloured
-    /// content card the shared glass surface — a StaticGlassView
-    /// pinned behind the card's content. In the LIGHT appearance the
-    /// card's own fill is cleared and the frosted surface shows; in
-    /// the DARK appearance the surface hides and the card keeps its
-    /// flat theme fill, exactly as before. Idempotent: repeat calls
-    /// find and reconfigure the same surface (tag 61061).
-    func luiyoApplyGlassCardSurface(radius: CGFloat, useBlur: Bool, tint: UIColor) {
-        let surface: StaticGlassView
-        if let existing = viewWithTag(61061) as? StaticGlassView {
-            surface = existing
-        } else {
-            let created = StaticGlassView()
-            created.tag = 61061
-            created.isUserInteractionEnabled = false
-            created.frame = bounds
-            created.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-            insertSubview(created, at: 0)
-            surface = created
-        }
-        surface.glassRadius = radius
-        surface.configure(useBlur: useBlur, tint: tint)
-        if traitCollection.userInterfaceStyle == .dark {
-            backgroundColor = tint
-            surface.isHidden = true
-        } else {
-            backgroundColor = .clear
-            surface.isHidden = false
-        }
-    }
 }
 
 extension UISwitch {

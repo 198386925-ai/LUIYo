@@ -112,15 +112,13 @@ final class FontSettingsViewController: UIViewController {
 
     private var cardTint: UIColor { UIColor(nativeHex: homeModel.theme.card) }
 
-    /// The font page's cards carry the theme card colour. Build 61
-    /// (glassmorphism pass): in the light appearance the shared glass
-    /// surface goes under the content; dark keeps the flat fill.
+    /// The font page's cards are plain solid colour (no liquid glass), per
+    /// the user's request — the theme card colour as a flat fill.
     private func configuredCard(radius: CGFloat) -> UIView {
         let card = UIView()
         card.backgroundColor = cardTint
         card.layer.cornerRadius = radius
         card.clipsToBounds = true
-        card.luiyoApplyGlassCardSurface(radius: radius, useBlur: homeModel.useBlur, tint: cardTint)
         return card
     }
 

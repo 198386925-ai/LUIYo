@@ -163,7 +163,6 @@ final class UpdateCheckViewController: UIViewController {
         card.backgroundColor = UIColor(nativeHex: homeModel.theme.card)
         card.layer.cornerRadius = 22
         card.clipsToBounds = true
-        card.luiyoApplyGlassCardSurface(radius: 22, useBlur: homeModel.useBlur, tint: UIColor(nativeHex: homeModel.theme.card))
         let inner = UIStackView()
         inner.axis = .vertical
         inner.spacing = 0
@@ -922,7 +921,6 @@ final class CertMaterialViewController: UIViewController {
         card.backgroundColor = UIColor(nativeHex: homeModel.theme.card)
         card.layer.cornerRadius = 22
         card.clipsToBounds = true
-        card.luiyoApplyGlassCardSurface(radius: 22, useBlur: homeModel.useBlur, tint: UIColor(nativeHex: homeModel.theme.card))
         let inner = UIStackView()
         inner.axis = .vertical
         inner.spacing = 0
@@ -1449,7 +1447,6 @@ final class CertDetailViewController: UIViewController {
         card.backgroundColor = UIColor(nativeHex: homeModel.theme.card)
         card.layer.cornerRadius = 22
         card.clipsToBounds = true
-        card.luiyoApplyGlassCardSurface(radius: 22, useBlur: homeModel.useBlur, tint: UIColor(nativeHex: homeModel.theme.card))
         let inner = UIStackView()
         inner.axis = .vertical
         inner.spacing = 0

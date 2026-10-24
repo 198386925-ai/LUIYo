@@ -2,21 +2,14 @@ import Combine
 import UIKit
 import UniformTypeIdentifiers
 
-/// A card for the 我的 page. Same shape contract as GlassCardView —
-/// a content container pinned to the card's edges over a surface.
-/// Build 38 made the surface a flat opaque fill of the theme card
-/// colour; Build 61 (glassmorphism pass) puts the shared
-/// StaticGlassView surface under the content in the LIGHT
-/// appearance (frosted glass over the gradient wallpaper, following
-/// the user's 卡片材质 choice), while the DARK appearance keeps
-/// the flat opaque fill exactly as before. The public API is
-/// unchanged: `content`, `init(radius:)`, `setRadius(_:)`,
-/// `configure(tint:)`.
+/// A plain solid-colour card for the 我的 page (Build 38: this page
+/// dropped liquid glass). Same shape contract as GlassCardView — a
+/// content container pinned to the card's edges over a flat fill — but
+/// the fill is the theme card colour, fully opaque, following the same
+/// precedent as the 更改字体 page's solid cards.
 final class SolidCardView: UIView {
     let content = UIView()
-    let surface = StaticGlassView()
     private(set) var radius: CGFloat
-    private var storedTint: UIColor = .white
 
     init(radius: CGFloat = 22) {
         self.radius = radius
@@ -24,17 +17,9 @@ final class SolidCardView: UIView {
         backgroundColor = .white
         layer.cornerRadius = radius
         clipsToBounds = true
-        surface.glassRadius = radius
-        surface.isUserInteractionEnabled = false
-        addSubview(surface)
         addSubview(content)
-        surface.translatesAutoresizingMaskIntoConstraints = false
         content.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            surface.leadingAnchor.constraint(equalTo: leadingAnchor),
-            surface.trailingAnchor.constraint(equalTo: trailingAnchor),
-            surface.topAnchor.constraint(equalTo: topAnchor),
-            surface.bottomAnchor.constraint(equalTo: bottomAnchor),
             content.leadingAnchor.constraint(equalTo: leadingAnchor),
             content.trailingAnchor.constraint(equalTo: trailingAnchor),
             content.topAnchor.constraint(equalTo: topAnchor),
@@ -47,27 +32,9 @@ final class SolidCardView: UIView {
     func setRadius(_ value: CGFloat) {
         radius = value
         layer.cornerRadius = value
-        surface.glassRadius = value
     }
 
-    func configure(tint: UIColor) {
-        storedTint = tint
-        if traitCollection.userInterfaceStyle == .dark {
-            backgroundColor = tint
-            surface.isHidden = true
-        } else {
-            backgroundColor = .clear
-            surface.isHidden = false
-            surface.configure(useBlur: ThemePreferences.shared.cardMaterialMode == "blur", tint: tint)
-        }
-    }
-
-    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
-        super.traitCollectionDidChange(previousTraitCollection)
-        if previousTraitCollection?.userInterfaceStyle != traitCollection.userInterfaceStyle {
-            configure(tint: storedTint)
-        }
-    }
+    func configure(tint: UIColor) { backgroundColor = tint }
 }
 
 /// A settings fold: solid card with a tappable header (icon in a
