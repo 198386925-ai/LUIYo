@@ -13,6 +13,10 @@ final class RulesViewController: UIViewController {
     private var sectionCards: [String: GlassCardView] = [:]
     private var rowViews: [String: [UIView]] = [:]
     private var emptyLabels: [String: UIView] = [:]
+    /// Sections the user expanded past the 10-row cap (Build 68).
+    private var expandedSections = Set<String>()
+    private var toggleFooters: [String: UIView] = [:]
+    private var toggleButtons: [String: UIButton] = [:]
     private var cancellables = Set<AnyCancellable>()
 
     init(model: RulesNativeModel, homeModel: NativeHomeModel) {
@@ -158,6 +162,51 @@ final class RulesViewController: UIViewController {
         }
         rowViews[section] = views
 
+        // Build 68: expand/collapse footer. A section shows at most 10
+        // rows; when more match, this footer toggles between the first
+        // 10 and all of them. Hidden for sections with 10 or fewer.
+        let footer = UIView()
+        let divider = UIView()
+        divider.backgroundColor = UIAppColors.divider
+        let toggle = UIButton(type: .system)
+        var config = UIButton.Configuration.plain()
+        config.imagePlacement = .trailing
+        config.imagePadding = 4
+        config.baseForegroundColor = .systemBlue
+        config.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attributes in
+            var result = attributes
+            result.font = UIFont.systemFont(ofSize: 13, weight: .medium)
+            return result
+        }
+        toggle.configuration = config
+        footer.addSubview(divider)
+        footer.addSubview(toggle)
+        divider.translatesAutoresizingMaskIntoConstraints = false
+        toggle.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            divider.leadingAnchor.constraint(equalTo: footer.leadingAnchor, constant: 15),
+            divider.trailingAnchor.constraint(equalTo: footer.trailingAnchor, constant: -15),
+            divider.topAnchor.constraint(equalTo: footer.topAnchor),
+            divider.heightAnchor.constraint(equalToConstant: 1 / UIScreen.main.scale),
+            toggle.leadingAnchor.constraint(equalTo: footer.leadingAnchor),
+            toggle.trailingAnchor.constraint(equalTo: footer.trailingAnchor),
+            toggle.topAnchor.constraint(equalTo: divider.bottomAnchor),
+            toggle.bottomAnchor.constraint(equalTo: footer.bottomAnchor),
+            toggle.heightAnchor.constraint(equalToConstant: 44),
+        ])
+        toggle.addAction(UIAction { [weak self] _ in
+            guard let self else { return }
+            if self.expandedSections.contains(section) {
+                self.expandedSections.remove(section)
+            } else {
+                self.expandedSections.insert(section)
+            }
+            self.applyFilter()
+        }, for: .touchUpInside)
+        inner.addArrangedSubview(footer)
+        toggleFooters[section] = footer
+        toggleButtons[section] = toggle
+
         let empty = UILabel()
         empty.text = "没有匹配的规则"
         empty.font = UIFont.systemFont(ofSize: 13)
@@ -181,14 +230,36 @@ final class RulesViewController: UIViewController {
         let query = model.query.trimmingCharacters(in: .whitespacesAndNewlines)
         for section in ["LiquidUI", "原版微信"] {
             let rules = NamingRulesData.rules.filter { $0.section == section }
-            var visible = 0
+            var visiblePosition = 0
+            var visibleCount = 0
+            let expanded = expandedSections.contains(section)
             for (index, rule) in rules.enumerated() {
-                let show = query.isEmpty || rule.title.contains(query) || rule.file.lowercased().contains(query.lowercased())
-                rowViews[section]?[index].isHidden = !show
-                if show { visible += 1 }
+                let matches = query.isEmpty || rule.title.contains(query) || rule.file.lowercased().contains(query.lowercased())
+                if matches {
+                    // Build 68 cap: collapsed sections show only the
+                    // first 10 matching rows; the footer reveals the rest.
+                    rowViews[section]?[index].isHidden = !expanded && visiblePosition >= 10
+                    visiblePosition += 1
+                    visibleCount += 1
+                } else {
+                    rowViews[section]?[index].isHidden = true
+                }
             }
-            emptyLabels[section]?.isHidden = visible > 0 || query.isEmpty
+            emptyLabels[section]?.isHidden = visibleCount > 0 || query.isEmpty
+            if visibleCount > 10 {
+                toggleFooters[section]?.isHidden = false
+                updateToggleTitle(section, count: visibleCount, expanded: expanded)
+            } else {
+                toggleFooters[section]?.isHidden = true
+            }
         }
+    }
+
+    private func updateToggleTitle(_ section: String, count: Int, expanded: Bool) {
+        guard let toggle = toggleButtons[section] else { return }
+        toggle.configuration?.title = expanded ? "收起" : "展开全部（共 \(count) 条）"
+        toggle.configuration?.image = UIImage(systemName: expanded ? "chevron.up" : "chevron.down")
+        toggle.setNeedsUpdateConfiguration()
     }
 
 
