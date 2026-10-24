@@ -126,14 +126,17 @@ final class HomeViewController: UIViewController {
     private var activeCategory: String { category == 0 ? "wechat" : "liquidui" }
     private var categoryEntries: [NativeIconEntry] {
         let filtered = catalog.entries.filter { $0.category == activeCategory }
-        guard activeCategory == "wechat" else { return filtered }
         // Build 64 (user order): the four bottom-tab entries stay pinned
         // at the front in tab order; everything else sorts by title
         // character count, ascending, stable (same-length titles keep
-        // catalog order). State is keyed by item id, so reordering the
-        // display list cannot disturb uploads.
+        // catalog order). Build 67: both categories sort this way —
+        // LiquidUI has no tab-four set, so it just gets the length
+        // sort. State is keyed by item id, so reordering the display
+        // list cannot disturb uploads.
         let pinnedTitles = ["底栏微信", "底栏通讯录", "底栏发现", "底栏我的"]
-        let pinned = pinnedTitles.flatMap { title in filtered.filter { $0.title == title } }
+        let pinned = activeCategory == "wechat"
+            ? pinnedTitles.flatMap { title in filtered.filter { $0.title == title } }
+            : []
         let pinnedIDs = Set(pinned.map(\.id))
         let rest = filtered.enumerated()
             .filter { !pinnedIDs.contains($0.element.id) }

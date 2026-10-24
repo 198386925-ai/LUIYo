@@ -290,12 +290,15 @@ final class ChangelogViewController: UIViewController {
         didMove(toParent: shell)
         view.layoutIfNeeded()
         // Slide the sheet up from below the screen to its rest
-        // position (top at 84 pt), keeping the cover-vertical feel
-        // the modal version had.
+        // position (top at 84 pt). Build 67: a spring matching the
+        // standard iOS sheet presentation feel, replacing the old
+        // flat ease-out slide (user: slide-ups must use normal app
+        // animation). Construction is unchanged — still the shell
+        // child overlay, not a modal.
         guard let sheet = sheetView else { return }
         let travel = view.bounds.height + 60
         sheet.transform = CGAffineTransform(translationX: 0, y: travel)
-        UIView.animate(withDuration: 0.42, delay: 0, options: [.curveEaseOut], animations: {
+        UIView.animate(withDuration: 0.5, delay: 0, usingSpringWithDamping: 0.85, initialSpringVelocity: 0, options: [], animations: {
             sheet.transform = .identity
         })
     }
