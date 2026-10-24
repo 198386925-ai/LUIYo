@@ -125,7 +125,26 @@ final class HomeViewController: UIViewController {
 
     private var activeCategory: String { category == 0 ? "wechat" : "liquidui" }
     private var categoryEntries: [NativeIconEntry] {
-        catalog.entries.filter { $0.category == activeCategory }
+        let filtered = catalog.entries.filter { $0.category == activeCategory }
+        guard activeCategory == "wechat" else { return filtered }
+        // Build 64 (user order): the four bottom-tab entries stay pinned
+        // at the front in tab order; everything else sorts by title
+        // character count, ascending, stable (same-length titles keep
+        // catalog order). State is keyed by item id, so reordering the
+        // display list cannot disturb uploads.
+        let pinnedTitles = ["底栏微信", "底栏通讯录", "底栏发现", "底栏我的"]
+        let pinned = pinnedTitles.flatMap { title in filtered.filter { $0.title == title } }
+        let pinnedIDs = Set(pinned.map(\.id))
+        let rest = filtered.enumerated()
+            .filter { !pinnedIDs.contains($0.element.id) }
+            .sorted {
+                if $0.element.title.count != $1.element.title.count {
+                    return $0.element.title.count < $1.element.title.count
+                }
+                return $0.offset < $1.offset
+            }
+            .map(\.element)
+        return pinned + rest
     }
     private var visibleEntries: [NativeIconEntry] {
         let tokens = model.query.split(whereSeparator: { $0.isWhitespace }).map(String.init)
