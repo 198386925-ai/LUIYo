@@ -16,9 +16,9 @@ import UIKit
 /// a FLAT warm beige #F0EEE8 (the reference app's paper colour,
 /// the user's pick over Build 54's #BAD0EB-family gradient);
 /// Build 69 (user order): the light layer is now pure white #FFFFFF.
-/// and the film stays a colour-neutral frost (light blur +
-/// plain white sheen 0.15) over it; dark mode keeps its flat
-/// #121214 background and film.
+/// Build 72: the film is hidden in light mode (its tint
+/// shifted the sampled colour off #FFFFFF); dark mode keeps
+/// its flat #121214 background and film.
 /// Presentation is a CHILD OVERLAY of the app shell (Build 51,
 /// see `show(from:)`): Builds 49–50 presented this modally
 /// (.overFullScreen) from the embedded settings child and on
@@ -66,6 +66,7 @@ final class ChangelogViewController: UIViewController {
     private let backgroundColor: UIColor
     private var pageFont: UIFont?
     private weak var sheetView: UIView?
+    private var sheetFrost: UIVisualEffectView?
     private var presentedAsOverlay = false
     private var isDismissing = false
 
@@ -89,6 +90,13 @@ final class ChangelogViewController: UIViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         PageFontApplier.apply(pageFont, to: view)
+    }
+
+    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        if traitCollection.hasDifferentColorAppearance(comparedTo: previousTraitCollection) {
+            sheetFrost?.isHidden = traitCollection.userInterfaceStyle == .light
+        }
     }
 
     override func viewDidLoad() {
@@ -123,10 +131,12 @@ final class ChangelogViewController: UIViewController {
         // light mode is pure white #FFFFFF since Build 69 (user
         // order; it was a FLAT warm beige #F0EEE8 before, the
         // reference app's paper colour; dark mode keeps the flat
-        // #121214) — and the film is
-        // colour-NEUTRAL: one light system blur plus a plain
-        // white sheen at 0.15 (dark: the #121214 tint at 0.5 as
-        // before), so the beige shows through the frost undyed.
+        // #121214). Build 72: the film below is HIDDEN in light
+        // mode — the system-material tint shifted the sampled
+        // colour off #FFFFFF, and the user eyedroppered it as
+        // not pure white — so light mode is flat white only.
+        // Dark mode keeps the film: one light system blur plus
+        // the #121214 tint at 0.5.
         // Transparency exists ONLY above the sheet (the clear
         // root). The sheet's clipsToBounds keeps both layers
         // inside the rounded-top shape; the scroll view and
@@ -147,6 +157,13 @@ final class ChangelogViewController: UIViewController {
         frost.contentView.addSubview(frostTint)
         frostTint.translatesAutoresizingMaskIntoConstraints = false
         sheet.addSubview(frost)
+        // Build 72 (user order): in light mode the frost film is
+        // hidden — its system-material tint shifts the sampled
+        // colour off pure white, and the user eyedroppered the
+        // background as not-#FFFFFF. Flat pure white only. Dark
+        // mode keeps the film (unchanged).
+        sheetFrost = frost
+        frost.isHidden = traitCollection.userInterfaceStyle == .light
         frost.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             sheetBackground.leadingAnchor.constraint(equalTo: sheet.leadingAnchor),
