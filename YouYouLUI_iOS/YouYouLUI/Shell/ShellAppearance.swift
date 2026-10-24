@@ -198,7 +198,7 @@ extension MainShellViewController {
     /// Keeps tab titles at their original size when a decorative font is imported.
     func updateTabLabelFonts(in view: UIView) {
         if let label = view as? UILabel, let text = label.text,
-           ["首页", "规则", "设置", "搜索", "Search"].contains(text) {
+           ["首页", "气泡包", "规则", "设置", "搜索", "Search"].contains(text) {
             if originalTabLabelFonts.object(forKey: label) == nil {
                 let original = fontController.font == nil ? label.font! : UIFont.systemFont(ofSize: label.font.pointSize)
                 originalTabLabelFonts.setObject(original, forKey: label)

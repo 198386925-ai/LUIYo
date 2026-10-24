@@ -248,7 +248,7 @@ final class MainShellViewController: UITabBarController {
         }
         searchTabController.tabBarItem = UITabBarItem(title: "搜索",
                                                       image: UIImage(systemName: "magnifyingglass"),
-                                                      tag: 3)
+                                                      tag: 4)
         searchTabController.view.backgroundColor = .clear
         defaultTabAppearance = tabBar.standardAppearance
         defaultScrollEdgeAppearance = tabBar.scrollEdgeAppearance?.copy() as? UITabBarAppearance

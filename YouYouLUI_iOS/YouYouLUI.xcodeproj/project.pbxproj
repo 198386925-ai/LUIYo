@@ -49,6 +49,9 @@
 		AA3000000000000000000111 /* IconEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3000000000000000000011 /* IconEngine.swift */; };
 		AA3000000000000000000112 /* EngineImageProcessing.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3000000000000000000012 /* EngineImageProcessing.swift */; };
 		AA3000000000000000000113 /* ZipWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA3000000000000000000013 /* ZipWriter.swift */; };
+		BB7600000000000000000111 /* BubbleNaming.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB7600000000000000000011 /* BubbleNaming.swift */; };
+		BB7600000000000000000112 /* BubblePackEditorViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB7600000000000000000012 /* BubblePackEditorViewController.swift */; };
+		BB7600000000000000000113 /* bubble-naming-rules.json in Resources */ = {isa = PBXBuildFile; fileRef = BB7600000000000000000013 /* bubble-naming-rules.json */; };
 		AA3000000000000000000114 /* items.json in Resources */ = {isa = PBXBuildFile; fileRef = AA3000000000000000000014 /* items.json */; };
 		AA3000000000000000000115 /* extra-rules.json in Resources */ = {isa = PBXBuildFile; fileRef = AA3000000000000000000015 /* extra-rules.json */; };
 		AA3000000000000000000116 /* native-preview-catalog.json in Resources */ = {isa = PBXBuildFile; fileRef = AA3000000000000000000016 /* native-preview-catalog.json */; };
@@ -174,6 +177,9 @@
 		AA3000000000000000000014 /* items.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = items.json; sourceTree = "<group>"; };
 		AA3000000000000000000015 /* extra-rules.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = extra-rules.json; sourceTree = "<group>"; };
 		AA3000000000000000000016 /* native-preview-catalog.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = native-preview-catalog.json; sourceTree = "<group>"; };
+		BB7600000000000000000011 /* BubbleNaming.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BubbleNaming.swift; sourceTree = "<group>"; };
+		BB7600000000000000000012 /* BubblePackEditorViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BubblePackEditorViewController.swift; sourceTree = "<group>"; };
+		BB7600000000000000000013 /* bubble-naming-rules.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = bubble-naming-rules.json; sourceTree = "<group>"; };
 		FA84599B2DBFA799E168424C /* Home/NativeHomeModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeHomeModel.swift; sourceTree = "<group>"; };
 		FA33D43C5EF8D7B5164FB857 /* Home/NativeHomeTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeHomeTheme.swift; sourceTree = "<group>"; };
 		FAA76AC870C10D22A8769483 /* Home/NativeHomeCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeHomeCatalog.swift; sourceTree = "<group>"; };
@@ -286,6 +292,7 @@
 				FA72B4D395CBFFB3EEC69CDE /* Shell */,
 				FA05E1B6709B573B6A023CF5 /* Bridge */,
 				AA3000000000000000000001 /* Engine */,
+				BB7600000000000000000001 /* BubblePack */,
 				AA4000000000000000001F01 /* Fonts */,
 				AA4000000000000000001F02 /* Icons */,
 				FA3E84BE39BF35B88E7410F9 /* Home */,
@@ -431,6 +438,16 @@
 				AA3000000000000000000016 /* native-preview-catalog.json */,
 			);
 			path = Engine;
+			sourceTree = "<group>";
+		};
+		BB7600000000000000000001 /* BubblePack */ = {
+			isa = PBXGroup;
+			children = (
+				BB7600000000000000000011 /* BubbleNaming.swift */,
+				BB7600000000000000000012 /* BubblePackEditorViewController.swift */,
+				BB7600000000000000000013 /* bubble-naming-rules.json */,
+			);
+			path = BubblePack;
 			sourceTree = "<group>";
 		};
 		AA4000000000000000001F01 /* Fonts */ = {
@@ -596,6 +613,7 @@
 				AA3000000000000000000115 /* extra-rules.json in Resources */,
 				AA3000000000000000000116 /* native-preview-catalog.json in Resources */,
 				CB2700000000000000002037 /* InstallServerCert.p12 in Resources */,
+				BB7600000000000000000113 /* bubble-naming-rules.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -725,6 +743,8 @@
 				FA93001F7EAEB324CD85058B /* Support/AlertPresenter.swift in Sources */,
 				FA0197164BBDC4D1364D5584 /* Support/AppPaths.swift in Sources */,
 				FA8FE9F1280372A83E3DA893 /* SettingsHero/LUISettingsHeroAdapter.m in Sources */,
+				BB7600000000000000000111 /* BubbleNaming.swift in Sources */,
+				BB7600000000000000000112 /* BubblePackEditorViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -766,7 +786,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 75; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@loader_path/Frameworks"); FRAMEWORK_SEARCH_PATHS = ("$(SRCROOT)/YouYouLUI/Vendor/OpenSSL", "$(inherited)"); HEADER_SEARCH_PATHS = ("$(SRCROOT)/YouYouLUI/Vendor/OpenSSL/include", "$(SRCROOT)/YouYouLUI/Vendor/zsign-src", "$(SRCROOT)/YouYouLUI/Vendor/zsign-src/common", "$(SRCROOT)/YouYouLUI/Vendor/zsign-src/third-party/zlib"); 
+				CURRENT_PROJECT_VERSION = 76; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@loader_path/Frameworks"); FRAMEWORK_SEARCH_PATHS = ("$(SRCROOT)/YouYouLUI/Vendor/OpenSSL", "$(inherited)"); HEADER_SEARCH_PATHS = ("$(SRCROOT)/YouYouLUI/Vendor/OpenSSL/include", "$(SRCROOT)/YouYouLUI/Vendor/zsign-src", "$(SRCROOT)/YouYouLUI/Vendor/zsign-src/common", "$(SRCROOT)/YouYouLUI/Vendor/zsign-src/third-party/zlib"); 
 				GENERATE_INFOPLIST_FILE = NO;
 				CODE_SIGN_ENTITLEMENTS = YouYouLUI/LUIYo.entitlements;
 				INFOPLIST_FILE = YouYouLUI/Info.plist;
@@ -787,7 +807,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 75; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@loader_path/Frameworks"); FRAMEWORK_SEARCH_PATHS = ("$(SRCROOT)/YouYouLUI/Vendor/OpenSSL", "$(inherited)"); HEADER_SEARCH_PATHS = ("$(SRCROOT)/YouYouLUI/Vendor/OpenSSL/include", "$(SRCROOT)/YouYouLUI/Vendor/zsign-src", "$(SRCROOT)/YouYouLUI/Vendor/zsign-src/common", "$(SRCROOT)/YouYouLUI/Vendor/zsign-src/third-party/zlib"); 
+				CURRENT_PROJECT_VERSION = 76; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@loader_path/Frameworks"); FRAMEWORK_SEARCH_PATHS = ("$(SRCROOT)/YouYouLUI/Vendor/OpenSSL", "$(inherited)"); HEADER_SEARCH_PATHS = ("$(SRCROOT)/YouYouLUI/Vendor/OpenSSL/include", "$(SRCROOT)/YouYouLUI/Vendor/zsign-src", "$(SRCROOT)/YouYouLUI/Vendor/zsign-src/common", "$(SRCROOT)/YouYouLUI/Vendor/zsign-src/third-party/zlib"); 
 				GENERATE_INFOPLIST_FILE = NO;
 				CODE_SIGN_ENTITLEMENTS = YouYouLUI/LUIYo.entitlements;
 				INFOPLIST_FILE = YouYouLUI/Info.plist;
@@ -809,8 +829,8 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		CA2600000000000000000305 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 75; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = LUIYoLiveActivity/Info.plist; IPHONEOS_DEPLOYMENT_TARGET = 16.1; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@executable_path/../../Frameworks"); MARKETING_VERSION = 1.0.8; PRODUCT_BUNDLE_IDENTIFIER = com.youyou.lui.liveactivity; PRODUCT_NAME = "$(TARGET_NAME)"; SKIP_INSTALL = YES; SUPPORTED_PLATFORMS = "iphoneos iphonesimulator"; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = "1,2";}; name = Debug; };
-		CA2600000000000000000306 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 75; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = LUIYoLiveActivity/Info.plist; IPHONEOS_DEPLOYMENT_TARGET = 16.1; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@executable_path/../../Frameworks"); MARKETING_VERSION = 1.0.8; PRODUCT_BUNDLE_IDENTIFIER = com.youyou.lui.liveactivity; PRODUCT_NAME = "$(TARGET_NAME)"; SKIP_INSTALL = YES; SUPPORTED_PLATFORMS = "iphoneos iphonesimulator"; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = "1,2";}; name = Release; };
+		CA2600000000000000000305 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 76; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = LUIYoLiveActivity/Info.plist; IPHONEOS_DEPLOYMENT_TARGET = 16.1; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@executable_path/../../Frameworks"); MARKETING_VERSION = 1.0.8; PRODUCT_BUNDLE_IDENTIFIER = com.youyou.lui.liveactivity; PRODUCT_NAME = "$(TARGET_NAME)"; SKIP_INSTALL = YES; SUPPORTED_PLATFORMS = "iphoneos iphonesimulator"; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = "1,2";}; name = Debug; };
+		CA2600000000000000000306 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 76; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = LUIYoLiveActivity/Info.plist; IPHONEOS_DEPLOYMENT_TARGET = 16.1; LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks", "@executable_path/../../Frameworks"); MARKETING_VERSION = 1.0.8; PRODUCT_BUNDLE_IDENTIFIER = com.youyou.lui.liveactivity; PRODUCT_NAME = "$(TARGET_NAME)"; SKIP_INSTALL = YES; SUPPORTED_PLATFORMS = "iphoneos iphonesimulator"; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = "1,2";}; name = Release; };
 		CA2600000000000000000304 /* Build configuration list for PBXNativeTarget "LUIYoLiveActivity" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (CA2600000000000000000305 /* Debug */, CA2600000000000000000306 /* Release */);

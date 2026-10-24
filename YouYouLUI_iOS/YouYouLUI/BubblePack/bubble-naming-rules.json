@@ -1,0 +1,625 @@
+{
+  "说明": "UIKit 版 LUBubbleNaming 用的规则。改规则看 _rules.py，改完跑 gen_ios_rules.py。",
+  "依据": "插件 1.98 / 微信 8.0.79",
+  "微信原生英文名": {
+    "忽略词": [
+      "bubble",
+      "chatroom",
+      "green",
+      "image",
+      "img",
+      "pic",
+      "white"
+    ]
+  },
+  "keywords": {
+    "主题": {
+      "night": {
+        "中文": [
+          "夜",
+          "暗",
+          "黑",
+          "深色",
+          "夜间"
+        ],
+        "英文": [
+          "night",
+          "dark"
+        ],
+        "文件夹名": [
+          "夜间",
+          "夜晚",
+          "暗色",
+          "黑暗",
+          "深色",
+          "暗黑"
+        ]
+      },
+      "day": {
+        "中文": [
+          "日",
+          "亮",
+          "白天",
+          "浅色"
+        ],
+        "英文": [
+          "light",
+          "day"
+        ],
+        "文件夹名": [
+          "日间",
+          "白天",
+          "亮色",
+          "浅色"
+        ]
+      }
+    },
+    "侧别": {
+      "sender(自己/右)": {
+        "中文": [
+          "右",
+          "我方",
+          "我",
+          "自己",
+          "发送",
+          "发"
+        ],
+        "英文": [
+          "mine",
+          "me",
+          "self",
+          "right",
+          "send",
+          "out"
+        ]
+      },
+      "receiver(对方/左)": {
+        "中文": [
+          "左",
+          "对方",
+          "他",
+          "她",
+          "接收",
+          "收"
+        ],
+        "英文": [
+          "other",
+          "left",
+          "recv",
+          "in",
+          "friend"
+        ]
+      }
+    },
+    "位置": {
+      "top": {
+        "中文": [
+          "上",
+          "顶",
+          "首"
+        ],
+        "英文": [
+          "top",
+          "first",
+          "head"
+        ]
+      },
+      "middle": {
+        "中文": [
+          "中"
+        ],
+        "英文": [
+          "mid",
+          "middle"
+        ]
+      },
+      "end": {
+        "中文": [
+          "下",
+          "底",
+          "尾",
+          "末"
+        ],
+        "英文": [
+          "bottom",
+          "last",
+          "end",
+          "tail"
+        ]
+      },
+      "single": {
+        "中文": [
+          "单",
+          "独"
+        ],
+        "英文": [
+          "single",
+          "alone"
+        ]
+      }
+    }
+  },
+  "textSlots": [
+    {
+      "id": "text:receiver:top",
+      "en": "ChatRoom_Bubble_Text_Receiver_White_Top",
+      "cn": "左上",
+      "desc": "文字气泡·对方·上",
+      "side": "receiver",
+      "pos": "top",
+      "tokens": [
+        "receiver",
+        "text",
+        "top"
+      ]
+    },
+    {
+      "id": "text:receiver:middle",
+      "en": "ChatRoom_Bubble_Text_Receiver_White_Middle",
+      "cn": "左中",
+      "desc": "文字气泡·对方·中",
+      "side": "receiver",
+      "pos": "middle",
+      "tokens": [
+        "middle",
+        "receiver",
+        "text"
+      ]
+    },
+    {
+      "id": "text:receiver:end",
+      "en": "ChatRoom_Bubble_Text_Receiver_White_End",
+      "cn": "左下",
+      "desc": "文字气泡·对方·下",
+      "side": "receiver",
+      "pos": "end",
+      "tokens": [
+        "end",
+        "receiver",
+        "text"
+      ]
+    },
+    {
+      "id": "text:receiver:single",
+      "en": "ChatRoom_Bubble_Text_Receiver_White",
+      "cn": "左单",
+      "desc": "文字气泡·对方·单",
+      "side": "receiver",
+      "pos": "single",
+      "tokens": [
+        "receiver",
+        "text"
+      ]
+    },
+    {
+      "id": "text:sender:top",
+      "en": "ChatRoom_Bubble_Text_Sender_Green_Top",
+      "cn": "右上",
+      "desc": "文字气泡·自己·上",
+      "side": "sender",
+      "pos": "top",
+      "tokens": [
+        "sender",
+        "text",
+        "top"
+      ]
+    },
+    {
+      "id": "text:sender:middle",
+      "en": "ChatRoom_Bubble_Text_Sender_Green_Middle",
+      "cn": "右中",
+      "desc": "文字气泡·自己·中",
+      "side": "sender",
+      "pos": "middle",
+      "tokens": [
+        "middle",
+        "sender",
+        "text"
+      ]
+    },
+    {
+      "id": "text:sender:end",
+      "en": "ChatRoom_Bubble_Text_Sender_Green_End",
+      "cn": "右下",
+      "desc": "文字气泡·自己·下",
+      "side": "sender",
+      "pos": "end",
+      "tokens": [
+        "end",
+        "sender",
+        "text"
+      ]
+    },
+    {
+      "id": "text:sender:single",
+      "en": "ChatRoom_Bubble_Text_Sender_Green",
+      "cn": "右单",
+      "desc": "文字气泡·自己·单",
+      "side": "sender",
+      "pos": "single",
+      "tokens": [
+        "sender",
+        "text"
+      ]
+    }
+  ],
+  "otherSlots": [
+    {
+      "id": "hb:receiver:",
+      "en": "ChatRoom_Bubble_HB_Receiver",
+      "desc": "红包·对方·还没领",
+      "cat": "hb",
+      "side": "receiver",
+      "tokens": [
+        "hb",
+        "receiver"
+      ]
+    },
+    {
+      "id": "hb:receiver:handled",
+      "en": "ChatRoom_Bubble_HB_Receiver_Handled",
+      "desc": "红包·对方·已领取",
+      "cat": "hb",
+      "side": "receiver",
+      "tokens": [
+        "handled",
+        "hb",
+        "receiver"
+      ]
+    },
+    {
+      "id": "hb:receiver:overtime",
+      "en": "ChatRoom_Bubble_HB_Overtime_Receiver",
+      "desc": "红包·对方·已过期",
+      "cat": "hb",
+      "side": "receiver",
+      "tokens": [
+        "hb",
+        "overtime",
+        "receiver"
+      ]
+    },
+    {
+      "id": "hb:sender:",
+      "en": "ChatRoom_Bubble_HB_Sender",
+      "desc": "红包·自己·还没领",
+      "cat": "hb",
+      "side": "sender",
+      "tokens": [
+        "hb",
+        "sender"
+      ]
+    },
+    {
+      "id": "hb:sender:handled",
+      "en": "ChatRoom_Bubble_HB_Sender_Handled",
+      "desc": "红包·自己·已领取",
+      "cat": "hb",
+      "side": "sender",
+      "tokens": [
+        "handled",
+        "hb",
+        "sender"
+      ]
+    },
+    {
+      "id": "hb:sender:overtime",
+      "en": "ChatRoom_Bubble_HB_Overtime_Sender",
+      "desc": "红包·自己·已过期",
+      "cat": "hb",
+      "side": "sender",
+      "tokens": [
+        "hb",
+        "overtime",
+        "sender"
+      ]
+    },
+    {
+      "id": "aa:receiver:",
+      "en": "ChatRoom_Bubble_AA_Receiver",
+      "desc": "转账/AA·对方·未处理",
+      "cat": "aa",
+      "side": "receiver",
+      "tokens": [
+        "aa",
+        "receiver"
+      ]
+    },
+    {
+      "id": "aa:receiver:handled",
+      "en": "ChatRoom_Bubble_AA_Receiver_Handled",
+      "desc": "转账/AA·对方·已处理",
+      "cat": "aa",
+      "side": "receiver",
+      "tokens": [
+        "aa",
+        "handled",
+        "receiver"
+      ]
+    },
+    {
+      "id": "aa:receiver:overtime",
+      "en": "ChatRoom_Bubble_AA_Overtime_Receiver",
+      "desc": "转账/AA·对方·已过期",
+      "cat": "aa",
+      "side": "receiver",
+      "tokens": [
+        "aa",
+        "overtime",
+        "receiver"
+      ]
+    },
+    {
+      "id": "aa:sender:",
+      "en": "ChatRoom_Bubble_AA_Sender",
+      "desc": "转账/AA·自己·未处理",
+      "cat": "aa",
+      "side": "sender",
+      "tokens": [
+        "aa",
+        "sender"
+      ]
+    },
+    {
+      "id": "aa:sender:handled",
+      "en": "ChatRoom_Bubble_AA_Sender_Handled",
+      "desc": "转账/AA·自己·已处理",
+      "cat": "aa",
+      "side": "sender",
+      "tokens": [
+        "aa",
+        "handled",
+        "sender"
+      ]
+    },
+    {
+      "id": "aa:sender:overtime",
+      "en": "ChatRoom_Bubble_AA_Overtime_Sender",
+      "desc": "转账/AA·自己·已过期",
+      "cat": "aa",
+      "side": "sender",
+      "tokens": [
+        "aa",
+        "overtime",
+        "sender"
+      ]
+    },
+    {
+      "id": "gift:receiver:",
+      "en": "ChatRoom_Bubble_Gift_Receiver",
+      "desc": "礼物·对方·还没领",
+      "cat": "gift",
+      "side": "receiver",
+      "tokens": [
+        "gift",
+        "receiver"
+      ]
+    },
+    {
+      "id": "gift:receiver:handled",
+      "en": "ChatRoom_Bubble_Gift_Receiver_Handled",
+      "desc": "礼物·对方·已领取",
+      "cat": "gift",
+      "side": "receiver",
+      "tokens": [
+        "gift",
+        "handled",
+        "receiver"
+      ]
+    },
+    {
+      "id": "gift:sender:",
+      "en": "ChatRoom_Bubble_Gift_Sender",
+      "desc": "礼物·自己·还没领",
+      "cat": "gift",
+      "side": "sender",
+      "tokens": [
+        "gift",
+        "sender"
+      ]
+    },
+    {
+      "id": "gift:sender:handled",
+      "en": "ChatRoom_Bubble_Gift_Sender_Handled",
+      "desc": "礼物·自己·已领取",
+      "cat": "gift",
+      "side": "sender",
+      "tokens": [
+        "gift",
+        "handled",
+        "sender"
+      ]
+    },
+    {
+      "id": "app:sender:",
+      "en": "ChatRoom_Bubble_App_Sender",
+      "desc": "卡片·自己（微信没有对方那张）",
+      "cat": "app",
+      "side": "sender",
+      "tokens": [
+        "app",
+        "sender"
+      ]
+    },
+    {
+      "id": "common:receiver:new",
+      "en": "ChatRoom_Bubble_Common_New_Receiver",
+      "desc": "通用卡片底(新版)·对方",
+      "cat": "common",
+      "side": "receiver",
+      "tokens": [
+        "common",
+        "new",
+        "receiver"
+      ]
+    },
+    {
+      "id": "common:receiver:mask",
+      "en": "ChatRoom_Bubble_Common_Mask_Receiver",
+      "desc": "遮罩·对方",
+      "cat": "common",
+      "side": "receiver",
+      "tokens": [
+        "common",
+        "mask",
+        "receiver"
+      ]
+    },
+    {
+      "id": "common:receiver:mask_new",
+      "en": "ChatRoom_Bubble_Common_New_Mask_Receiver",
+      "desc": "遮罩(新版)·对方",
+      "cat": "common",
+      "side": "receiver",
+      "tokens": [
+        "common",
+        "mask",
+        "new",
+        "receiver"
+      ]
+    },
+    {
+      "id": "common:sender:new",
+      "en": "ChatRoom_Bubble_Common_New_Sender",
+      "desc": "通用卡片底(新版)·自己",
+      "cat": "common",
+      "side": "sender",
+      "tokens": [
+        "common",
+        "new",
+        "sender"
+      ]
+    },
+    {
+      "id": "common:sender:mask",
+      "en": "ChatRoom_Bubble_Common_Mask_Sender",
+      "desc": "遮罩·自己",
+      "cat": "common",
+      "side": "sender",
+      "tokens": [
+        "common",
+        "mask",
+        "sender"
+      ]
+    },
+    {
+      "id": "common:sender:mask_new",
+      "en": "ChatRoom_Bubble_Common_New_Mask_Sender",
+      "desc": "遮罩(新版)·自己",
+      "cat": "common",
+      "side": "sender",
+      "tokens": [
+        "common",
+        "mask",
+        "new",
+        "sender"
+      ]
+    },
+    {
+      "id": "voice:receiver:",
+      "en": "ChatRoom_Bubble_Voice_Receiver",
+      "desc": "语音·对方·平时",
+      "cat": "voice",
+      "side": "receiver",
+      "tokens": [
+        "receiver",
+        "voice"
+      ]
+    },
+    {
+      "id": "voice:receiver:playing1",
+      "en": "ChatRoom_Bubble_Voice_Receiver_Playing1",
+      "desc": "语音·对方·播放第1帧",
+      "cat": "voice",
+      "side": "receiver",
+      "tokens": [
+        "playing1",
+        "receiver",
+        "voice"
+      ]
+    },
+    {
+      "id": "voice:receiver:playing2",
+      "en": "ChatRoom_Bubble_Voice_Receiver_Playing2",
+      "desc": "语音·对方·播放第2帧",
+      "cat": "voice",
+      "side": "receiver",
+      "tokens": [
+        "playing2",
+        "receiver",
+        "voice"
+      ]
+    },
+    {
+      "id": "voice:receiver:playing3",
+      "en": "ChatRoom_Bubble_Voice_Receiver_Playing3",
+      "desc": "语音·对方·播放第3帧",
+      "cat": "voice",
+      "side": "receiver",
+      "tokens": [
+        "playing3",
+        "receiver",
+        "voice"
+      ]
+    },
+    {
+      "id": "voice:sender:",
+      "en": "ChatRoom_Bubble_Voice_Sender",
+      "desc": "语音·自己·平时",
+      "cat": "voice",
+      "side": "sender",
+      "tokens": [
+        "sender",
+        "voice"
+      ]
+    },
+    {
+      "id": "voice:sender:playing1",
+      "en": "ChatRoom_Bubble_Voice_Sender_Playing1",
+      "desc": "语音·自己·播放第1帧",
+      "cat": "voice",
+      "side": "sender",
+      "tokens": [
+        "playing1",
+        "sender",
+        "voice"
+      ]
+    },
+    {
+      "id": "voice:sender:playing2",
+      "en": "ChatRoom_Bubble_Voice_Sender_Playing2",
+      "desc": "语音·自己·播放第2帧",
+      "cat": "voice",
+      "side": "sender",
+      "tokens": [
+        "playing2",
+        "sender",
+        "voice"
+      ]
+    },
+    {
+      "id": "voice:sender:playing3",
+      "en": "ChatRoom_Bubble_Voice_Sender_Playing3",
+      "desc": "语音·自己·播放第3帧",
+      "cat": "voice",
+      "side": "sender",
+      "tokens": [
+        "playing3",
+        "sender",
+        "voice"
+      ]
+    },
+    {
+      "id": "voice:receiver:recording",
+      "en": "ChatRoom_Bubble_Voice_Receiver_Recording",
+      "desc": "语音·录音中（只有 Receiver 写法）",
+      "cat": "voice",
+      "side": "receiver",
+      "tokens": [
+        "receiver",
+        "recording",
+        "voice"
+      ]
+    }
+  ]
+}

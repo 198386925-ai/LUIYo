@@ -82,6 +82,33 @@ extension MainShellViewController {
         return controller
     }
 
+    /// Returns the bubble-pack editor page controller, creating it once.
+    /// onExport hands the finished zip to the system share sheet so the
+    /// user can save or send it.
+    var bubbleHost: BubblePackEditorViewController {
+        if let existing = objc_getAssociatedObject(self, &AssociatedKeys.bubbleHost) as? BubblePackEditorViewController {
+            return existing
+        }
+        let controller = BubblePackEditorViewController()
+        controller.view.backgroundColor = .clear
+        controller.onExport = { [weak controller] zipURL in
+            guard let host = controller else { return }
+            let sheet = UIActivityViewController(activityItems: [zipURL], applicationActivities: nil)
+            if let popover = sheet.popoverPresentationController {
+                popover.sourceView = host.view
+                popover.sourceRect = CGRect(x: host.view.bounds.midX, y: host.view.bounds.midY, width: 0, height: 0)
+            }
+            host.present(sheet, animated: true)
+        }
+        objc_setAssociatedObject(self, &AssociatedKeys.bubbleHost, controller, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        return controller
+    }
+
+    /// The bubble host if it has been created already (never creates it).
+    var existingBubbleHost: BubblePackEditorViewController? {
+        objc_getAssociatedObject(self, &AssociatedKeys.bubbleHost) as? BubblePackEditorViewController
+    }
+
     /// The Settings host if it has been created already (never creates it).
     var existingSettingsHost: SettingsViewController? {
         objc_getAssociatedObject(self, &AssociatedKeys.settingsHost) as? SettingsViewController
@@ -103,6 +130,7 @@ extension MainShellViewController {
 private enum AssociatedKeys {
     static var settingsHost = "settingsHost"
     static var rulesHost = "rulesHost"
+    static var bubbleHost = "bubbleHost"
     static var settingsModel = "settingsModel"
     static var rulesModel = "rulesModel"
 }

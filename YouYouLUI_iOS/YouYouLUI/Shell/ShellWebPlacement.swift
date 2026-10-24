@@ -9,6 +9,9 @@ extension MainShellViewController {
     func keepContentBelowNativeBar() {
         guard isViewLoaded, let parent = selectedViewController, let host = parent.view else { return }
         switch activePage {
+        case .bubble:
+            attachNativePage(bubbleHost, to: parent, host: host)
+            bindNativeContentScroll(bubbleHost.view, parent: parent)
         case .rules:
             attachNativePage(rulesHost, to: parent, host: host)
             bindNativeContentScroll(rulesHost.view, parent: parent)
