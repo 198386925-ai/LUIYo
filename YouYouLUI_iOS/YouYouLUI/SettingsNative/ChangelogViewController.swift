@@ -16,9 +16,9 @@ import UIKit
 /// a FLAT warm beige #F0EEE8 (the reference app's paper colour,
 /// the user's pick over Build 54's #BAD0EB-family gradient);
 /// Build 69 (user order): the light layer is now pure white #FFFFFF.
-/// Build 72: the film is hidden in light mode (its tint
-/// shifted the sampled colour off #FFFFFF); dark mode keeps
-/// its flat #121214 background and film.
+/// Build 73: light film restored at whitest frost (thin
+/// material + white 0.5 sheen); dark mode keeps its flat
+/// #121214 background and film.
 /// Presentation is a CHILD OVERLAY of the app shell (Build 51,
 /// see `show(from:)`): Builds 49–50 presented this modally
 /// (.overFullScreen) from the embedded settings child and on
@@ -95,7 +95,9 @@ final class ChangelogViewController: UIViewController {
     override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
         super.traitCollectionDidChange(previousTraitCollection)
         if traitCollection.hasDifferentColorAppearance(comparedTo: previousTraitCollection) {
-            sheetFrost?.isHidden = traitCollection.userInterfaceStyle == .light
+            sheetFrost?.effect = traitCollection.userInterfaceStyle == .dark
+                ? UIBlurEffect(style: .systemMaterialLight)
+                : UIBlurEffect(style: .systemThinMaterialLight)
         }
     }
 
@@ -131,12 +133,11 @@ final class ChangelogViewController: UIViewController {
         // light mode is pure white #FFFFFF since Build 69 (user
         // order; it was a FLAT warm beige #F0EEE8 before, the
         // reference app's paper colour; dark mode keeps the flat
-        // #121214). Build 72: the film below is HIDDEN in light
-        // mode — the system-material tint shifted the sampled
-        // colour off #FFFFFF, and the user eyedroppered it as
-        // not pure white — so light mode is flat white only.
-        // Dark mode keeps the film: one light system blur plus
-        // the #121214 tint at 0.5.
+        // #121214). Build 72 hid the film in light mode (flat
+        // white only); Build 73 restores it at whitest frost —
+        // thin material + white 0.5 sheen — because flat white
+        // was too stark. Dark mode keeps the film: system
+        // material blur plus the #121214 tint at 0.5.
         // Transparency exists ONLY above the sheet (the clear
         // root). The sheet's clipsToBounds keeps both layers
         // inside the rounded-top shape; the scroll view and
@@ -151,19 +152,23 @@ final class ChangelogViewController: UIViewController {
         frostTint.backgroundColor = UIColor { traits in
             traits.userInterfaceStyle == .dark
                 ? UIColor(red: 18.0 / 255.0, green: 18.0 / 255.0, blue: 20.0 / 255.0, alpha: 0.5)
-                : UIColor.white.withAlphaComponent(0.15)
+                : UIColor.white.withAlphaComponent(0.5)
         }
         frostTint.isUserInteractionEnabled = false
         frost.contentView.addSubview(frostTint)
         frostTint.translatesAutoresizingMaskIntoConstraints = false
         sheet.addSubview(frost)
-        // Build 72 (user order): in light mode the frost film is
-        // hidden — its system-material tint shifts the sampled
-        // colour off pure white, and the user eyedroppered the
-        // background as not-#FFFFFF. Flat pure white only. Dark
-        // mode keeps the film (unchanged).
+        // Build 73 (user order): light film restored at its
+        // whitest frost — Build 72's flat pure white was too
+        // stark ("太白了"). Thin material + white 0.5 sheen over
+        // the white background: bright milky frost, still visibly
+        // frosted. Dark mode keeps its film (unchanged), and the
+        // version cards are untouched (user: cards need not be
+        // whitest).
         sheetFrost = frost
-        frost.isHidden = traitCollection.userInterfaceStyle == .light
+        if traitCollection.userInterfaceStyle == .light {
+            frost.effect = UIBlurEffect(style: .systemThinMaterialLight)
+        }
         frost.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             sheetBackground.leadingAnchor.constraint(equalTo: sheet.leadingAnchor),
