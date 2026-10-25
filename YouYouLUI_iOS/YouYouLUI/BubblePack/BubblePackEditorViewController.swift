@@ -566,8 +566,19 @@ final class BubblePackEditorViewController: UIViewController,
     private var pendingStack: UIStackView!
     private var pendingLeftBtn: PillButton!
     private var pendingRightBtn: PillButton!
-    private var pendingOtherBtn: PillButton!
     private var pendingHint: UILabel!
+    // 其它工作区自有一套（不共用文字的工具栏与待分配）：自己的批量导图 + 待分配，只放其它气泡。
+    private var pendingOther: [UIImage] = []
+    private var selectedPendingOther: Int?
+    private var pickerTargetOther = false
+    private var otherBatchRow: UIView!
+    private var otherBatchBtn: PillButton!
+    private var otherPendingCard: UIView!
+    private var otherPendingTitle: UILabel!
+    private var otherPendingSub: UILabel!
+    private var otherPendingStack: UIStackView!
+    private var otherPendingOtherBtn: PillButton!
+    private var otherPendingHint: UILabel!
     private var textBubbles: [String: BubbleView] = [:]
     private var textFileNames: [String: UILabel] = [:]
     private var otherBubbles: [String: BubbleView] = [:]
@@ -689,7 +700,7 @@ final class BubblePackEditorViewController: UIViewController,
         pendingTitle.font = UIFont.systemFont(ofSize: 16, weight: .semibold)
         pendingSub = UILabel()
         pendingSub.font = UIFont.systemFont(ofSize: 13)
-        pendingSub.text = "点一张图，再选左边 / 右边 / 其它"
+        pendingSub.text = "点一张图，再选左边 / 右边"
         let scroll = UIScrollView()
         scroll.translatesAutoresizingMaskIntoConstraints = false
         scroll.showsHorizontalScrollIndicator = false
@@ -714,14 +725,11 @@ final class BubblePackEditorViewController: UIViewController,
         pendingLeftBtn.addTarget(self, action: #selector(placePendingLeft), for: .touchUpInside)
         pendingRightBtn = pillButton("放右边", primary: false)
         pendingRightBtn.addTarget(self, action: #selector(placePendingRight), for: .touchUpInside)
-        pendingOtherBtn = pillButton("放其它", primary: false)
-        pendingOtherBtn.addTarget(self, action: #selector(placePendingOther), for: .touchUpInside)
         pendingHint = UILabel()
         pendingHint.font = UIFont.systemFont(ofSize: 13)
         pendingHint.numberOfLines = 0
         btnRow.addArrangedSubview(pendingLeftBtn)
         btnRow.addArrangedSubview(pendingRightBtn)
-        btnRow.addArrangedSubview(pendingOtherBtn)
         btnRow.addArrangedSubview(pendingHint)
         stack.addArrangedSubview(pendingTitle)
         stack.addArrangedSubview(pendingSub)
@@ -776,19 +784,53 @@ final class BubblePackEditorViewController: UIViewController,
         }
         let left = nextEmptyTextSlot(side: "receiver")
         let right = nextEmptyTextSlot(side: "sender")
-        let other = nextEmptyOtherSlot()
         let hasSel = selectedPending != nil && selectedPending! < pending.count
         pendingLeftBtn.isEnabled = hasSel && left != nil
         pendingRightBtn.isEnabled = hasSel && right != nil
-        pendingOtherBtn.isEnabled = hasSel && other != nil
         pendingLeftBtn.alpha = pendingLeftBtn.isEnabled ? 1 : 0.4
         pendingRightBtn.alpha = pendingRightBtn.isEnabled ? 1 : 0.4
-        pendingOtherBtn.alpha = pendingOtherBtn.isEnabled ? 1 : 0.4
         var parts: [String] = []
         if let l = left { parts.append("放左边 → 下一个：\(cnName(for: l))") }
         if let r = right { parts.append("放右边 → 下一个：\(cnName(for: r))") }
-        if let o = other { parts.append("放其它 → 下一个：\(otherDesc(for: o))") }
         pendingHint.text = parts.isEmpty ? "全部已满，可清空重放" : parts.joined(separator: " · ")
+    }
+
+    // 其它工作区的待分配：只放其它气泡，不走文字待分配。
+    private func refreshOtherPending() {
+        guard otherPendingCard != nil else { return }
+        otherBatchRow.isHidden = otherCard.isHidden
+        otherPendingCard.isHidden = otherCard.isHidden || pendingOther.isEmpty
+        otherPendingTitle.text = "待分配（\(pendingOther.count) 张）"
+        for v in otherPendingStack.arrangedSubviews { otherPendingStack.removeArrangedSubview(v); v.removeFromSuperview() }
+        for (i, img) in pendingOther.enumerated() {
+            let b = UIButton(type: .custom)
+            b.translatesAutoresizingMaskIntoConstraints = false
+            b.setImage(img, for: .normal)
+            b.imageView?.contentMode = .scaleAspectFill
+            b.clipsToBounds = true
+            b.layer.cornerRadius = 14
+            b.layer.borderWidth = (i == selectedPendingOther) ? 3 : 1
+            b.layer.borderColor = ((i == selectedPendingOther) ? c("accent") : c("line")).cgColor
+            b.widthAnchor.constraint(equalToConstant: 72).isActive = true
+            b.heightAnchor.constraint(equalToConstant: 72).isActive = true
+            b.tag = i
+            b.addTarget(self, action: #selector(selectPendingOther(_:)), for: .touchUpInside)
+            otherPendingStack.addArrangedSubview(b)
+        }
+        let other = nextEmptyOtherSlot()
+        let hasSel = selectedPendingOther != nil && selectedPendingOther! < pendingOther.count
+        otherPendingOtherBtn.isEnabled = hasSel && other != nil
+        otherPendingOtherBtn.alpha = otherPendingOtherBtn.isEnabled ? 1 : 0.4
+        if let o = other {
+            otherPendingHint.text = "放其它 → 下一个：\(otherDesc(for: o))"
+        } else {
+            otherPendingHint.text = "全部已满，可清空重放"
+        }
+    }
+
+    @objc private func selectPendingOther(_ sender: UIButton) {
+        selectedPendingOther = (selectedPendingOther == sender.tag) ? nil : sender.tag
+        refreshOtherPending()
     }
 
     @objc private func selectPending(_ sender: UIButton) {
@@ -820,10 +862,10 @@ final class BubblePackEditorViewController: UIViewController,
     }
 
     @objc private func placePendingOther() {
-        guard let idx = selectedPending, idx < pending.count,
+        guard let idx = selectedPendingOther, idx < pendingOther.count,
               let sid = nextEmptyOtherSlot() else { return }
-        let img = pending.remove(at: idx)
-        selectedPending = nil
+        let img = pendingOther.remove(at: idx)
+        selectedPendingOther = nil
         put(img, slotId: sid)
     }
 
@@ -1178,6 +1220,79 @@ final class BubblePackEditorViewController: UIViewController,
         contentStack.addArrangedSubview(otherCard)
         otherNav = nav
         otherInBar = inBar
+        buildOtherPending()
+    }
+
+    // 其它工作区自有的一套：批量导图行 + 待分配卡（只放其它气泡），插在开关与手机框之间。
+    private func buildOtherPending() {
+        otherBatchRow = UIView()
+        otherBatchRow.translatesAutoresizingMaskIntoConstraints = false
+        otherBatchBtn = pillButton("批量导图", primary: false)
+        otherBatchBtn.addTarget(self, action: #selector(otherBatch), for: .touchUpInside)
+        otherBatchRow.addSubview(otherBatchBtn)
+        NSLayoutConstraint.activate([
+            otherBatchBtn.topAnchor.constraint(equalTo: otherBatchRow.topAnchor),
+            otherBatchBtn.bottomAnchor.constraint(equalTo: otherBatchRow.bottomAnchor),
+            otherBatchBtn.leadingAnchor.constraint(equalTo: otherBatchRow.leadingAnchor),
+        ])
+
+        otherPendingCard = UIView()
+        otherPendingCard.translatesAutoresizingMaskIntoConstraints = false
+        otherPendingCard.layer.cornerRadius = 22
+        otherPendingCard.layer.borderWidth = 1
+        let stack = UIStackView()
+        stack.axis = .vertical
+        stack.spacing = 8
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        otherPendingTitle = UILabel()
+        otherPendingTitle.font = UIFont.systemFont(ofSize: 16, weight: .semibold)
+        otherPendingSub = UILabel()
+        otherPendingSub.font = UIFont.systemFont(ofSize: 13)
+        otherPendingSub.text = "点一张图，再选放其它"
+        let scroll = UIScrollView()
+        scroll.translatesAutoresizingMaskIntoConstraints = false
+        scroll.showsHorizontalScrollIndicator = false
+        otherPendingStack = UIStackView()
+        otherPendingStack.axis = .horizontal
+        otherPendingStack.spacing = 10
+        otherPendingStack.translatesAutoresizingMaskIntoConstraints = false
+        scroll.addSubview(otherPendingStack)
+        NSLayoutConstraint.activate([
+            otherPendingStack.topAnchor.constraint(equalTo: scroll.topAnchor),
+            otherPendingStack.bottomAnchor.constraint(equalTo: scroll.bottomAnchor),
+            otherPendingStack.leadingAnchor.constraint(equalTo: scroll.leadingAnchor),
+            otherPendingStack.trailingAnchor.constraint(equalTo: scroll.trailingAnchor),
+            otherPendingStack.heightAnchor.constraint(equalToConstant: 72),
+        ])
+        scroll.heightAnchor.constraint(equalToConstant: 72).isActive = true
+        let btnRow = UIStackView()
+        btnRow.axis = .horizontal
+        btnRow.spacing = 12
+        btnRow.alignment = .center
+        otherPendingOtherBtn = pillButton("放其它", primary: false)
+        otherPendingOtherBtn.addTarget(self, action: #selector(placePendingOther), for: .touchUpInside)
+        otherPendingHint = UILabel()
+        otherPendingHint.font = UIFont.systemFont(ofSize: 13)
+        otherPendingHint.numberOfLines = 0
+        btnRow.addArrangedSubview(otherPendingOtherBtn)
+        btnRow.addArrangedSubview(otherPendingHint)
+        stack.addArrangedSubview(otherPendingTitle)
+        stack.addArrangedSubview(otherPendingSub)
+        stack.addArrangedSubview(scroll)
+        stack.addArrangedSubview(btnRow)
+        otherPendingCard.addSubview(stack)
+        NSLayoutConstraint.activate([
+            stack.topAnchor.constraint(equalTo: otherPendingCard.topAnchor, constant: 14),
+            stack.bottomAnchor.constraint(equalTo: otherPendingCard.bottomAnchor, constant: -14),
+            stack.leadingAnchor.constraint(equalTo: otherPendingCard.leadingAnchor, constant: 16),
+            stack.trailingAnchor.constraint(equalTo: otherPendingCard.trailingAnchor, constant: -16),
+        ])
+        otherBatchRow.isHidden = true
+        otherPendingCard.isHidden = true
+        if let idx = contentStack.arrangedSubviews.firstIndex(of: otherCard) {
+            contentStack.insertArrangedSubview(otherBatchRow, at: idx)
+            contentStack.insertArrangedSubview(otherPendingCard, at: idx + 1)
+        }
     }
 
     // MARK: - 构建气泡
@@ -1320,6 +1435,7 @@ final class BubblePackEditorViewController: UIViewController,
         toolbarFlow.setNeedsLayout()
         toolbarFlow.invalidateIntrinsicContentSize()
         refreshPending()
+        refreshOtherPending()
     }
 
     private func colorBubble(_ bub: BubbleView, slot: BubbleSlot, night: Bool) {
@@ -1461,7 +1577,7 @@ final class BubblePackEditorViewController: UIViewController,
             group.label.textColor = c("text3")
             group.refreshPillColors(track: c("line"), thumb: dark ? bubbleColor(hex: "#3A3A3C") : .white, selected: c("text"), plain: c("text2"))
         }
-        for b in [batchBtn, copyBtn, clearBtn, scaleBtn, pendingLeftBtn, pendingRightBtn] {
+        for b in [batchBtn, copyBtn, clearBtn, scaleBtn, pendingLeftBtn, pendingRightBtn, otherBatchBtn, otherPendingOtherBtn] {
             b?.strokeColor = c("line")
             b?.setTitleColor(c("text2"), for: .normal)
         }
@@ -1470,6 +1586,11 @@ final class BubblePackEditorViewController: UIViewController,
         pendingTitle.textColor = c("text")
         pendingSub.textColor = c("text3")
         pendingHint.textColor = c("accent")
+        otherPendingCard.backgroundColor = c("card")
+        otherPendingCard.layer.borderColor = c("line").cgColor
+        otherPendingTitle.textColor = c("text")
+        otherPendingSub.textColor = c("text3")
+        otherPendingHint.textColor = c("accent")
         exportBtn.fillColor = c("accent")
         exportBtn.glowColor = c("accent")
 
@@ -1623,6 +1744,7 @@ final class BubblePackEditorViewController: UIViewController,
     @objc private func toggleOther() {
         otherCard.isHidden.toggle()
         if !otherCard.isHidden { refresh() }
+        refreshOtherPending()
     }
 
     @objc private func clearAll() {
@@ -1630,6 +1752,8 @@ final class BubblePackEditorViewController: UIViewController,
         unrecognized.removeAll()
         pending.removeAll()
         selectedPending = nil
+        pendingOther.removeAll()
+        selectedPendingOther = nil
         refresh()
     }
 
@@ -1670,6 +1794,12 @@ final class BubblePackEditorViewController: UIViewController,
     }
 
     @objc private func batch() {
+        pickerTargetOther = false
+        presentPickerMulti()
+    }
+
+    @objc private func otherBatch() {
+        pickerTargetOther = true
         presentPickerMulti()
     }
 
@@ -1679,10 +1809,15 @@ final class BubblePackEditorViewController: UIViewController,
         for r in results {
             r.itemProvider.loadObject(ofClass: UIImage.self) { [weak self] obj, _ in
                 guard let self, let img = obj as? UIImage else { return }
-                // 批量导入不再按文件名自动认：全部进待分配，由用户手动选左/右/其它顺序放。
+                // 批量导入不再按文件名自动认：全部进当次目标工作区的待分配，由用户手动放。
                 DispatchQueue.main.async {
-                    self.pending.append(img)
-                    self.refreshPending()
+                    if self.pickerTargetOther {
+                        self.pendingOther.append(img)
+                        self.refreshOtherPending()
+                    } else {
+                        self.pending.append(img)
+                        self.refreshPending()
+                    }
                 }
             }
         }
@@ -1691,9 +1826,14 @@ final class BubblePackEditorViewController: UIViewController,
     func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
         picker.dismiss(animated: true) {
             guard let img = info[.originalImage] as? UIImage else { return }
-            // 点气泡导入已删：旧系统相册回落也只进待分配，不再直放。
-            self.pending.append(img)
-            self.refreshPending()
+            // 点气泡导入已删：旧系统相册回落也只进当次目标工作区的待分配，不再直放。
+            if self.pickerTargetOther {
+                self.pendingOther.append(img)
+                self.refreshOtherPending()
+            } else {
+                self.pending.append(img)
+                self.refreshPending()
+            }
         }
     }
 

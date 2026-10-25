@@ -48,6 +48,7 @@ enum SettingsContent {
             ChangelogEntry(tag: "优化", text: "优化气泡包预览：移除图片大小滑条，预览恢复真实尺寸（像素 ÷ 倍数）。"),
             ChangelogEntry(tag: "优化", text: "优化导出验证：不再联网复核，只看本地授权（启动门与心跳已验证过），有授权直接导出。"),
             ChangelogEntry(tag: "优化", text: "优化气泡包预览：导入图片不再按自己尺寸贴出来，而是像微信里真正用起来那样拉伸铺满整个气泡当皮，字显示在上面。"),
+            ChangelogEntry(tag: "优化", text: "优化气泡包工作区：文字与其它分开，各自有批量导图与待分配（上面只放左边/右边，下面只放其它），不再共用一套。"),
             ChangelogEntry(tag: "修复", text: "修复气泡包聊天区左右留白边的问题：聊天底贴满手机框，气泡间距不变。"),
             ChangelogEntry(tag: "修复", text: "修复 App 内签名完成后校验误报「签名校验失败」、签名文件被删除的问题。"),
             ChangelogEntry(tag: "修复", text: "修复启动图在打开瞬间闪过紫色的问题。"),
