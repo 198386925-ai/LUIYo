@@ -51,6 +51,7 @@ enum SettingsContent {
             ChangelogEntry(tag: "优化", text: "优化气泡包工作区：文字与其它分开，各自有批量导图与待分配（上面只放左边/右边，下面只放其它），不再共用一套。"),
             ChangelogEntry(tag: "优化", text: "优化待分配：放进气泡后图不再从待分配消失（只有清空才走），可多选打勾按顺序批量放（勾上显示 1、2、3，第一张进第一个空位）。"),
             ChangelogEntry(tag: "优化", text: "优化待分配提示：删掉‘放左边 → 下一个’这类文字，改成‘已勾选：’后面跟勾选的圈圈（按勾的顺序排）。"),
+            ChangelogEntry(tag: "优化", text: "优化待分配选中描边：由 3 磅改细为 2 磅。"),
             ChangelogEntry(tag: "修复", text: "修复气泡包聊天区左右留白边的问题：聊天底贴满手机框，气泡间距不变。"),
             ChangelogEntry(tag: "修复", text: "修复 App 内签名完成后校验误报「签名校验失败」、签名文件被删除的问题。"),
             ChangelogEntry(tag: "修复", text: "修复启动图在打开瞬间闪过紫色的问题。"),

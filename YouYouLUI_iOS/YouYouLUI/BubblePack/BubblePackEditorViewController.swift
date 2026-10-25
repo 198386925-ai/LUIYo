@@ -779,7 +779,7 @@ final class BubblePackEditorViewController: UIViewController,
             b.layer.cornerRadius = 14
             // 多选：勾上的图蓝边 + 右上角顺序号（按勾的顺序 1、2、3…）。
             let order = selectedPendingOrder.firstIndex(where: { $0 === img })
-            b.layer.borderWidth = (order != nil) ? 3 : 1
+            b.layer.borderWidth = (order != nil) ? 2 : 1
             b.layer.borderColor = ((order != nil) ? c("accent") : c("line")).cgColor
             b.widthAnchor.constraint(equalToConstant: 72).isActive = true
             b.heightAnchor.constraint(equalToConstant: 72).isActive = true
@@ -870,7 +870,7 @@ final class BubblePackEditorViewController: UIViewController,
             b.layer.cornerRadius = 14
             // 多选：勾上的图蓝边 + 右上角顺序号（按勾的顺序 1、2、3…）。
             let order = selectedPendingOtherOrder.firstIndex(where: { $0 === img })
-            b.layer.borderWidth = (order != nil) ? 3 : 1
+            b.layer.borderWidth = (order != nil) ? 2 : 1
             b.layer.borderColor = ((order != nil) ? c("accent") : c("line")).cgColor
             b.widthAnchor.constraint(equalToConstant: 72).isActive = true
             b.heightAnchor.constraint(equalToConstant: 72).isActive = true
