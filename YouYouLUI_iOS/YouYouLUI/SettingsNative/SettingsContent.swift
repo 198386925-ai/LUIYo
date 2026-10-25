@@ -46,6 +46,7 @@ enum SettingsContent {
             ChangelogEntry(tag: "优化", text: "优化气泡包工具栏：倍数移到命名后面，改用下拉选择器。"),
             ChangelogEntry(tag: "优化", text: "优化气泡包导入：删除点气泡导入入口，图片只从批量导入进待分配区。"),
             ChangelogEntry(tag: "优化", text: "优化气泡包预览：移除图片大小滑条，预览恢复真实尺寸（像素 ÷ 倍数）。"),
+            ChangelogEntry(tag: "优化", text: "优化导出验证：60 秒内已有服务器结论的不再重复联网等待，直接导出（启动门与心跳的结论复用，过期才重新问）。"),
             ChangelogEntry(tag: "修复", text: "修复气泡包聊天区左右留白边的问题：聊天底贴满手机框，气泡间距不变。"),
             ChangelogEntry(tag: "修复", text: "修复 App 内签名完成后校验误报「签名校验失败」、签名文件被删除的问题。"),
             ChangelogEntry(tag: "修复", text: "修复启动图在打开瞬间闪过紫色的问题。"),

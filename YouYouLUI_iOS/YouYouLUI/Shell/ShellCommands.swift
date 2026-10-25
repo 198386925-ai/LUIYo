@@ -38,7 +38,15 @@ extension MainShellViewController {
     /// and refresh the local mirror. Only a truly unreachable server
     /// falls back to the cached local authorization (the user's
     /// no-network choice: offline exports keep working).
+    /// Build 90: a server verdict from the last 60 s (launch gate /
+    /// heartbeat) is reused, so a normal export no longer waits on
+    /// the network again; a stale verdict still re-asks.
     private func verifyExportAuthorization() {
+        // 60 秒内已有服务器结论（启动门 / 心跳刚问过）：直接导出，不再重复联网等。
+        if AccountAuthorization.isServerVerdictFresh {
+            self.engine.startExport()
+            return
+        }
         showNotice("正在验证授权…")
         AccountAPI.fetchStatus(timeout: 8) { [weak self] status in
             guard let self else { return }
@@ -66,10 +74,16 @@ extension MainShellViewController {
     /// falls back to the cached local authorization, which already
     /// passed the fast-fail above). Only the zip export is gated —
     /// playing in the editor stays free, like every other page.
+    /// Build 90: same 60 s fresh-verdict reuse as the main export.
     func verifyBubbleExportAuthorization(completion: @escaping (Bool) -> Void) {
         if !AccountAuthorization.isAuthorized {
             showAuthorizationRequired()
             completion(false)
+            return
+        }
+        // 60 秒内已有服务器结论：直接放行，不再重复联网等。
+        if AccountAuthorization.isServerVerdictFresh {
+            completion(true)
             return
         }
         showNotice("正在验证授权…")

@@ -126,6 +126,17 @@ enum AccountAuthorization {
         return preferences.accountSVIPExpiresAt > Int(Date().timeIntervalSince1970)
     }
 
+    /// 上次拿到服务器结论的时间（启动门 / 心跳 / 导出复核都走 fetchStatus，
+    /// 拿到结论就盖戳；连不上不算结论，不盖戳）。
+    static var lastServerVerifyAt: Date?
+
+    /// 60 秒内已有服务器结论：导出直接复用，不再重复联网等。
+    /// 心跳每 30 秒盖一次戳，平时导出基本不等待；后台放久了结论过期才重新问一次。
+    static var isServerVerdictFresh: Bool {
+        guard isAuthorized, let at = lastServerVerifyAt else { return false }
+        return Date().timeIntervalSince(at) < 60
+    }
+
     static func update(email: String, svip: Bool, svipExpiresAt: Int, displayName: String) {
         let preferences = ThemePreferences.shared
         preferences.accountEmail = email
@@ -150,6 +161,7 @@ enum AccountAuthorization {
         preferences.accountSVIPExpiresAt = 0
         preferences.accountEmail = nil
         preferences.accountDisplayName = nil
+        lastServerVerifyAt = nil
     }
 }
 
@@ -190,13 +202,21 @@ extension AccountAPI {
                 completion(.unreachable)
             case .success(let json):
                 if (json["ok"] as? Bool) != true {
-                    completion(json["logged_out"] as? Bool == true ? .invalid : .unreachable)
+                    if json["logged_out"] as? Bool == true {
+                        // 服务器结论（已登出）：盖戳，导出复用时认它。
+                        AccountAuthorization.lastServerVerifyAt = Date()
+                        completion(.invalid)
+                    } else {
+                        completion(.unreachable)
+                    }
                 } else if (json["banned"] as? Bool) == true {
+                    AccountAuthorization.lastServerVerifyAt = Date()
                     completion(.banned(
                         title: json["ban_title"] as? String ?? "",
                         subtitle: json["ban_subtitle"] as? String ?? "",
                         reason: json["ban_reason"] as? String ?? ""))
                 } else {
+                    AccountAuthorization.lastServerVerifyAt = Date()
                     let expiresAt = (json["svip_expires_at"] as? NSNumber)?.intValue ?? 0
                     completion(.ok(
                         email: json["email"] as? String ?? AccountSession.email ?? "",
