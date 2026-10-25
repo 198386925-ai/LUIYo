@@ -42,6 +42,7 @@ enum SettingsContent {
             ChangelogEntry(tag: "修复", text: "更新日志查看页的卡片改为毛玻璃效果"),
             ChangelogEntry(tag: "修复", text: "修复气泡包批量导入时认不出的图被塞进文字气泡、导致导出文件名错乱的问题：认不出的图改为单独提示，不再进入导出。"),
             ChangelogEntry(tag: "修复", text: "修复气泡包编辑器界面与网页版不一致的问题：选中药丸与导出按钮恢复蓝色、气泡尾巴与空心虚线边框正常显示、底部输入框补齐、滚动时底栏不再消失。"),
+            ChangelogEntry(tag: "修复", text: "修复气泡包编辑器进度条圆角过大导致显示为透镜形的问题：圆角改为条高的一半，恢复正常胶囊条。"),
         ]),
         ChangelogVersion(title: "Version 1.0.7-1", isCurrent: false, entries: [
             ChangelogEntry(tag: "新增", text: "自定义颜色新增「深色模式」分组：可单独开关深色图标反转，并自定义深色颜色。"),

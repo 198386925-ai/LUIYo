@@ -847,11 +847,11 @@ final class BubblePackEditorViewController: UIViewController,
 
         progressBar = UIView()
         progressBar.translatesAutoresizingMaskIntoConstraints = false
-        progressBar.layer.cornerRadius = 99
+        progressBar.layer.cornerRadius = 2
         progressBar.backgroundColor = c("line")
         let fill = UIView()
         fill.backgroundColor = c("ok")
-        fill.layer.cornerRadius = 99
+        fill.layer.cornerRadius = 2
         fill.translatesAutoresizingMaskIntoConstraints = false
         progressBar.addSubview(fill)
         progressFillW = fill.widthAnchor.constraint(equalTo: progressBar.widthAnchor, multiplier: 0)
