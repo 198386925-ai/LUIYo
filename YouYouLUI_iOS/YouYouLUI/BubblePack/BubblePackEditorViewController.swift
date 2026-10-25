@@ -1092,7 +1092,6 @@ final class BubblePackEditorViewController: UIViewController,
         nightSeg = PillGroup(titles: ["不做", "要做"], selected: 0)
         nightSeg.onChange = { [weak self] _ in self?.nightChanged() }
         viewSeg = PillGroup(titles: ["日间", "夜间"], selected: 0)
-        viewSeg.isHidden = true
         viewSeg.onChange = { [weak self] _ in self?.viewChanged() }
         toolbarFlow.addSubview(groupWithLabel("夜间版", views: [nightSeg, viewSeg]))
 
@@ -1104,23 +1103,24 @@ final class BubblePackEditorViewController: UIViewController,
         clearBtn = pillButton("清空", primary: false)
         clearBtn.addTarget(self, action: #selector(clearAll), for: .touchUpInside)
         exportBtn = pillButton("导出 zip", primary: true)
-        // 网页版主按钮更大：14pt 半粗 + 10/22 内边距 + 蓝色光晕（颜色跟随主题，见 applyTheme）。
+        // 主按钮：13pt 半粗，单独一行通栏长条，无阴影，1 磅白色描边。
         exportBtn.titleLabel?.font = UIFont.systemFont(ofSize: 13, weight: .semibold)
         exportBtn.contentEdgeInsets = UIEdgeInsets(top: 8, left: 16, bottom: 8, right: 16)
-        exportBtn.glowOpacity = 0.32
-        exportBtn.glowRadius = 12
-        exportBtn.glowOffset = CGSize(width: 0, height: 3)
         exportBtn.addTarget(self, action: #selector(doExport), for: .touchUpInside)
-        for b in [batchBtn, copyBtn, clearBtn, exportBtn] {
+        for b in [batchBtn, copyBtn, clearBtn] {
             if let b { toolbarFlow.addSubview(b) }
         }
 
         toolbar.addSubview(toolbarFlow)
+        toolbar.addSubview(exportBtn)
         NSLayoutConstraint.activate([
             toolbarFlow.topAnchor.constraint(equalTo: toolbar.topAnchor, constant: 12),
-            toolbarFlow.bottomAnchor.constraint(equalTo: toolbar.bottomAnchor, constant: -12),
             toolbarFlow.leadingAnchor.constraint(equalTo: toolbar.leadingAnchor, constant: 16),
             toolbarFlow.trailingAnchor.constraint(equalTo: toolbar.trailingAnchor, constant: -16),
+            exportBtn.topAnchor.constraint(equalTo: toolbarFlow.bottomAnchor, constant: 10),
+            exportBtn.leadingAnchor.constraint(equalTo: toolbar.leadingAnchor, constant: 16),
+            exportBtn.trailingAnchor.constraint(equalTo: toolbar.trailingAnchor, constant: -16),
+            exportBtn.bottomAnchor.constraint(equalTo: toolbar.bottomAnchor, constant: -12),
         ])
         contentStack.addArrangedSubview(toolbar)
     }
@@ -1775,7 +1775,7 @@ final class BubblePackEditorViewController: UIViewController,
         otherPendingSub.textColor = c("text3")
         otherPendingHint.textColor = c("accent")
         exportBtn.fillColor = c("accent")
-        exportBtn.glowColor = c("accent")
+        exportBtn.strokeColor = .white
 
         summaryLabel.textColor = c("text2")
         progressBar.backgroundColor = c("line")
@@ -1870,7 +1870,6 @@ final class BubblePackEditorViewController: UIViewController,
         phoneTip.text = "正在编辑\(viewNight ? "夜间版" : "日间版") · 当前命名：\(mode == 0 ? "中文名" : "微信英文名")"
         copyBtn.isHidden = !wantsNight
         exportBtn.isEnabled = day == need
-        viewSeg.isHidden = !wantsNight
         noteLabel.text = mode == 0
             ? "中文名：文字气泡用「左上」这种名字，夜间版自动放进 zip 里的「夜间」文件夹。红包等其它气泡只能用英文原名，导出时会自动用英文名。"
             : "微信英文名：用微信原生文件名，夜间版在名字末尾加 _Dark。需要按下态的话，手动把文件名加上 _HL 再放进包里。"
