@@ -731,16 +731,17 @@ final class BubblePackEditorViewController: UIViewController,
         btnRow.axis = .horizontal
         btnRow.spacing = 12
         btnRow.alignment = .center
-        pendingLeftBtn = pillButton("左边", primary: false)
+        btnRow.distribution = .fillEqually
+        pendingLeftBtn = pillButton("放左边", primary: false)
         pendingLeftBtn.addTarget(self, action: #selector(placePendingLeft), for: .touchUpInside)
-        pendingRightBtn = pillButton("右边", primary: false)
+        pendingRightBtn = pillButton("放右边", primary: false)
         pendingRightBtn.addTarget(self, action: #selector(placePendingRight), for: .touchUpInside)
         btnRow.addArrangedSubview(pendingLeftBtn)
         btnRow.addArrangedSubview(pendingRightBtn)
         // 位置行放按钮下面一行（一行塞不下 4 组字+圈）：已勾选 + 上○中○下○单○，圈圈可点选。
         pendingPosRow = UIStackView()
         pendingPosRow.axis = .horizontal
-        pendingPosRow.spacing = 2
+        pendingPosRow.spacing = 4
         pendingPosRow.alignment = .center
         pendingPosLabel = UILabel()
         pendingPosLabel.font = UIFont.systemFont(ofSize: 13)
@@ -756,8 +757,8 @@ final class BubblePackEditorViewController: UIViewController,
             pendingPosRow.addArrangedSubview(ch)
             let b = UIButton(type: .custom)
             b.translatesAutoresizingMaskIntoConstraints = false
-            b.widthAnchor.constraint(equalToConstant: 24).isActive = true
-            b.heightAnchor.constraint(equalToConstant: 24).isActive = true
+            b.widthAnchor.constraint(equalToConstant: 30).isActive = true
+            b.heightAnchor.constraint(equalToConstant: 30).isActive = true
             b.tag = i
             b.addTarget(self, action: #selector(togglePosition(_:)), for: .touchUpInside)
             pendingPosButtons.append(b)
@@ -767,12 +768,12 @@ final class BubblePackEditorViewController: UIViewController,
         pendingFullLabel.font = UIFont.systemFont(ofSize: 13)
         pendingFullLabel.numberOfLines = 0
         pendingFullLabel.isHidden = true
-        btnRow.addArrangedSubview(pendingPosRow)
-        btnRow.addArrangedSubview(pendingFullLabel)
         stack.addArrangedSubview(pendingTitle)
         stack.addArrangedSubview(pendingSub)
         stack.addArrangedSubview(pendingScroll)
         stack.addArrangedSubview(btnRow)
+        stack.addArrangedSubview(pendingPosRow)
+        stack.addArrangedSubview(pendingFullLabel)
         pendingCard.addSubview(stack)
         NSLayoutConstraint.activate([
             stack.topAnchor.constraint(equalTo: pendingCard.topAnchor, constant: 14),
