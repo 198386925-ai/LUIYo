@@ -525,6 +525,8 @@ final class BubblePackEditorViewController: UIViewController,
     private var nightSeg: PillGroup!
     private var viewSeg: PillGroup!
     private var scaleSeg: PillGroup!
+    private var fileSeg: PillGroup!
+    private var hideEnglishFileNames = false
     private var batchBtn: PillButton!
     private var copyBtn: PillButton!
     private var clearBtn: PillButton!
@@ -694,6 +696,13 @@ final class BubblePackEditorViewController: UIViewController,
         scaleSeg = PillGroup(titles: ["自动", "@3x", "@2x", "不写"], selected: 0)
         scaleSeg.onChange = { [weak self] _ in self?.scaleChanged() }
         toolbarFlow.addSubview(groupWithLabel("倍数", views: [scaleSeg]))
+
+        fileSeg = PillGroup(titles: ["显示", "隐藏"], selected: 0)
+        fileSeg.onChange = { [weak self] idx in
+            self?.hideEnglishFileNames = (idx == 1)
+            self?.refresh()
+        }
+        toolbarFlow.addSubview(groupWithLabel("英文文件名", views: [fileSeg]))
 
         batchBtn = pillButton("批量导图", primary: false)
         batchBtn.addTarget(self, action: #selector(batch), for: .touchUpInside)
@@ -892,7 +901,7 @@ final class BubblePackEditorViewController: UIViewController,
         otherToggle.setTitle("红包 / 语音 / 卡片等其它气泡（32 个，可选项）", for: .normal)
         otherToggle.setTitleColor(c("accent"), for: .normal)
         otherToggle.titleLabel?.font = UIFont.systemFont(ofSize: 13.5, weight: .semibold)
-        otherToggle.contentHorizontalAlignment = .left
+        otherToggle.contentHorizontalAlignment = .center
         otherToggle.strokeColor = c("line")
         otherToggle.addTarget(self, action: #selector(toggleOther), for: .touchUpInside)
         contentStack.addArrangedSubview(otherToggle)
@@ -1132,6 +1141,10 @@ final class BubblePackEditorViewController: UIViewController,
                 upd(s, bub, fn)
             }
         }
+        // 英文文件名开关：藏起显示英文名的那行小字（其它区恒为英文；文字区仅英文命名模式下为英文）。
+        // 只改显示，导出直接读槽位数据算名字，不读这行字，导出不受影响。
+        for fn in otherFileNames.values { fn.isHidden = hideEnglishFileNames }
+        for fn in textFileNames.values { fn.isHidden = hideEnglishFileNames && mode == 1 }
 
         updateSummary()
         // 工具栏是自动换行排布：可见控件变化（夜间版开关、复制按钮显隐）后重排。
@@ -1156,10 +1169,20 @@ final class BubblePackEditorViewController: UIViewController,
             let arr = map[slot.type]
             let bg = mask ? bubbleColor(hex: night ? "#33363c" : "#e9ecf0")
                           : bubbleColor(hex: arr?[i] ?? "#000000")
+            // 空格子底色加深：遮罩、通用卡片底的官方淡色在浅底上看不见；
+            // 只加深空位显示，尾巴颜色与已放图气泡不动，导出也不受影响。
+            let emptyBg: UIColor
+            if !night && mask {
+                emptyBg = bubbleColor(hex: "#d8dde3")
+            } else if !night && slot.type == "common" {
+                emptyBg = bubbleColor(hex: "#dfe4e9")
+            } else {
+                emptyBg = bg
+            }
             let tx = mask ? bubbleColor(hex: night ? "#e9ebee" : "#1b1d20")
                           : bubbleColor(hex: arr?[ti] ?? "#000000")
             if bub.imageView.isHidden {
-                bub.backgroundColor = bg
+                bub.backgroundColor = emptyBg
                 if mask {
                     bub.setDashedBorder(bubbleColor(hex: night ? "#565c66" : "#b6bdc6"), width: 1.0)
                 } else {
