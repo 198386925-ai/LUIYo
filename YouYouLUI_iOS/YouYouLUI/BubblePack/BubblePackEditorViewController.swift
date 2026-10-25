@@ -805,10 +805,53 @@ final class BubblePackEditorViewController: UIViewController,
         pendingRightBtn.isEnabled = hasSel && right != nil
         pendingLeftBtn.alpha = pendingLeftBtn.isEnabled ? 1 : 0.4
         pendingRightBtn.alpha = pendingRightBtn.isEnabled ? 1 : 0.4
-        var parts: [String] = []
-        if let l = left { parts.append("放左边 → 下一个：\(cnName(for: l))") }
-        if let r = right { parts.append("放右边 → 下一个：\(cnName(for: r))") }
-        pendingHint.text = parts.isEmpty ? "全部已满，可清空重放" : parts.joined(separator: " · ")
+        // 提示行不再写“下一个”：只显示已勾选的圈圈（按勾的顺序），全满才显示全满。
+        setCheckedHint(pendingHint, order: selectedPendingOrder, full: left == nil && right == nil)
+    }
+
+    // 已勾选圈圈：蓝底白字小圆（与缩略图上的勾选徽标同款），放在提示行里按勾的顺序排。
+    private func checkedBadgeImage(_ n: Int) -> UIImage {
+        let r = UIGraphicsImageRenderer(size: CGSize(width: 20, height: 20))
+        return r.image { _ in
+            c("accent").setFill()
+            UIBezierPath(ovalIn: CGRect(x: 0, y: 0, width: 20, height: 20)).fill()
+            let attrs: [NSAttributedString.Key: Any] = [
+                .font: UIFont.systemFont(ofSize: 12, weight: .semibold),
+                .foregroundColor: UIColor.white,
+            ]
+            let s = "\(n)" as NSString
+            let sz = s.size(withAttributes: attrs)
+            s.draw(at: CGPoint(x: (20 - sz.width) / 2, y: (20 - sz.height) / 2), withAttributes: attrs)
+        }
+    }
+
+    // 提示行：已勾选：① ② ③（圈圈按勾的顺序，字用提示同款 13pt 蓝色）。
+    private func checkedOrderText(_ order: [UIImage]) -> NSAttributedString {
+        let a = NSMutableAttributedString(string: "已勾选：", attributes: [
+            .font: UIFont.systemFont(ofSize: 13),
+            .foregroundColor: c("accent"),
+        ])
+        for (i, _) in order.enumerated() {
+            if i > 0 { a.append(NSAttributedString(string: " ")) }
+            let att = NSTextAttachment()
+            att.image = checkedBadgeImage(i + 1)
+            att.bounds = CGRect(x: 0, y: -4, width: 20, height: 20)
+            a.append(NSAttributedString(attachment: att))
+        }
+        return a
+    }
+
+    private func setCheckedHint(_ label: UILabel, order: [UIImage], full: Bool) {
+        if full {
+            label.attributedText = nil
+            label.text = "全部已满，可清空重放"
+        } else if order.isEmpty {
+            label.attributedText = nil
+            label.text = nil
+        } else {
+            label.text = nil
+            label.attributedText = checkedOrderText(order)
+        }
     }
 
     // 其它工作区的待分配：只放其它气泡，不走文字待分配。
@@ -850,11 +893,8 @@ final class BubblePackEditorViewController: UIViewController,
         let hasSel = !selectedPendingOtherOrder.isEmpty
         otherPendingOtherBtn.isEnabled = hasSel && other != nil
         otherPendingOtherBtn.alpha = otherPendingOtherBtn.isEnabled ? 1 : 0.4
-        if let o = other {
-            otherPendingHint.text = "放其它 → 下一个：\(otherDesc(for: o))"
-        } else {
-            otherPendingHint.text = "全部已满，可清空重放"
-        }
+        // 提示行不再写“下一个”：只显示已勾选的圈圈（按勾的顺序），全满才显示全满。
+        setCheckedHint(otherPendingHint, order: selectedPendingOtherOrder, full: other == nil)
     }
 
     @objc private func selectPendingOther(_ sender: UIButton) {
