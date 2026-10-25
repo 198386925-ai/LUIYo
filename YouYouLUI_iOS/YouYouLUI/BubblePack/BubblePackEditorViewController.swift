@@ -567,7 +567,13 @@ final class BubblePackEditorViewController: UIViewController,
     private var pendingStack: UIStackView!
     private var pendingLeftBtn: PillButton!
     private var pendingRightBtn: PillButton!
-    private var pendingHint: UILabel!
+    private var pendingScroll: UIScrollView!
+    private var pendingPosRow: UIStackView!
+    private var pendingPosLabel: UILabel!
+    private var pendingPosChars: [UILabel] = []
+    private var pendingPosButtons: [UIButton] = []
+    private var pendingFullLabel: UILabel!
+    private var positionSelected: [Bool] = [false, false, false, false]  // 上/中/下/单 位置点选
     // 其它工作区自有一套（不共用文字的工具栏与待分配）：自己的批量导图 + 待分配，只放其它气泡。
     private var pendingOther: [UIImage] = []
     private var selectedPendingOtherOrder: [UIImage] = []
@@ -603,6 +609,7 @@ final class BubblePackEditorViewController: UIViewController,
         unrecognized = []
         pending = []
         selectedPendingOrder = []
+        positionSelected = [false, false, false, false]
         pendingOther = []
         selectedPendingOtherOrder = []
         textBubbles = [:]
@@ -704,22 +711,22 @@ final class BubblePackEditorViewController: UIViewController,
         pendingSub = UILabel()
         pendingSub.font = UIFont.systemFont(ofSize: 13)
         pendingSub.text = "点一张图，再选左边 / 右边"
-        let scroll = UIScrollView()
-        scroll.translatesAutoresizingMaskIntoConstraints = false
-        scroll.showsHorizontalScrollIndicator = false
+        pendingScroll = UIScrollView()
+        pendingScroll.translatesAutoresizingMaskIntoConstraints = false
+        pendingScroll.showsHorizontalScrollIndicator = false
         pendingStack = UIStackView()
         pendingStack.axis = .horizontal
         pendingStack.spacing = 10
         pendingStack.translatesAutoresizingMaskIntoConstraints = false
-        scroll.addSubview(pendingStack)
+        pendingScroll.addSubview(pendingStack)
         NSLayoutConstraint.activate([
-            pendingStack.topAnchor.constraint(equalTo: scroll.topAnchor),
-            pendingStack.bottomAnchor.constraint(equalTo: scroll.bottomAnchor),
-            pendingStack.leadingAnchor.constraint(equalTo: scroll.leadingAnchor),
-            pendingStack.trailingAnchor.constraint(equalTo: scroll.trailingAnchor),
+            pendingStack.topAnchor.constraint(equalTo: pendingScroll.topAnchor),
+            pendingStack.bottomAnchor.constraint(equalTo: pendingScroll.bottomAnchor),
+            pendingStack.leadingAnchor.constraint(equalTo: pendingScroll.leadingAnchor),
+            pendingStack.trailingAnchor.constraint(equalTo: pendingScroll.trailingAnchor),
             pendingStack.heightAnchor.constraint(equalToConstant: 72),
         ])
-        scroll.heightAnchor.constraint(equalToConstant: 72).isActive = true
+        pendingScroll.heightAnchor.constraint(equalToConstant: 72).isActive = true
         let btnRow = UIStackView()
         btnRow.axis = .horizontal
         btnRow.spacing = 12
@@ -728,16 +735,44 @@ final class BubblePackEditorViewController: UIViewController,
         pendingLeftBtn.addTarget(self, action: #selector(placePendingLeft), for: .touchUpInside)
         pendingRightBtn = pillButton("放右边", primary: false)
         pendingRightBtn.addTarget(self, action: #selector(placePendingRight), for: .touchUpInside)
-        pendingHint = UILabel()
-        pendingHint.font = UIFont.systemFont(ofSize: 13)
-        pendingHint.numberOfLines = 0
         btnRow.addArrangedSubview(pendingLeftBtn)
         btnRow.addArrangedSubview(pendingRightBtn)
-        btnRow.addArrangedSubview(pendingHint)
+        // 位置行放按钮下面一行（一行塞不下 4 组字+圈）：已勾选 + 上○中○下○单○，圈圈可点选。
+        pendingPosRow = UIStackView()
+        pendingPosRow.axis = .horizontal
+        pendingPosRow.spacing = 4
+        pendingPosRow.alignment = .center
+        pendingPosLabel = UILabel()
+        pendingPosLabel.font = UIFont.systemFont(ofSize: 13)
+        pendingPosLabel.text = "已勾选："
+        pendingPosRow.addArrangedSubview(pendingPosLabel)
+        pendingPosChars.removeAll()
+        pendingPosButtons.removeAll()
+        for i in 0..<4 {
+            let ch = UILabel()
+            ch.font = UIFont.systemFont(ofSize: 13)
+            ch.text = ["上", "中", "下", "单"][i]
+            pendingPosChars.append(ch)
+            pendingPosRow.addArrangedSubview(ch)
+            let b = UIButton(type: .custom)
+            b.translatesAutoresizingMaskIntoConstraints = false
+            b.widthAnchor.constraint(equalToConstant: 30).isActive = true
+            b.heightAnchor.constraint(equalToConstant: 30).isActive = true
+            b.tag = i
+            b.addTarget(self, action: #selector(togglePosition(_:)), for: .touchUpInside)
+            pendingPosButtons.append(b)
+            pendingPosRow.addArrangedSubview(b)
+        }
+        pendingFullLabel = UILabel()
+        pendingFullLabel.font = UIFont.systemFont(ofSize: 13)
+        pendingFullLabel.numberOfLines = 0
+        pendingFullLabel.isHidden = true
         stack.addArrangedSubview(pendingTitle)
         stack.addArrangedSubview(pendingSub)
-        stack.addArrangedSubview(scroll)
+        stack.addArrangedSubview(pendingScroll)
         stack.addArrangedSubview(btnRow)
+        stack.addArrangedSubview(pendingPosRow)
+        stack.addArrangedSubview(pendingFullLabel)
         pendingCard.addSubview(stack)
         NSLayoutConstraint.activate([
             stack.topAnchor.constraint(equalTo: pendingCard.topAnchor, constant: 14),
@@ -767,7 +802,8 @@ final class BubblePackEditorViewController: UIViewController,
 
     private func refreshPending() {
         guard pendingCard != nil else { return }
-        pendingCard.isHidden = pending.isEmpty
+        pendingCard.isHidden = false  // 待分配常显：没导入图片也显示位置行
+        pendingScroll.isHidden = pending.isEmpty
         pendingTitle.text = "待分配（\(pending.count) 张）"
         for v in pendingStack.arrangedSubviews { pendingStack.removeArrangedSubview(v); v.removeFromSuperview() }
         for (i, img) in pending.enumerated() {
@@ -801,17 +837,26 @@ final class BubblePackEditorViewController: UIViewController,
         let left = nextEmptyTextSlot(side: "receiver")
         let right = nextEmptyTextSlot(side: "sender")
         let hasSel = !selectedPendingOrder.isEmpty
-        pendingLeftBtn.isEnabled = hasSel && left != nil
-        pendingRightBtn.isEnabled = hasSel && right != nil
+        let selected = positionSelected.indices.filter { positionSelected[$0] }
+        let positions = ["top", "middle", "end", "single"]
+        let t = pendingTheme()
+        func hasTarget(side: String) -> Bool {
+            if selected.isEmpty { return nextEmptyTextSlot(side: side) != nil }
+            return selected.contains { state["text:\(side):\(positions[$0])|\(t)"] == nil }
+        }
+        pendingLeftBtn.isEnabled = hasSel && hasTarget(side: "receiver")
+        pendingRightBtn.isEnabled = hasSel && hasTarget(side: "sender")
         pendingLeftBtn.alpha = pendingLeftBtn.isEnabled ? 1 : 0.4
         pendingRightBtn.alpha = pendingRightBtn.isEnabled ? 1 : 0.4
-        // 已勾选行一直显示：上○ 中○ 下○ 单○（字在圈前）；勾上的圈变打勾；全满才显示全满。
-        if left == nil && right == nil {
-            pendingHint.attributedText = nil
-            pendingHint.text = "全部已满，可清空重放"
-        } else {
-            pendingHint.text = nil
-            pendingHint.attributedText = checkedPositionText(checkedCount: min(selectedPendingOrder.count, 4))
+        // 位置行一直显示（没导入也显示）；全满时只显示全满提示。
+        let full = left == nil && right == nil
+        pendingPosRow.isHidden = full
+        pendingFullLabel.isHidden = !full
+        if full {
+            pendingFullLabel.text = "全部已满，可清空重放"
+        }
+        for (i, b) in pendingPosButtons.enumerated() {
+            b.setImage(positionCircleImage(checked: positionSelected[i]), for: .normal)
         }
     }
 
@@ -838,25 +883,6 @@ final class BubblePackEditorViewController: UIViewController,
                 p.stroke()
             }
         }
-    }
-
-    // 已勾选行：已勾选：上○ 中○ 下○ 单○（字在圈前，勾上的圈变打勾）。
-    private func checkedPositionText(checkedCount: Int) -> NSAttributedString {
-        let attrs: [NSAttributedString.Key: Any] = [
-            .font: UIFont.systemFont(ofSize: 13),
-            .foregroundColor: c("accent"),
-        ]
-        let a = NSMutableAttributedString(string: "已勾选：", attributes: attrs)
-        for (i, ch) in ["上", "中", "下", "单"].enumerated() {
-            if i > 0 { a.append(NSAttributedString(string: " ")) }
-            a.append(NSAttributedString(string: ch, attributes: attrs))
-            a.append(NSAttributedString(string: " "))
-            let att = NSTextAttachment()
-            att.image = positionCircleImage(checked: i < checkedCount)
-            att.bounds = CGRect(x: 0, y: -4, width: 20, height: 20)
-            a.append(NSAttributedString(attachment: att))
-        }
-        return a
     }
 
     // 已勾选圈圈：蓝底白字小圆（与缩略图上的勾选徽标同款），放在提示行里按勾的顺序排。
@@ -970,13 +996,34 @@ final class BubblePackEditorViewController: UIViewController,
     @objc private func placePendingLeft() { placePending(side: "receiver") }
     @objc private func placePendingRight() { placePending(side: "sender") }
 
-    // 批量放：按勾的顺序依次进该侧下一个空位；放完勾清掉，图仍留在待分配里（只有清空才走）。
+    @objc private func togglePosition(_ sender: UIButton) {
+        positionSelected[sender.tag].toggle()
+        refreshPending()
+    }
+
+    // 批量放：点选了位置就按点选位置放（没点选位置就按旧规则进下一个空位）；
+    // 一张图点选多个位置就重复进每个位置；放完图选和位置选都清掉，图仍留在待分配里（只有清空才走）。
     private func placePending(side: String) {
-        let order = selectedPendingOrder
+        let images = selectedPendingOrder
+        guard !images.isEmpty else { return }
+        let selected = positionSelected.indices.filter { positionSelected[$0] }
         selectedPendingOrder.removeAll()
-        for img in order {
-            guard let sid = nextEmptyTextSlot(side: side) else { break }
-            put(img, slotId: sid)
+        positionSelected = [false, false, false, false]
+        if selected.isEmpty {
+            for img in images {
+                guard let sid = nextEmptyTextSlot(side: side) else { break }
+                put(img, slotId: sid)
+            }
+        } else {
+            let t = pendingTheme()
+            let positions = ["top", "middle", "end", "single"]
+            var imgIdx = 0
+            for posIdx in selected {
+                let sid = "text:\(side):\(positions[posIdx])"
+                guard state["\(sid)|\(t)"] == nil else { continue }
+                put(images[min(imgIdx, images.count - 1)], slotId: sid)
+                imgIdx += 1
+            }
         }
     }
 
@@ -1718,7 +1765,9 @@ final class BubblePackEditorViewController: UIViewController,
         pendingCard.layer.borderColor = c("line").cgColor
         pendingTitle.textColor = c("text")
         pendingSub.textColor = c("text3")
-        pendingHint.textColor = c("accent")
+        pendingPosLabel.textColor = c("accent")
+        for ch in pendingPosChars { ch.textColor = c("accent") }
+        pendingFullLabel.textColor = c("accent")
         otherPendingCard.backgroundColor = c("card")
         otherPendingCard.layer.borderColor = c("line").cgColor
         otherPendingTitle.textColor = c("text")
@@ -1885,6 +1934,7 @@ final class BubblePackEditorViewController: UIViewController,
         unrecognized.removeAll()
         pending.removeAll()
         selectedPendingOrder.removeAll()
+        positionSelected = [false, false, false, false]
         pendingOther.removeAll()
         selectedPendingOtherOrder.removeAll()
         refresh()

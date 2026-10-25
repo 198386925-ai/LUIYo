@@ -53,6 +53,7 @@ enum SettingsContent {
             ChangelogEntry(tag: "优化", text: "优化待分配提示：删掉‘放左边 → 下一个’这类文字，改成‘已勾选：’后面跟勾选的圈圈（按勾的顺序排）。"),
             ChangelogEntry(tag: "优化", text: "优化待分配选中描边：由 3 磅改细为 2 磅。"),
             ChangelogEntry(tag: "优化", text: "优化待分配已勾选行：一直显示‘上○ 中○ 下○ 单○’（字在圈前），勾选后对应圈变打勾。"),
+            ChangelogEntry(tag: "优化", text: "优化待分配：没导入也显示位置行；位置圈可点选，图片按点选位置放（一张图可进多个位置）。"),
             ChangelogEntry(tag: "修复", text: "修复气泡包聊天区左右留白边的问题：聊天底贴满手机框，气泡间距不变。"),
             ChangelogEntry(tag: "修复", text: "修复 App 内签名完成后校验误报「签名校验失败」、签名文件被删除的问题。"),
             ChangelogEntry(tag: "修复", text: "修复启动图在打开瞬间闪过紫色的问题。"),
