@@ -77,7 +77,13 @@ final class BubbleView: UIView, UIGestureRecognizerDelegate {
 
         imageView.translatesAutoresizingMaskIntoConstraints = false
         // 气泡皮：拉伸铺满整个气泡当背景（微信使用效果），字显示在上面。
+        // 图片不得参与气泡定尺寸：否则图片原尺寸会把气泡撑大；
+        // 气泡大小只按消息内容（最小 64×40 / 其它按品类最小），图片只管铺满。
         imageView.contentMode = .scaleToFill
+        imageView.setContentHuggingPriority(UILayoutPriority(1), for: .horizontal)
+        imageView.setContentHuggingPriority(UILayoutPriority(1), for: .vertical)
+        imageView.setContentCompressionResistancePriority(UILayoutPriority(1), for: .horizontal)
+        imageView.setContentCompressionResistancePriority(UILayoutPriority(1), for: .vertical)
         imageView.isHidden = true
         addSubview(imageView)
 

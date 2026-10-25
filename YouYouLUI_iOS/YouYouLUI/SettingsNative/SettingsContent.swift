@@ -61,6 +61,7 @@ enum SettingsContent {
             ChangelogEntry(tag: "修复", text: "修复气泡包淡色空格子看不见的问题：遮罩、通用卡片底的空位底色加深，在浅底上能看清。"),
             ChangelogEntry(tag: "修复", text: "修复隐藏英文文件名时气泡被拉满的问题：隐藏后气泡保持原来大小和位置。"),
             ChangelogEntry(tag: "修复", text: "修复夜间编辑时输入框仍为白色的问题：输入框与语音/表情/更多跟随夜间视图变深。"),
+            ChangelogEntry(tag: "修复", text: "修复放图后气泡被图片原尺寸撑大的问题：气泡大小只按消息内容，图片只拉伸铺满，不再撑大。"),
         ]),
         ChangelogVersion(title: "Version 1.0.7-1", isCurrent: false, entries: [
             ChangelogEntry(tag: "新增", text: "自定义颜色新增「深色模式」分组：可单独开关深色图标反转，并自定义深色颜色。"),
