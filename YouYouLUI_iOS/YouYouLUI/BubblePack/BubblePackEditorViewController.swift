@@ -316,7 +316,7 @@ final class PillGroup: UIView {
     // 段宽直接用文字量出来，不依赖按钮的内在尺寸。
     private func segmentSize(for title: String) -> CGSize {
         let text = (title as NSString).size(withAttributes: [.font: UIFont.systemFont(ofSize: 13)])
-        return CGSize(width: ceil(text.width) + 28, height: 32)
+        return CGSize(width: ceil(text.width) + 28, height: 28)
     }
 
     override var intrinsicContentSize: CGSize {
@@ -324,14 +324,14 @@ final class PillGroup: UIView {
         for b in buttons {
             w += segmentSize(for: b.currentTitle ?? "").width
         }
-        return CGSize(width: w, height: 32)
+        return CGSize(width: w, height: 28)
     }
 
     private func segmentFrame(at index: Int) -> CGRect {
         var x: CGFloat = 4
         for (i, b) in buttons.enumerated() {
             let w = segmentSize(for: b.currentTitle ?? "").width
-            if i == index { return CGRect(x: x, y: 3, width: w, height: 26) }
+            if i == index { return CGRect(x: x, y: 3, width: w, height: 22) }
             x += w
         }
         return .zero
@@ -716,8 +716,8 @@ final class BubblePackEditorViewController: UIViewController,
         clearBtn.addTarget(self, action: #selector(clearAll), for: .touchUpInside)
         exportBtn = pillButton("导出 zip", primary: true)
         // 网页版主按钮更大：14pt 半粗 + 10/22 内边距 + 蓝色光晕（颜色跟随主题，见 applyTheme）。
-        exportBtn.titleLabel?.font = UIFont.systemFont(ofSize: 14, weight: .semibold)
-        exportBtn.contentEdgeInsets = UIEdgeInsets(top: 10, left: 22, bottom: 10, right: 22)
+        exportBtn.titleLabel?.font = UIFont.systemFont(ofSize: 13, weight: .semibold)
+        exportBtn.contentEdgeInsets = UIEdgeInsets(top: 8, left: 16, bottom: 8, right: 16)
         exportBtn.glowOpacity = 0.32
         exportBtn.glowRadius = 12
         exportBtn.glowOffset = CGSize(width: 0, height: 3)
