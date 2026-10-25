@@ -559,7 +559,8 @@ final class BubblePackEditorViewController: UIViewController,
     private var state: [String: PlacedImage] = [:]
     private var unrecognized: [(name: String, image: UIImage)] = []  // zip 导入时文件名认不出的图：不进任何槽位、也不进 zip
     private var pending: [UIImage] = []  // 批量导入后待手动分配的图：不按文件名自动认
-    private var selectedPending: Int?
+    // 多选顺序（按勾的顺序）：放进气泡后图仍留在待分配里，只有清空才走；放完勾清掉。
+    private var selectedPendingOrder: [UIImage] = []
     private var pendingCard: UIView!
     private var pendingTitle: UILabel!
     private var pendingSub: UILabel!
@@ -569,7 +570,7 @@ final class BubblePackEditorViewController: UIViewController,
     private var pendingHint: UILabel!
     // 其它工作区自有一套（不共用文字的工具栏与待分配）：自己的批量导图 + 待分配，只放其它气泡。
     private var pendingOther: [UIImage] = []
-    private var selectedPendingOther: Int?
+    private var selectedPendingOtherOrder: [UIImage] = []
     private var pickerTargetOther = false
     private var otherBatchRow: UIView!
     private var otherBatchBtn: PillButton!
@@ -601,7 +602,9 @@ final class BubblePackEditorViewController: UIViewController,
         state = [:]
         unrecognized = []
         pending = []
-        selectedPending = nil
+        selectedPendingOrder = []
+        pendingOther = []
+        selectedPendingOtherOrder = []
         textBubbles = [:]
         textFileNames = [:]
         otherBubbles = [:]
@@ -774,17 +777,30 @@ final class BubblePackEditorViewController: UIViewController,
             b.imageView?.contentMode = .scaleAspectFill
             b.clipsToBounds = true
             b.layer.cornerRadius = 14
-            b.layer.borderWidth = (i == selectedPending) ? 3 : 1
-            b.layer.borderColor = ((i == selectedPending) ? c("accent") : c("line")).cgColor
+            // 多选：勾上的图蓝边 + 右上角顺序号（按勾的顺序 1、2、3…）。
+            let order = selectedPendingOrder.firstIndex(where: { $0 === img })
+            b.layer.borderWidth = (order != nil) ? 3 : 1
+            b.layer.borderColor = ((order != nil) ? c("accent") : c("line")).cgColor
             b.widthAnchor.constraint(equalToConstant: 72).isActive = true
             b.heightAnchor.constraint(equalToConstant: 72).isActive = true
             b.tag = i
             b.addTarget(self, action: #selector(selectPending(_:)), for: .touchUpInside)
+            if let n = order {
+                let badge = UILabel(frame: CGRect(x: 50, y: 2, width: 20, height: 20))
+                badge.backgroundColor = c("accent")
+                badge.textColor = .white
+                badge.font = UIFont.systemFont(ofSize: 12, weight: .semibold)
+                badge.textAlignment = .center
+                badge.text = "\(n + 1)"
+                badge.layer.cornerRadius = 10
+                badge.clipsToBounds = true
+                b.addSubview(badge)
+            }
             pendingStack.addArrangedSubview(b)
         }
         let left = nextEmptyTextSlot(side: "receiver")
         let right = nextEmptyTextSlot(side: "sender")
-        let hasSel = selectedPending != nil && selectedPending! < pending.count
+        let hasSel = !selectedPendingOrder.isEmpty
         pendingLeftBtn.isEnabled = hasSel && left != nil
         pendingRightBtn.isEnabled = hasSel && right != nil
         pendingLeftBtn.alpha = pendingLeftBtn.isEnabled ? 1 : 0.4
@@ -809,16 +825,29 @@ final class BubblePackEditorViewController: UIViewController,
             b.imageView?.contentMode = .scaleAspectFill
             b.clipsToBounds = true
             b.layer.cornerRadius = 14
-            b.layer.borderWidth = (i == selectedPendingOther) ? 3 : 1
-            b.layer.borderColor = ((i == selectedPendingOther) ? c("accent") : c("line")).cgColor
+            // 多选：勾上的图蓝边 + 右上角顺序号（按勾的顺序 1、2、3…）。
+            let order = selectedPendingOtherOrder.firstIndex(where: { $0 === img })
+            b.layer.borderWidth = (order != nil) ? 3 : 1
+            b.layer.borderColor = ((order != nil) ? c("accent") : c("line")).cgColor
             b.widthAnchor.constraint(equalToConstant: 72).isActive = true
             b.heightAnchor.constraint(equalToConstant: 72).isActive = true
             b.tag = i
             b.addTarget(self, action: #selector(selectPendingOther(_:)), for: .touchUpInside)
+            if let n = order {
+                let badge = UILabel(frame: CGRect(x: 50, y: 2, width: 20, height: 20))
+                badge.backgroundColor = c("accent")
+                badge.textColor = .white
+                badge.font = UIFont.systemFont(ofSize: 12, weight: .semibold)
+                badge.textAlignment = .center
+                badge.text = "\(n + 1)"
+                badge.layer.cornerRadius = 10
+                badge.clipsToBounds = true
+                b.addSubview(badge)
+            }
             otherPendingStack.addArrangedSubview(b)
         }
         let other = nextEmptyOtherSlot()
-        let hasSel = selectedPendingOther != nil && selectedPendingOther! < pendingOther.count
+        let hasSel = !selectedPendingOtherOrder.isEmpty
         otherPendingOtherBtn.isEnabled = hasSel && other != nil
         otherPendingOtherBtn.alpha = otherPendingOtherBtn.isEnabled ? 1 : 0.4
         if let o = other {
@@ -829,24 +858,36 @@ final class BubblePackEditorViewController: UIViewController,
     }
 
     @objc private func selectPendingOther(_ sender: UIButton) {
-        selectedPendingOther = (selectedPendingOther == sender.tag) ? nil : sender.tag
+        let img = pendingOther[sender.tag]
+        if let i = selectedPendingOtherOrder.firstIndex(where: { $0 === img }) {
+            selectedPendingOtherOrder.remove(at: i)
+        } else {
+            selectedPendingOtherOrder.append(img)
+        }
         refreshOtherPending()
     }
 
     @objc private func selectPending(_ sender: UIButton) {
-        selectedPending = (selectedPending == sender.tag) ? nil : sender.tag
+        let img = pending[sender.tag]
+        if let i = selectedPendingOrder.firstIndex(where: { $0 === img }) {
+            selectedPendingOrder.remove(at: i)
+        } else {
+            selectedPendingOrder.append(img)
+        }
         refreshPending()
     }
 
     @objc private func placePendingLeft() { placePending(side: "receiver") }
     @objc private func placePendingRight() { placePending(side: "sender") }
 
+    // 批量放：按勾的顺序依次进该侧下一个空位；放完勾清掉，图仍留在待分配里（只有清空才走）。
     private func placePending(side: String) {
-        guard let idx = selectedPending, idx < pending.count,
-              let sid = nextEmptyTextSlot(side: side) else { return }
-        let img = pending.remove(at: idx)
-        selectedPending = nil
-        put(img, slotId: sid)
+        let order = selectedPendingOrder
+        selectedPendingOrder.removeAll()
+        for img in order {
+            guard let sid = nextEmptyTextSlot(side: side) else { break }
+            put(img, slotId: sid)
+        }
     }
 
     private func nextEmptyOtherSlot() -> String? {
@@ -861,12 +902,14 @@ final class BubblePackEditorViewController: UIViewController,
         BubbleNaming.shared.otherSlots().first(where: { $0.identifier == sid })?.desc ?? sid
     }
 
+    // 批量放：按勾的顺序依次进下一个空其它槽位；放完勾清掉，图仍留在待分配里（只有清空才走）。
     @objc private func placePendingOther() {
-        guard let idx = selectedPendingOther, idx < pendingOther.count,
-              let sid = nextEmptyOtherSlot() else { return }
-        let img = pendingOther.remove(at: idx)
-        selectedPendingOther = nil
-        put(img, slotId: sid)
+        let order = selectedPendingOtherOrder
+        selectedPendingOtherOrder.removeAll()
+        for img in order {
+            guard let sid = nextEmptyOtherSlot() else { break }
+            put(img, slotId: sid)
+        }
     }
 
     private func pillButton(_ title: String, primary: Bool, insets: UIEdgeInsets = UIEdgeInsets(top: 8, left: 16, bottom: 8, right: 16)) -> PillButton {
@@ -1751,9 +1794,9 @@ final class BubblePackEditorViewController: UIViewController,
         state.removeAll()
         unrecognized.removeAll()
         pending.removeAll()
-        selectedPending = nil
+        selectedPendingOrder.removeAll()
         pendingOther.removeAll()
-        selectedPendingOther = nil
+        selectedPendingOtherOrder.removeAll()
         refresh()
     }
 
