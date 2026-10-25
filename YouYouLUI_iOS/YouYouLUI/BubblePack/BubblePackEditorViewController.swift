@@ -76,7 +76,8 @@ final class BubbleView: UIView, UIGestureRecognizerDelegate {
         backgroundColor = .white
 
         imageView.translatesAutoresizingMaskIntoConstraints = false
-        imageView.contentMode = .scaleAspectFit
+        // 气泡皮：拉伸铺满整个气泡当背景（微信使用效果），字显示在上面。
+        imageView.contentMode = .scaleToFill
         imageView.isHidden = true
         addSubview(imageView)
 
@@ -102,8 +103,10 @@ final class BubbleView: UIView, UIGestureRecognizerDelegate {
         addGestureRecognizer(tap)
 
         NSLayoutConstraint.activate([
-            imageView.centerXAnchor.constraint(equalTo: centerXAnchor),
-            imageView.centerYAnchor.constraint(equalTo: centerYAnchor),
+            imageView.topAnchor.constraint(equalTo: topAnchor),
+            imageView.bottomAnchor.constraint(equalTo: bottomAnchor),
+            imageView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            imageView.trailingAnchor.constraint(equalTo: trailingAnchor),
             placeholder.topAnchor.constraint(equalTo: topAnchor, constant: 7),
             placeholder.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -7),
             placeholder.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 9),
@@ -125,11 +128,13 @@ final class BubbleView: UIView, UIGestureRecognizerDelegate {
     @objc private func tap() { onTap?() }
     @objc private func del() { onDelete?() }
 
-    func showImage(_ img: UIImage, displaySize size: CGSize) {
+    /// 微信使用效果：图是气泡皮，拉伸铺满气泡当背景，消息字显示在上面。
+    /// 气泡大小按消息内容（最小 64×40 / 其它按品类最小），不再按图片自己尺寸。
+    func showImage(_ img: UIImage, placeholderText text: String) {
         imageView.isHidden = false
         imageView.image = img
-        imageView.bounds = CGRect(x: 0, y: 0, width: size.width, height: size.height)
-        placeholder.isHidden = true
+        placeholder.isHidden = false
+        placeholder.text = text
         deleteBtn.isHidden = false
         backgroundColor = .clear
         setDashedBorder(nil)
@@ -1272,12 +1277,12 @@ final class BubblePackEditorViewController: UIViewController,
             let theme = night ? "night" : "day"
             let it = self.state["\(slot.identifier)|\(theme)"]
             if let it {
-                // 预览按原图尺寸显示（与微信一致）：不再除以倍数，倍数只影响导出文件名后缀。
-                let dw = it.w != 0 ? it.w : 60
-                let dh = it.h != 0 ? it.h : 40
-                bub.showImage(it.image, displaySize: CGSize(width: dw, height: dh))
-                fn.text = String(format: "%@\n%ld×%ld · 显示 %ld×%ld",
-                                 self.outName(slot, theme: theme), it.w, it.h, dw, dh)
+                // 微信使用效果：图是气泡皮，拉伸铺满气泡当背景，字在上面；
+                // 气泡大小按消息内容，文件名下只写原图尺寸，不再写显示尺寸。
+                let txt = bub.isOther ? slot.desc : slot.cnName
+                bub.showImage(it.image, placeholderText: txt)
+                fn.text = String(format: "%@\n%ld×%ld",
+                                 self.outName(slot, theme: theme), it.w, it.h)
             } else {
                 let txt = bub.isOther ? slot.desc : slot.cnName
                 bub.showEmpty(withText: txt)
