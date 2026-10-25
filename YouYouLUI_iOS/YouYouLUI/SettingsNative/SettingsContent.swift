@@ -41,6 +41,7 @@ enum SettingsContent {
             ChangelogEntry(tag: "优化", text: "优化气泡包其它气泡切换行：分类标题文字改为居中。"),
             ChangelogEntry(tag: "优化", text: "优化气泡包标题栏副标题：改为「点气泡放图 自动按规则命名 导出即可使用」。"),
             ChangelogEntry(tag: "优化", text: "优化气泡包文件名开关：从工具栏移到标题栏，替换深/浅配色按钮。"),
+            ChangelogEntry(tag: "优化", text: "优化气泡包工具栏：倍数移到命名后面，改用下拉选择器。"),
             ChangelogEntry(tag: "修复", text: "修复气泡包聊天区左右留白边的问题：聊天底贴满手机框，气泡间距不变。"),
             ChangelogEntry(tag: "修复", text: "修复 App 内签名完成后校验误报「签名校验失败」、签名文件被删除的问题。"),
             ChangelogEntry(tag: "修复", text: "修复启动图在打开瞬间闪过紫色的问题。"),
@@ -53,6 +54,7 @@ enum SettingsContent {
             ChangelogEntry(tag: "修复", text: "修复气泡包编辑器进度条圆角过大导致显示为透镜形的问题：圆角改为条高的一半，恢复正常胶囊条。"),
             ChangelogEntry(tag: "修复", text: "修复气泡包淡色空格子看不见的问题：遮罩、通用卡片底的空位底色加深，在浅底上能看清。"),
             ChangelogEntry(tag: "修复", text: "修复隐藏英文文件名时气泡被拉满的问题：隐藏后气泡保持原来大小和位置。"),
+            ChangelogEntry(tag: "修复", text: "修复夜间编辑时输入框仍为白色的问题：输入框与语音/表情/更多跟随夜间视图变深。"),
         ]),
         ChangelogVersion(title: "Version 1.0.7-1", isCurrent: false, entries: [
             ChangelogEntry(tag: "新增", text: "自定义颜色新增「深色模式」分组：可单独开关深色图标反转，并自定义深色颜色。"),

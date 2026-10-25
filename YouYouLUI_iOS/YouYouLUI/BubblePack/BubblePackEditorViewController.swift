@@ -374,9 +374,9 @@ final class PillGroup: UIView {
 // MARK: - 工具栏分组药丸（标签 + 一组或两组药丸按钮，同样手动排布）
 final class GroupContainer: UIView {
     let label = UILabel()
-    private var groups: [PillGroup]
+    private var groups: [UIView]
 
-    init(labelText: String, groups: [PillGroup]) {
+    init(labelText: String, groups: [UIView]) {
         self.groups = groups
         super.init(frame: .zero)
         translatesAutoresizingMaskIntoConstraints = false
@@ -392,7 +392,7 @@ final class GroupContainer: UIView {
     required init(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
     func refreshPillColors(track: UIColor, thumb: UIColor, selected: UIColor, plain: UIColor) {
-        for g in groups { g.refreshColors(track: track, thumb: thumb, selected: selected, plain: plain) }
+        for g in groups { (g as? PillGroup)?.refreshColors(track: track, thumb: thumb, selected: selected, plain: plain) }
     }
 
     override var intrinsicContentSize: CGSize {
@@ -524,7 +524,7 @@ final class BubblePackEditorViewController: UIViewController,
     private var modeSeg: PillGroup!
     private var nightSeg: PillGroup!
     private var viewSeg: PillGroup!
-    private var scaleSeg: PillGroup!
+    private var scaleBtn: PillButton!
     private var hideEnglishFileNames = false
     private var batchBtn: PillButton!
     private var copyBtn: PillButton!
@@ -685,16 +685,17 @@ final class BubblePackEditorViewController: UIViewController,
         modeSeg.onChange = { [weak self] _ in self?.modeChanged() }
         toolbarFlow.addSubview(groupWithLabel("命名", views: [modeSeg]))
 
+        scaleBtn = pillButton(scaleMenuTitle(), primary: false, insets: UIEdgeInsets(top: 6, left: 14, bottom: 6, right: 14))
+        scaleBtn.showsMenuAsPrimaryAction = true
+        refreshScaleMenu()
+        toolbarFlow.addSubview(groupWithLabel("倍数", views: [scaleBtn]))
+
         nightSeg = PillGroup(titles: ["不做", "要做"], selected: 0)
         nightSeg.onChange = { [weak self] _ in self?.nightChanged() }
         viewSeg = PillGroup(titles: ["日间", "夜间"], selected: 0)
         viewSeg.isHidden = true
         viewSeg.onChange = { [weak self] _ in self?.viewChanged() }
         toolbarFlow.addSubview(groupWithLabel("夜间版", views: [nightSeg, viewSeg]))
-
-        scaleSeg = PillGroup(titles: ["自动", "@3x", "@2x", "不写"], selected: 0)
-        scaleSeg.onChange = { [weak self] _ in self?.scaleChanged() }
-        toolbarFlow.addSubview(groupWithLabel("倍数", views: [scaleSeg]))
 
         batchBtn = pillButton("批量导图", primary: false)
         batchBtn.addTarget(self, action: #selector(batch), for: .touchUpInside)
@@ -725,7 +726,7 @@ final class BubblePackEditorViewController: UIViewController,
         contentStack.addArrangedSubview(toolbar)
     }
 
-    private func groupWithLabel(_ label: String, views: [PillGroup]) -> GroupContainer {
+    private func groupWithLabel(_ label: String, views: [UIView]) -> GroupContainer {
         GroupContainer(labelText: label, groups: views)
     }
 
@@ -1203,6 +1204,11 @@ final class BubblePackEditorViewController: UIViewController,
         let navBg = night ? bubbleColor(hex: "#1c1c1e") : c("wxNav")
         let navLine = night ? bubbleColor(hex: "#2e2e30") : c("wxNavLine")
         let navTx = night ? bubbleColor(hex: "#e5e5e7") : c("wxNavTx")
+        // 输入栏跟随手机日间/夜间：旧代码用 c() 取色，c() 跟页面主题（已无切换入口、恒为浅色），
+        // 夜间编辑时输入框还是白色。改按 night 取色，与夜色表、网页版夜间一致。
+        let inBg = night ? bubbleColor(hex: "#2c2c2e") : c("wxInputBg")
+        let inLine = night ? bubbleColor(hex: "#2e2e30") : c("wxNavLine")
+        let inIc = night ? bubbleColor(hex: "#8a8a90") : c("wxIc")
         navView.backgroundColor = navBg
         navView.layer.borderColor = navLine.cgColor
         // ObjC 版只重着 navView 的直接 UILabel 子视图，返回/更多标号在 navRow 里，
@@ -1222,11 +1228,11 @@ final class BubblePackEditorViewController: UIViewController,
             guard let stack = v as? UIStackView else { continue }
             for x in stack.arrangedSubviews {
                 if let label = x as? UILabel {
-                    label.textColor = c("wxIc")
-                    label.layer.borderColor = c("wxIc").cgColor
+                    label.textColor = inIc
+                    label.layer.borderColor = inIc.cgColor
                 } else if x.layer.borderWidth > 0 {
-                    x.layer.borderColor = c("wxNavLine").cgColor
-                    x.backgroundColor = c("wxInputBg")
+                    x.layer.borderColor = inLine.cgColor
+                    x.backgroundColor = inBg
                 }
             }
         }
@@ -1243,11 +1249,11 @@ final class BubblePackEditorViewController: UIViewController,
             guard let stack = v as? UIStackView else { continue }
             for x in stack.arrangedSubviews {
                 if let label = x as? UILabel {
-                    label.textColor = c("wxIc")
-                    label.layer.borderColor = c("wxIc").cgColor
+                    label.textColor = inIc
+                    label.layer.borderColor = inIc.cgColor
                 } else if x.layer.borderWidth > 0 {
-                    x.layer.borderColor = c("wxNavLine").cgColor
-                    x.backgroundColor = c("wxInputBg")
+                    x.layer.borderColor = inLine.cgColor
+                    x.backgroundColor = inBg
                 }
             }
         }
@@ -1279,7 +1285,7 @@ final class BubblePackEditorViewController: UIViewController,
             group.label.textColor = c("text3")
             group.refreshPillColors(track: c("line"), thumb: dark ? bubbleColor(hex: "#3A3A3C") : .white, selected: c("text"), plain: c("text2"))
         }
-        for b in [batchBtn, copyBtn, clearBtn] {
+        for b in [batchBtn, copyBtn, clearBtn, scaleBtn] {
             b?.strokeColor = c("line")
             b?.setTitleColor(c("text2"), for: .normal)
         }
@@ -1414,10 +1420,23 @@ final class BubblePackEditorViewController: UIViewController,
         refresh()
     }
 
-    @objc private func scaleChanged() {
-        // 分段顺序 自动/@3x/@2x/不写 → scaleOpt 0/3/2/1
-        scaleOpt = [0, 3, 2, 1][scaleSeg.selectedIndex]
-        refresh()
+    // 倍数选择器：下拉菜单顺序 自动/@3x/@2x/不写 → scaleOpt 0/3/2/1（与旧分段顺序一致）。
+    private func scaleMenuTitle() -> String {
+        let name = [0: "自动", 1: "不写", 2: "@2x", 3: "@3x"][scaleOpt] ?? "自动"
+        return name + " ▾"
+    }
+
+    private func refreshScaleMenu() {
+        let items: [(String, Int)] = [("自动", 0), ("@3x", 3), ("@2x", 2), ("不写", 1)]
+        scaleBtn.menu = UIMenu(title: "", children: items.map { title, opt in
+            UIAction(title: title, state: opt == scaleOpt ? .on : .off) { [weak self] _ in
+                guard let self else { return }
+                self.scaleOpt = opt
+                self.refreshScaleMenu()
+                self.refresh()
+            }
+        })
+        scaleBtn.setTitle(scaleMenuTitle(), for: .normal)
     }
 
     @objc private func toggleOther() {
