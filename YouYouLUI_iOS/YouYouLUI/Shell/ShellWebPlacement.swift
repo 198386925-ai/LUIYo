@@ -11,7 +11,8 @@ extension MainShellViewController {
         switch activePage {
         case .bubble:
             attachNativePage(bubbleHost, to: parent, host: host)
-            bindNativeContentScroll(bubbleHost.view, parent: parent)
+            // 气泡包页不绑滚动缩小：它的底栏必须固定在底部、永远可见，
+            // 不随内容滚动消失（其它页仍按“滚动时缩小底栏”开关正常绑定）。
         case .rules:
             attachNativePage(rulesHost, to: parent, host: host)
             bindNativeContentScroll(rulesHost.view, parent: parent)
