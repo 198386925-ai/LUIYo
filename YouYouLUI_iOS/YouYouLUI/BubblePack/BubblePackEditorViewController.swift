@@ -371,13 +371,6 @@ final class PillGroup: UIView {
     }
 }
 
-// 固定内在尺寸的容器：GroupContainer 按 intrinsicContentSize 排布子视图，
-// UISlider 本身没有内在宽度，放进固定尺寸容器才能排。
-final class FixedSizeView: UIView {
-    var fixedSize: CGSize = .zero
-    override var intrinsicContentSize: CGSize { fixedSize }
-}
-
 // MARK: - 工具栏分组药丸（标签 + 一组或两组药丸按钮，同样手动排布）
 final class GroupContainer: UIView {
     let label = UILabel()
@@ -533,9 +526,6 @@ final class BubblePackEditorViewController: UIViewController,
     private var viewSeg: PillGroup!
     private var scaleBtn: PillButton!
     private var hideEnglishFileNames = false
-    private var imageScale: CGFloat = 1.0  // 图片大小滑条：0.5–2.0，默认 1.0，预览与导出都跟它走
-    private var sizeSlider: UISlider!
-    private var sizePctLabel: UILabel!
     private var batchBtn: PillButton!
     private var copyBtn: PillButton!
     private var clearBtn: PillButton!
@@ -583,7 +573,6 @@ final class BubblePackEditorViewController: UIViewController,
         title = "气泡包制作器"
         mode = 0
         scaleOpt = 0
-        imageScale = 1.0
         wantsNight = false
         viewNight = false
         dark = false
@@ -872,28 +861,6 @@ final class BubblePackEditorViewController: UIViewController,
         viewSeg.isHidden = true
         viewSeg.onChange = { [weak self] _ in self?.viewChanged() }
         toolbarFlow.addSubview(groupWithLabel("夜间版", views: [nightSeg, viewSeg]))
-
-        let sizeWrap = FixedSizeView()
-        sizeWrap.fixedSize = CGSize(width: 150, height: 31)
-        sizeWrap.translatesAutoresizingMaskIntoConstraints = false
-        sizeSlider = UISlider()
-        sizeSlider.translatesAutoresizingMaskIntoConstraints = false
-        sizeSlider.minimumValue = 0.5
-        sizeSlider.maximumValue = 2.0
-        sizeSlider.value = 1.0
-        sizeSlider.minimumTrackTintColor = c("accent")
-        sizeSlider.addTarget(self, action: #selector(sizeSliderChanged), for: .valueChanged)
-        sizeWrap.addSubview(sizeSlider)
-        NSLayoutConstraint.activate([
-            sizeSlider.leadingAnchor.constraint(equalTo: sizeWrap.leadingAnchor),
-            sizeSlider.trailingAnchor.constraint(equalTo: sizeWrap.trailingAnchor),
-            sizeSlider.centerYAnchor.constraint(equalTo: sizeWrap.centerYAnchor),
-        ])
-        sizePctLabel = UILabel()
-        sizePctLabel.font = UIFont.systemFont(ofSize: 13)
-        sizePctLabel.textColor = c("text")
-        sizePctLabel.text = "100%"
-        toolbarFlow.addSubview(groupWithLabel("图片大小", views: [sizeWrap, sizePctLabel]))
 
         batchBtn = pillButton("批量导图", primary: false)
         batchBtn.addTarget(self, action: #selector(batch), for: .touchUpInside)
@@ -1306,11 +1273,11 @@ final class BubblePackEditorViewController: UIViewController,
             let it = self.state["\(slot.identifier)|\(theme)"]
             if let it {
                 let sc = self.scaleValue(w: it.w, h: it.h)
-                let dw = CGFloat(it.w != 0 ? it.w / sc : 60) * self.imageScale
-                let dh = CGFloat(it.h != 0 ? it.h / sc : 40) * self.imageScale
+                let dw = it.w != 0 ? it.w / sc : 60
+                let dh = it.h != 0 ? it.h / sc : 40
                 bub.showImage(it.image, displaySize: CGSize(width: dw, height: dh))
                 fn.text = String(format: "%@\n%ld×%ld · 显示 %ld×%ld",
-                                 self.outName(slot, theme: theme), it.w, it.h, Int(dw), Int(dh))
+                                 self.outName(slot, theme: theme), it.w, it.h, dw, dh)
             } else {
                 let txt = bub.isOther ? slot.desc : slot.cnName
                 bub.showEmpty(withText: txt)
@@ -1623,28 +1590,6 @@ final class BubblePackEditorViewController: UIViewController,
         refresh()
     }
 
-    @objc private func sizeSliderChanged() {
-        imageScale = CGFloat(sizeSlider.value)
-        sizePctLabel.text = "\(Int((imageScale * 100).rounded()))%"
-        refresh()
-    }
-
-    // 图片大小滑条：导出时按比例缩放像素尺寸，透明底保留（非透明画布会把透明填成黑/白）。
-    private func exportImageData(_ img: UIImage) -> Data? {
-        if imageScale == 1.0 { return img.pngData() }
-        let px = Int(img.size.width * img.scale)
-        let py = Int(img.size.height * img.scale)
-        let nw = max(1, Int((CGFloat(px) * imageScale).rounded()))
-        let nh = max(1, Int((CGFloat(py) * imageScale).rounded()))
-        var format = UIGraphicsImageRendererFormat()
-        format.scale = 1.0
-        format.opaque = false
-        let out = UIGraphicsImageRenderer(size: CGSize(width: CGFloat(nw), height: CGFloat(nh)), format: format).image { _ in
-            img.draw(in: CGRect(x: 0, y: 0, width: CGFloat(nw), height: CGFloat(nh)))
-        }
-        return out.pngData()
-    }
-
     // 倍数选择器：下拉菜单顺序 自动/@3x/@2x/不写 → scaleOpt 0/3/2/1（与旧分段顺序一致）。
     private func scaleMenuTitle() -> String {
         let name = [0: "自动", 1: "不写", 2: "@2x", 3: "@3x"][scaleOpt] ?? "自动"
@@ -1801,7 +1746,7 @@ final class BubblePackEditorViewController: UIViewController,
                 let it = state["\(slot.identifier)|\(theme)"]
                     ?? (theme == "night" ? state["\(slot.identifier)|day"] : nil)
                 guard let it else { continue }
-                guard let data = exportImageData(it.image) else { continue }
+                guard let data = it.image.pngData() else { continue }
                 entries.append(ZipWriter.Entry(name: outName(slot, theme: theme, placed: it), data: data))
             }
         }
