@@ -158,9 +158,9 @@ final class BubbleView: UIView, UIGestureRecognizerDelegate {
         redrawTail()
     }
 
-    /// 空心气泡的边框：网页版是虚线（不是实线），这里用虚线 shape 层画。
-    /// 颜色跟随手机日间/夜间（文字与非遮罩其它气泡：浅 #c2c7cd / 夜 #6a7079；
-    /// 遮罩类 1px：浅 #b6bdc6 / 夜 #565c66）。
+    /// 用户不要虚线描边：这里只清掉旧图层，不再新建虚线层。
+    /// setDashedBorder 的调用点保持不动（传颜色或 nil 都只会清掉图层），
+    /// 空格子只留底色和名字。
     func setDashedBorder(_ color: UIColor?, width: CGFloat = 1.5) {
         dashedColor = color
         dashedWidth = width
@@ -170,18 +170,6 @@ final class BubbleView: UIView, UIGestureRecognizerDelegate {
     private func updateDashedBorder() {
         dashedBorder?.removeFromSuperlayer()
         dashedBorder = nil
-        guard let color = dashedColor, bounds.width > 0, bounds.height > 0 else { return }
-        let inset = dashedWidth / 2
-        let path = UIBezierPath(roundedRect: bounds.insetBy(dx: inset, dy: inset), cornerRadius: 7)
-        let layer = CAShapeLayer()
-        layer.path = path.cgPath
-        layer.strokeColor = color.cgColor
-        layer.fillColor = UIColor.clear.cgColor
-        layer.lineWidth = dashedWidth
-        layer.lineDashPattern = [4, 3]
-        // 插最底层：背景 < 虚线边框 < 尾巴 < 图片/文字（和网页版的绘制顺序一致）
-        self.layer.insertSublayer(layer, at: 0)
-        dashedBorder = layer
     }
 
     func redrawTail() {

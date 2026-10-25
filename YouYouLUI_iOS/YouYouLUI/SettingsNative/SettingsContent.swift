@@ -36,6 +36,7 @@ enum SettingsContent {
             ChangelogEntry(tag: "新增", text: "新增气泡包：底栏新增「气泡包」页，点气泡放图，自动按规则命名，导出 zip 即可上传（导出需授权）。"),
             ChangelogEntry(tag: "优化", text: "优化气泡包工具栏切换：命名、夜间版、倍数改用滑动分段，选中项以滑块标示；说明文字去掉卡片背景，改为纯文字。"),
             ChangelogEntry(tag: "优化", text: "优化气泡包工具栏按钮尺寸：导出按钮与其它按钮统一高度，切换分段高度减小。"),
+            ChangelogEntry(tag: "优化", text: "优化气泡包空格子：去掉虚线描边，只留底色和名字。"),
             ChangelogEntry(tag: "修复", text: "修复气泡包聊天区左右留白边的问题：聊天底贴满手机框，气泡间距不变。"),
             ChangelogEntry(tag: "修复", text: "修复 App 内签名完成后校验误报「签名校验失败」、签名文件被删除的问题。"),
             ChangelogEntry(tag: "修复", text: "修复启动图在打开瞬间闪过紫色的问题。"),
