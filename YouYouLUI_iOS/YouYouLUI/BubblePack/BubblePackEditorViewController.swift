@@ -518,14 +518,13 @@ final class BubblePackEditorViewController: UIViewController,
     private var contentStack: UIStackView!
     private var headerTitle: UILabel!
     private var headerSub: UILabel!
-    private var themeBtn: PillButton!
+    private var fileBtn: PillButton!
     private var toolbar: UIView!
     private var toolbarFlow: FlowLayoutView!
     private var modeSeg: PillGroup!
     private var nightSeg: PillGroup!
     private var viewSeg: PillGroup!
     private var scaleSeg: PillGroup!
-    private var fileSeg: PillGroup!
     private var hideEnglishFileNames = false
     private var batchBtn: PillButton!
     private var copyBtn: PillButton!
@@ -634,20 +633,20 @@ final class BubblePackEditorViewController: UIViewController,
         let titles = UIStackView(arrangedSubviews: [headerTitle, headerSub])
         titles.axis = .vertical
         titles.spacing = 1
-        themeBtn = pillButton("深/浅配色", primary: false, insets: UIEdgeInsets(top: 6, left: 14, bottom: 6, right: 14))
-        themeBtn.addTarget(self, action: #selector(toggleTheme), for: .touchUpInside)
+        fileBtn = pillButton(fileBtnTitle(), primary: false, insets: UIEdgeInsets(top: 6, left: 14, bottom: 6, right: 14))
+        fileBtn.addTarget(self, action: #selector(toggleFileNames), for: .touchUpInside)
         row.addSubview(titles)
-        row.addSubview(themeBtn)
+        row.addSubview(fileBtn)
         titles.translatesAutoresizingMaskIntoConstraints = false
-        themeBtn.translatesAutoresizingMaskIntoConstraints = false
+        fileBtn.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             titles.leadingAnchor.constraint(equalTo: row.leadingAnchor),
             titles.topAnchor.constraint(equalTo: row.topAnchor),
             titles.bottomAnchor.constraint(equalTo: row.bottomAnchor),
             // 副标题再长也不许把按钮挤出屏：标题块在按钮左侧截断，副标题折行。
-            titles.trailingAnchor.constraint(lessThanOrEqualTo: themeBtn.leadingAnchor, constant: -12),
-            themeBtn.trailingAnchor.constraint(equalTo: row.trailingAnchor),
-            themeBtn.centerYAnchor.constraint(equalTo: row.centerYAnchor),
+            titles.trailingAnchor.constraint(lessThanOrEqualTo: fileBtn.leadingAnchor, constant: -12),
+            fileBtn.trailingAnchor.constraint(equalTo: row.trailingAnchor),
+            fileBtn.centerYAnchor.constraint(equalTo: row.centerYAnchor),
         ])
         contentStack.addArrangedSubview(row)
     }
@@ -696,13 +695,6 @@ final class BubblePackEditorViewController: UIViewController,
         scaleSeg = PillGroup(titles: ["自动", "@3x", "@2x", "不写"], selected: 0)
         scaleSeg.onChange = { [weak self] _ in self?.scaleChanged() }
         toolbarFlow.addSubview(groupWithLabel("倍数", views: [scaleSeg]))
-
-        fileSeg = PillGroup(titles: ["显示", "隐藏"], selected: 0)
-        fileSeg.onChange = { [weak self] idx in
-            self?.hideEnglishFileNames = (idx == 1)
-            self?.refresh()
-        }
-        toolbarFlow.addSubview(groupWithLabel("英文文件名", views: [fileSeg]))
 
         batchBtn = pillButton("批量导图", primary: false)
         batchBtn.addTarget(self, action: #selector(batch), for: .touchUpInside)
@@ -1141,10 +1133,10 @@ final class BubblePackEditorViewController: UIViewController,
                 upd(s, bub, fn)
             }
         }
-        // 英文文件名开关：藏起显示英文名的那行小字（其它区恒为英文；文字区仅英文命名模式下为英文）。
+        // 英文文件名开关：隐藏时只透明、不移出布局，气泡保持原来大小和位置，不被拉满。
         // 只改显示，导出直接读槽位数据算名字，不读这行字，导出不受影响。
-        for fn in otherFileNames.values { fn.isHidden = hideEnglishFileNames }
-        for fn in textFileNames.values { fn.isHidden = hideEnglishFileNames && mode == 1 }
+        for fn in otherFileNames.values { fn.alpha = hideEnglishFileNames ? 0 : 1 }
+        for fn in textFileNames.values { fn.alpha = (hideEnglishFileNames && mode == 1) ? 0 : 1 }
 
         updateSummary()
         // 工具栏是自动换行排布：可见控件变化（夜间版开关、复制按钮显隐）后重排。
@@ -1272,11 +1264,12 @@ final class BubblePackEditorViewController: UIViewController,
         view.backgroundColor = c("bg")
         scrollView.backgroundColor = c("bg")
         headerTitle.text = "气泡包制作器"
-        headerSub.text = "LiquidUI 商城 · 点气泡放图，自动按规则命名，导出即可上传"
+        headerSub.text = "点气泡放图 自动按规则命名 导出即可使用"
         headerTitle.textColor = c("text")
         headerSub.textColor = c("text3")
-        themeBtn.strokeColor = c("line")
-        themeBtn.setTitleColor(c("text2"), for: .normal)
+        fileBtn.strokeColor = c("line")
+        fileBtn.setTitleColor(c("text2"), for: .normal)
+        fileBtn.setTitle(fileBtnTitle(), for: .normal)
 
         toolbar.backgroundColor = c("card")
         toolbar.layer.borderColor = c("line").cgColor
@@ -1394,9 +1387,14 @@ final class BubblePackEditorViewController: UIViewController,
 
     // MARK: - 主题 / 交互
 
-    @objc private func toggleTheme() {
-        dark.toggle()
-        applyTheme()
+    // 标题栏文件名开关：标题在“文件名：显示 / 文件名：隐藏”之间切换，只改显示。
+    private func fileBtnTitle() -> String {
+        hideEnglishFileNames ? "文件名：隐藏" : "文件名：显示"
+    }
+
+    @objc private func toggleFileNames() {
+        hideEnglishFileNames.toggle()
+        fileBtn.setTitle(fileBtnTitle(), for: .normal)
         refresh()
     }
 
