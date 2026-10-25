@@ -270,20 +270,35 @@ final class PillButton: UIButton {
 }
 
 final class PillGroup: UIView {
+    // 滑动分段：灰色轨道 + 白色滑块（首页 PillSegmentedControl 同款），点一下滑块滑过去。
+    // 轨道与滑块都用 PillButton：填充画在它自己的 shape 层上（上一轮证实这条路在工具栏
+    // 子树里能渲染，普通 view 的底色垫在这里曾渲染不出来）。
     var selectedIndex: Int
     var onChange: ((Int) -> Void)?
-    private var buttons: [PillButton] = []
-    private var accent: UIColor = .systemBlue
-    private var plain: UIColor = .label
+    private var buttons: [UIButton] = []
+    private let track = PillButton(frame: .zero)
+    private let thumb = PillButton(frame: .zero)
+    private var trackColor: UIColor = .systemGray5
+    private var thumbColor: UIColor = .white
+    private var selected: UIColor = .label
+    private var plain: UIColor = .secondaryLabel
+    private var animatingThumb = false
 
     init(titles: [String], selected: Int) {
         selectedIndex = selected
         super.init(frame: .zero)
         translatesAutoresizingMaskIntoConstraints = false
+        track.isUserInteractionEnabled = false
+        thumb.isUserInteractionEnabled = false
+        thumb.glowColor = .black
+        thumb.glowOpacity = 0.12
+        thumb.glowRadius = 3
+        thumb.glowOffset = CGSize(width: 0, height: 1)
+        addSubview(track)
+        addSubview(thumb)
         for (i, t) in titles.enumerated() {
-            // 药丸本身就是 PillButton：选中蓝底、光晕由它自己的 shape 层画，
-            // 不再另垫背景 view（上一轮垫 view 的蓝底同样没渲染出来）。
-            let b = PillButton(frame: .zero)
+            // 按钮本身透明只负责点按与文字，底色全由轨道和滑块画。
+            let b = UIButton(type: .custom)
             b.translatesAutoresizingMaskIntoConstraints = false
             b.setTitle(t, for: .normal)
             b.titleLabel?.font = UIFont.systemFont(ofSize: 13)
@@ -298,57 +313,59 @@ final class PillGroup: UIView {
     @available(*, unavailable)
     required init(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
-    // 按钮尺寸直接用文字量出来，不依赖 UIButton 的内在尺寸（上一轮蓝底不渲染时，
-    // 字的位置是对的但底没了；尺寸与背景全部自己算，不再猜按钮内部怎么量）。
-    private func buttonSize(for title: String) -> CGSize {
+    // 段宽直接用文字量出来，不依赖按钮的内在尺寸。
+    private func segmentSize(for title: String) -> CGSize {
         let text = (title as NSString).size(withAttributes: [.font: UIFont.systemFont(ofSize: 13)])
-        return CGSize(width: ceil(text.width) + 28, height: ceil(text.height) + 12)
+        return CGSize(width: ceil(text.width) + 28, height: 32)
     }
 
     override var intrinsicContentSize: CGSize {
-        var w: CGFloat = 0
-        var h: CGFloat = 0
-        for (i, b) in buttons.enumerated() {
-            let s = buttonSize(for: b.currentTitle ?? "")
-            w += s.width
-            h = max(h, s.height)
-            if i < buttons.count - 1 { w += 2 }
+        var w: CGFloat = 8
+        for b in buttons {
+            w += segmentSize(for: b.currentTitle ?? "").width
         }
-        return CGSize(width: w, height: h)
+        return CGSize(width: w, height: 32)
+    }
+
+    private func segmentFrame(at index: Int) -> CGRect {
+        var x: CGFloat = 4
+        for (i, b) in buttons.enumerated() {
+            let w = segmentSize(for: b.currentTitle ?? "").width
+            if i == index { return CGRect(x: x, y: 3, width: w, height: 26) }
+            x += w
+        }
+        return .zero
     }
 
     override func layoutSubviews() {
         super.layoutSubviews()
-        var x: CGFloat = 0
-        for (i, b) in buttons.enumerated() {
-            let s = buttonSize(for: b.currentTitle ?? "")
-            let frame = CGRect(x: x, y: (bounds.height - s.height) / 2, width: s.width, height: s.height)
-            b.frame = frame
-            x += s.width + 2
+        track.frame = bounds
+        var x: CGFloat = 4
+        for b in buttons {
+            let w = segmentSize(for: b.currentTitle ?? "").width
+            b.frame = CGRect(x: x, y: 0, width: w, height: bounds.height)
+            x += w
+        }
+        // 滑块动画进行中不抢帧，动画结束后再落到最终位置。
+        if !animatingThumb {
+            thumb.frame = segmentFrame(at: selectedIndex)
         }
     }
 
-    func refreshColors(accent: UIColor, plain: UIColor) {
-        self.accent = accent
+    func refreshColors(track: UIColor, thumb: UIColor, selected: UIColor, plain: UIColor) {
+        self.trackColor = track
+        self.thumbColor = thumb
+        self.selected = selected
         self.plain = plain
         updateColors()
     }
 
     private func updateColors() {
+        track.fillColor = trackColor
+        track.glowOpacity = 0
+        thumb.fillColor = thumbColor
         for (i, b) in buttons.enumerated() {
-            if i == selectedIndex {
-                b.fillColor = accent
-                b.glowColor = accent
-                b.glowOpacity = 0.3
-                b.glowRadius = 8
-                b.glowOffset = CGSize(width: 0, height: 2)
-                b.setTitleColor(.white, for: .normal)
-            } else {
-                b.fillColor = nil
-                b.glowColor = nil
-                b.glowOpacity = 0
-                b.setTitleColor(plain, for: .normal)
-            }
+            b.setTitleColor(i == selectedIndex ? selected : plain, for: .normal)
         }
     }
 
@@ -356,6 +373,12 @@ final class PillGroup: UIView {
         guard sender.tag != selectedIndex else { return }
         selectedIndex = sender.tag
         updateColors()
+        let target = segmentFrame(at: selectedIndex)
+        animatingThumb = true
+        UIView.animate(withDuration: 0.25, animations: { self.thumb.frame = target }) { _ in
+            self.animatingThumb = false
+            self.thumb.frame = self.segmentFrame(at: self.selectedIndex)
+        }
         onChange?(selectedIndex)
     }
 }
@@ -380,8 +403,8 @@ final class GroupContainer: UIView {
     @available(*, unavailable)
     required init(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
-    func refreshPillColors(accent: UIColor, plain: UIColor) {
-        for g in groups { g.refreshColors(accent: accent, plain: plain) }
+    func refreshPillColors(track: UIColor, thumb: UIColor, selected: UIColor, plain: UIColor) {
+        for g in groups { g.refreshColors(track: track, thumb: thumb, selected: selected, plain: plain) }
     }
 
     override var intrinsicContentSize: CGSize {
@@ -770,6 +793,10 @@ final class BubblePackEditorViewController: UIViewController,
         chatStack.axis = .vertical
         chatStack.spacing = 9
         chatStack.alignment = .fill
+        // 聊天底要贴满手机框（白边就是这里左右各 12 的留空露出的卡底色）；
+        // 气泡原来的间距改由 layoutMargins 保留，画面位置一点不动。
+        chatStack.isLayoutMarginsRelativeArrangement = true
+        chatStack.layoutMargins = UIEdgeInsets(top: 12, left: 12, bottom: 4, right: 12)
 
         inputBar = UIView()
         inputBar.translatesAutoresizingMaskIntoConstraints = false
@@ -811,10 +838,10 @@ final class BubblePackEditorViewController: UIViewController,
             navView.topAnchor.constraint(equalTo: phoneCard.topAnchor),
             navView.leadingAnchor.constraint(equalTo: phoneCard.leadingAnchor),
             navView.trailingAnchor.constraint(equalTo: phoneCard.trailingAnchor),
-            chatStack.topAnchor.constraint(equalTo: navView.bottomAnchor, constant: 12),
-            chatStack.leadingAnchor.constraint(equalTo: phoneCard.leadingAnchor, constant: 12),
-            chatStack.trailingAnchor.constraint(equalTo: phoneCard.trailingAnchor, constant: -12),
-            inputBar.topAnchor.constraint(equalTo: chatStack.bottomAnchor, constant: 4),
+            chatStack.topAnchor.constraint(equalTo: navView.bottomAnchor),
+            chatStack.leadingAnchor.constraint(equalTo: phoneCard.leadingAnchor),
+            chatStack.trailingAnchor.constraint(equalTo: phoneCard.trailingAnchor),
+            inputBar.topAnchor.constraint(equalTo: chatStack.bottomAnchor),
             inputBar.leadingAnchor.constraint(equalTo: phoneCard.leadingAnchor),
             inputBar.trailingAnchor.constraint(equalTo: phoneCard.trailingAnchor),
             inputBar.bottomAnchor.constraint(equalTo: phoneCard.bottomAnchor),
@@ -868,8 +895,6 @@ final class BubblePackEditorViewController: UIViewController,
         noteLabel.translatesAutoresizingMaskIntoConstraints = false
         noteLabel.font = UIFont.systemFont(ofSize: 12.5)
         noteLabel.numberOfLines = 0
-        noteLabel.layer.cornerRadius = 8
-        noteLabel.layer.borderWidth = 1
         contentStack.addArrangedSubview(noteLabel)
     }
 
@@ -938,6 +963,8 @@ final class BubblePackEditorViewController: UIViewController,
         otherChatStack.axis = .vertical
         otherChatStack.spacing = 9
         otherChatStack.alignment = .fill
+        otherChatStack.isLayoutMarginsRelativeArrangement = true
+        otherChatStack.layoutMargins = UIEdgeInsets(top: 12, left: 12, bottom: 4, right: 12)
 
         let inBar = UIView()
         inBar.translatesAutoresizingMaskIntoConstraints = false
@@ -974,10 +1001,10 @@ final class BubblePackEditorViewController: UIViewController,
             nav.topAnchor.constraint(equalTo: otherCard.topAnchor),
             nav.leadingAnchor.constraint(equalTo: otherCard.leadingAnchor),
             nav.trailingAnchor.constraint(equalTo: otherCard.trailingAnchor),
-            otherChatStack.topAnchor.constraint(equalTo: nav.bottomAnchor, constant: 12),
-            otherChatStack.leadingAnchor.constraint(equalTo: otherCard.leadingAnchor, constant: 12),
-            otherChatStack.trailingAnchor.constraint(equalTo: otherCard.trailingAnchor, constant: -12),
-            inBar.topAnchor.constraint(equalTo: otherChatStack.bottomAnchor, constant: 4),
+            otherChatStack.topAnchor.constraint(equalTo: nav.bottomAnchor),
+            otherChatStack.leadingAnchor.constraint(equalTo: otherCard.leadingAnchor),
+            otherChatStack.trailingAnchor.constraint(equalTo: otherCard.trailingAnchor),
+            inBar.topAnchor.constraint(equalTo: otherChatStack.bottomAnchor),
             inBar.leadingAnchor.constraint(equalTo: otherCard.leadingAnchor),
             inBar.trailingAnchor.constraint(equalTo: otherCard.trailingAnchor),
             inBar.bottomAnchor.constraint(equalTo: otherCard.bottomAnchor),
@@ -1246,7 +1273,7 @@ final class BubblePackEditorViewController: UIViewController,
             guard let group = v as? GroupContainer else { continue }
             group.backgroundColor = c("bg")
             group.label.textColor = c("text3")
-            group.refreshPillColors(accent: c("accent"), plain: c("text2"))
+            group.refreshPillColors(track: c("line"), thumb: dark ? bubbleColor(hex: "#3A3A3C") : .white, selected: c("text"), plain: c("text2"))
         }
         for b in [batchBtn, copyBtn, clearBtn] {
             b?.strokeColor = c("line")
@@ -1258,8 +1285,7 @@ final class BubblePackEditorViewController: UIViewController,
         summaryLabel.textColor = c("text2")
         progressBar.backgroundColor = c("line")
         noteLabel.textColor = c("text2")
-        noteLabel.layer.borderColor = c("line").cgColor
-        noteLabel.backgroundColor = c("card")
+        noteLabel.backgroundColor = .clear
 
         otherToggle.strokeColor = c("line")
         otherToggle.setTitleColor(c("accent"), for: .normal)
