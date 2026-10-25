@@ -3,7 +3,7 @@ import UIKit
 
 /// 气泡包编辑界面（Swift 版，LUBubblePackEditorViewController 的一比一移植）
 ///
-/// 仿微信聊天窗口的编辑页：点气泡放图，底部切命名方式和夜间版，导出 zip。
+/// 仿微信聊天窗口的编辑页：批量导入放图，底部切命名方式和夜间版，导出 zip。
 /// UIKit only。导出改用 App 现成的 ZipWriter（ObjC 版用 SSZipArchive，
 /// 这里是唯一一处有意改动；输出文件名与静默行为与 ObjC 版一致）。
 
@@ -371,6 +371,13 @@ final class PillGroup: UIView {
     }
 }
 
+// 固定内在尺寸的容器：GroupContainer 按 intrinsicContentSize 排布子视图，
+// UISlider 本身没有内在宽度，放进固定尺寸容器才能排。
+final class FixedSizeView: UIView {
+    var fixedSize: CGSize = .zero
+    override var intrinsicContentSize: CGSize { fixedSize }
+}
+
 // MARK: - 工具栏分组药丸（标签 + 一组或两组药丸按钮，同样手动排布）
 final class GroupContainer: UIView {
     let label = UILabel()
@@ -526,6 +533,9 @@ final class BubblePackEditorViewController: UIViewController,
     private var viewSeg: PillGroup!
     private var scaleBtn: PillButton!
     private var hideEnglishFileNames = false
+    private var imageScale: CGFloat = 1.0  // 图片大小滑条：0.5–2.0，默认 1.0，预览与导出都跟它走
+    private var sizeSlider: UISlider!
+    private var sizePctLabel: UILabel!
     private var batchBtn: PillButton!
     private var copyBtn: PillButton!
     private var clearBtn: PillButton!
@@ -555,6 +565,7 @@ final class BubblePackEditorViewController: UIViewController,
     private var pendingStack: UIStackView!
     private var pendingLeftBtn: PillButton!
     private var pendingRightBtn: PillButton!
+    private var pendingOtherBtn: PillButton!
     private var pendingHint: UILabel!
     private var textBubbles: [String: BubbleView] = [:]
     private var textFileNames: [String: UILabel] = [:]
@@ -566,13 +577,13 @@ final class BubblePackEditorViewController: UIViewController,
     private var wantsNight = false
     private var viewNight = false
     private var dark = false
-    private var pickingSlotId: String?
 
     override func viewDidLoad() {
         super.viewDidLoad()
         title = "气泡包制作器"
         mode = 0
         scaleOpt = 0
+        imageScale = 1.0
         wantsNight = false
         viewNight = false
         dark = false
@@ -678,7 +689,7 @@ final class BubblePackEditorViewController: UIViewController,
         pendingTitle.font = UIFont.systemFont(ofSize: 16, weight: .semibold)
         pendingSub = UILabel()
         pendingSub.font = UIFont.systemFont(ofSize: 13)
-        pendingSub.text = "点一张图，再选左边 / 右边"
+        pendingSub.text = "点一张图，再选左边 / 右边 / 其它"
         let scroll = UIScrollView()
         scroll.translatesAutoresizingMaskIntoConstraints = false
         scroll.showsHorizontalScrollIndicator = false
@@ -703,10 +714,14 @@ final class BubblePackEditorViewController: UIViewController,
         pendingLeftBtn.addTarget(self, action: #selector(placePendingLeft), for: .touchUpInside)
         pendingRightBtn = pillButton("放右边", primary: false)
         pendingRightBtn.addTarget(self, action: #selector(placePendingRight), for: .touchUpInside)
+        pendingOtherBtn = pillButton("放其它", primary: false)
+        pendingOtherBtn.addTarget(self, action: #selector(placePendingOther), for: .touchUpInside)
         pendingHint = UILabel()
         pendingHint.font = UIFont.systemFont(ofSize: 13)
+        pendingHint.numberOfLines = 0
         btnRow.addArrangedSubview(pendingLeftBtn)
         btnRow.addArrangedSubview(pendingRightBtn)
+        btnRow.addArrangedSubview(pendingOtherBtn)
         btnRow.addArrangedSubview(pendingHint)
         stack.addArrangedSubview(pendingTitle)
         stack.addArrangedSubview(pendingSub)
@@ -761,20 +776,19 @@ final class BubblePackEditorViewController: UIViewController,
         }
         let left = nextEmptyTextSlot(side: "receiver")
         let right = nextEmptyTextSlot(side: "sender")
+        let other = nextEmptyOtherSlot()
         let hasSel = selectedPending != nil && selectedPending! < pending.count
         pendingLeftBtn.isEnabled = hasSel && left != nil
         pendingRightBtn.isEnabled = hasSel && right != nil
+        pendingOtherBtn.isEnabled = hasSel && other != nil
         pendingLeftBtn.alpha = pendingLeftBtn.isEnabled ? 1 : 0.4
         pendingRightBtn.alpha = pendingRightBtn.isEnabled ? 1 : 0.4
-        if let l = left, let r = right {
-            pendingHint.text = "放左边 → 下一个：\(cnName(for: l)) · 放右边 → 下一个：\(cnName(for: r))"
-        } else if left == nil && right == nil {
-            pendingHint.text = "两侧已满，点气泡指定或清空"
-        } else if left == nil {
-            pendingHint.text = "左侧已满"
-        } else {
-            pendingHint.text = "右侧已满"
-        }
+        pendingOtherBtn.alpha = pendingOtherBtn.isEnabled ? 1 : 0.4
+        var parts: [String] = []
+        if let l = left { parts.append("放左边 → 下一个：\(cnName(for: l))") }
+        if let r = right { parts.append("放右边 → 下一个：\(cnName(for: r))") }
+        if let o = other { parts.append("放其它 → 下一个：\(otherDesc(for: o))") }
+        pendingHint.text = parts.isEmpty ? "全部已满，可清空重放" : parts.joined(separator: " · ")
     }
 
     @objc private func selectPending(_ sender: UIButton) {
@@ -788,6 +802,26 @@ final class BubblePackEditorViewController: UIViewController,
     private func placePending(side: String) {
         guard let idx = selectedPending, idx < pending.count,
               let sid = nextEmptyTextSlot(side: side) else { return }
+        let img = pending.remove(at: idx)
+        selectedPending = nil
+        put(img, slotId: sid)
+    }
+
+    private func nextEmptyOtherSlot() -> String? {
+        let t = pendingTheme()
+        for s in BubbleNaming.shared.otherSlots() {
+            if state["\(s.identifier)|\(t)"] == nil { return s.identifier }
+        }
+        return nil
+    }
+
+    private func otherDesc(for sid: String) -> String {
+        BubbleNaming.shared.otherSlots().first(where: { $0.identifier == sid })?.desc ?? sid
+    }
+
+    @objc private func placePendingOther() {
+        guard let idx = selectedPending, idx < pending.count,
+              let sid = nextEmptyOtherSlot() else { return }
         let img = pending.remove(at: idx)
         selectedPending = nil
         put(img, slotId: sid)
@@ -838,6 +872,28 @@ final class BubblePackEditorViewController: UIViewController,
         viewSeg.isHidden = true
         viewSeg.onChange = { [weak self] _ in self?.viewChanged() }
         toolbarFlow.addSubview(groupWithLabel("夜间版", views: [nightSeg, viewSeg]))
+
+        let sizeWrap = FixedSizeView()
+        sizeWrap.fixedSize = CGSize(width: 150, height: 31)
+        sizeWrap.translatesAutoresizingMaskIntoConstraints = false
+        sizeSlider = UISlider()
+        sizeSlider.translatesAutoresizingMaskIntoConstraints = false
+        sizeSlider.minimumValue = 0.5
+        sizeSlider.maximumValue = 2.0
+        sizeSlider.value = 1.0
+        sizeSlider.minimumTrackTintColor = c("accent")
+        sizeSlider.addTarget(self, action: #selector(sizeSliderChanged), for: .valueChanged)
+        sizeWrap.addSubview(sizeSlider)
+        NSLayoutConstraint.activate([
+            sizeSlider.leadingAnchor.constraint(equalTo: sizeWrap.leadingAnchor),
+            sizeSlider.trailingAnchor.constraint(equalTo: sizeWrap.trailingAnchor),
+            sizeSlider.centerYAnchor.constraint(equalTo: sizeWrap.centerYAnchor),
+        ])
+        sizePctLabel = UILabel()
+        sizePctLabel.font = UIFont.systemFont(ofSize: 13)
+        sizePctLabel.textColor = c("text")
+        sizePctLabel.text = "100%"
+        toolbarFlow.addSubview(groupWithLabel("图片大小", views: [sizeWrap, sizePctLabel]))
 
         batchBtn = pillButton("批量导图", primary: false)
         batchBtn.addTarget(self, action: #selector(batch), for: .touchUpInside)
@@ -1063,7 +1119,7 @@ final class BubblePackEditorViewController: UIViewController,
         n2.font = UIFont.systemFont(ofSize: 16, weight: .semibold)
         n2.textAlignment = .center
         let tip2 = UILabel()
-        tip2.text = "点气泡放图"
+        tip2.text = "批量导入放图"
         tip2.font = UIFont.systemFont(ofSize: 11)
         tip2.alpha = 0.65
         let leftR = UIStackView(arrangedSubviews: [back2, more2])
@@ -1159,7 +1215,6 @@ final class BubblePackEditorViewController: UIViewController,
         bub.isOther = isOther
         bub.category = isOther ? slot.type : nil
         let sid = slot.identifier
-        bub.onTap = { [weak self] in self?.pickForSlotId(sid) }
         bub.onDelete = { [weak self] in self?.removeSlotId(sid) }
         if isOther { otherBubbles[sid] = bub } else { textBubbles[sid] = bub }
 
@@ -1251,11 +1306,11 @@ final class BubblePackEditorViewController: UIViewController,
             let it = self.state["\(slot.identifier)|\(theme)"]
             if let it {
                 let sc = self.scaleValue(w: it.w, h: it.h)
-                let dw = it.w != 0 ? it.w / sc : 60
-                let dh = it.h != 0 ? it.h / sc : 40
+                let dw = CGFloat(it.w != 0 ? it.w / sc : 60) * self.imageScale
+                let dh = CGFloat(it.h != 0 ? it.h / sc : 40) * self.imageScale
                 bub.showImage(it.image, displaySize: CGSize(width: dw, height: dh))
                 fn.text = String(format: "%@\n%ld×%ld · 显示 %ld×%ld",
-                                 self.outName(slot, theme: theme), it.w, it.h, dw, dh)
+                                 self.outName(slot, theme: theme), it.w, it.h, Int(dw), Int(dh))
             } else {
                 let txt = bub.isOther ? slot.desc : slot.cnName
                 bub.showEmpty(withText: txt)
@@ -1413,7 +1468,7 @@ final class BubblePackEditorViewController: UIViewController,
         view.backgroundColor = c("bg")
         scrollView.backgroundColor = c("bg")
         headerTitle.text = "气泡包制作器"
-        headerSub.text = "点气泡放图 自动按规则命名 导出即可使用"
+        headerSub.text = "批量导入放图 自动按规则命名 导出即可使用"
         headerTitle.textColor = c("text")
         headerSub.textColor = c("text3")
         fileBtn.strokeColor = c("line")
@@ -1568,6 +1623,28 @@ final class BubblePackEditorViewController: UIViewController,
         refresh()
     }
 
+    @objc private func sizeSliderChanged() {
+        imageScale = CGFloat(sizeSlider.value)
+        sizePctLabel.text = "\(Int((imageScale * 100).rounded()))%"
+        refresh()
+    }
+
+    // 图片大小滑条：导出时按比例缩放像素尺寸，透明底保留（非透明画布会把透明填成黑/白）。
+    private func exportImageData(_ img: UIImage) -> Data? {
+        if imageScale == 1.0 { return img.pngData() }
+        let px = Int(img.size.width * img.scale)
+        let py = Int(img.size.height * img.scale)
+        let nw = max(1, Int((CGFloat(px) * imageScale).rounded()))
+        let nh = max(1, Int((CGFloat(py) * imageScale).rounded()))
+        var format = UIGraphicsImageRendererFormat()
+        format.scale = 1.0
+        format.opaque = false
+        let out = UIGraphicsImageRenderer(size: CGSize(width: CGFloat(nw), height: CGFloat(nh)), format: format).image { _ in
+            img.draw(in: CGRect(x: 0, y: 0, width: CGFloat(nw), height: CGFloat(nh)))
+        }
+        return out.pngData()
+    }
+
     // 倍数选择器：下拉菜单顺序 自动/@3x/@2x/不写 → scaleOpt 0/3/2/1（与旧分段顺序一致）。
     private func scaleMenuTitle() -> String {
         let name = [0: "自动", 1: "不写", 2: "@2x", 3: "@3x"][scaleOpt] ?? "自动"
@@ -1614,28 +1691,16 @@ final class BubblePackEditorViewController: UIViewController,
 
     // MARK: - 放图
 
-    private func pickForSlotId(_ sid: String) {
-        // 待分配已选中一张图时，点气泡 = 直接放进这个格子（不打开相册）。
-        if let idx = selectedPending, idx < pending.count {
-            let img = pending.remove(at: idx)
-            selectedPending = nil
-            put(img, slotId: sid)
-            return
-        }
-        pickingSlotId = sid
-        presentPickerMulti(false)
-    }
-
     private func removeSlotId(_ sid: String) {
         let t = viewNight ? "night" : "day"
         state.removeValue(forKey: "\(sid)|\(t)")
         refresh()
     }
 
-    private func presentPickerMulti(_ multi: Bool) {
+    private func presentPickerMulti() {
         if #available(iOS 14, *) {
             var config = PHPickerConfiguration()
-            config.selectionLimit = multi ? 0 : 1
+            config.selectionLimit = 0
             config.filter = .images
             let picker = PHPickerViewController(configuration: config)
             picker.delegate = self
@@ -1649,28 +1714,16 @@ final class BubblePackEditorViewController: UIViewController,
     }
 
     @objc private func batch() {
-        presentPickerMulti(true)
+        presentPickerMulti()
     }
 
     func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
         picker.dismiss(animated: true)
         if results.isEmpty { return }
-        if pickingSlotId != nil {
-            if let first = results.first {
-                first.itemProvider.loadObject(ofClass: UIImage.self) { [weak self] obj, _ in
-                    guard let self, let img = obj as? UIImage else { return }
-                    DispatchQueue.main.async {
-                        self.put(img, slotId: self.pickingSlotId)
-                        self.pickingSlotId = nil
-                    }
-                }
-            }
-            return
-        }
         for r in results {
             r.itemProvider.loadObject(ofClass: UIImage.self) { [weak self] obj, _ in
                 guard let self, let img = obj as? UIImage else { return }
-                // 批量导入不再按文件名自动认：全部进待分配，由用户手动选左/右或点气泡指定。
+                // 批量导入不再按文件名自动认：全部进待分配，由用户手动选左/右/其它顺序放。
                 DispatchQueue.main.async {
                     self.pending.append(img)
                     self.refreshPending()
@@ -1682,9 +1735,9 @@ final class BubblePackEditorViewController: UIViewController,
     func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
         picker.dismiss(animated: true) {
             guard let img = info[.originalImage] as? UIImage else { return }
-            // ObjC 版：这里只调 put（pickingSlotId 为 nil 时 put 直接返回，批量图会被丢掉）—— 照原样
-            self.put(img, slotId: self.pickingSlotId)
-            self.pickingSlotId = nil
+            // 点气泡导入已删：旧系统相册回落也只进待分配，不再直放。
+            self.pending.append(img)
+            self.refreshPending()
         }
     }
 
@@ -1748,7 +1801,7 @@ final class BubblePackEditorViewController: UIViewController,
                 let it = state["\(slot.identifier)|\(theme)"]
                     ?? (theme == "night" ? state["\(slot.identifier)|day"] : nil)
                 guard let it else { continue }
-                guard let data = it.image.pngData() else { continue }
+                guard let data = exportImageData(it.image) else { continue }
                 entries.append(ZipWriter.Entry(name: outName(slot, theme: theme, placed: it), data: data))
             }
         }
