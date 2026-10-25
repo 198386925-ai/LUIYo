@@ -805,8 +805,58 @@ final class BubblePackEditorViewController: UIViewController,
         pendingRightBtn.isEnabled = hasSel && right != nil
         pendingLeftBtn.alpha = pendingLeftBtn.isEnabled ? 1 : 0.4
         pendingRightBtn.alpha = pendingRightBtn.isEnabled ? 1 : 0.4
-        // 提示行不再写“下一个”：只显示已勾选的圈圈（按勾的顺序），全满才显示全满。
-        setCheckedHint(pendingHint, order: selectedPendingOrder, full: left == nil && right == nil)
+        // 已勾选行一直显示：上○ 中○ 下○ 单○（字在圈前）；勾上的圈变打勾；全满才显示全满。
+        if left == nil && right == nil {
+            pendingHint.attributedText = nil
+            pendingHint.text = "全部已满，可清空重放"
+        } else {
+            pendingHint.text = nil
+            pendingHint.attributedText = checkedPositionText(checkedCount: min(selectedPendingOrder.count, 4))
+        }
+    }
+
+    // 位置圈：空圈（白底蓝边）或打勾圈（蓝底白勾），20×20，与缩略图徽标同大。
+    private func positionCircleImage(checked: Bool) -> UIImage {
+        let r = UIGraphicsImageRenderer(size: CGSize(width: 20, height: 20))
+        return r.image { _ in
+            if checked {
+                c("accent").setFill()
+                UIBezierPath(ovalIn: CGRect(x: 0, y: 0, width: 20, height: 20)).fill()
+                let p = UIBezierPath()
+                p.move(to: CGPoint(x: 5, y: 10))
+                p.addLine(to: CGPoint(x: 8.5, y: 13.5))
+                p.addLine(to: CGPoint(x: 15, y: 6))
+                p.lineWidth = 2.5
+                p.lineCapStyle = .round
+                p.lineJoinStyle = .round
+                UIColor.white.setStroke()
+                p.stroke()
+            } else {
+                let p = UIBezierPath(ovalIn: CGRect(x: 1, y: 1, width: 18, height: 18))
+                p.lineWidth = 2
+                c("accent").setStroke()
+                p.stroke()
+            }
+        }
+    }
+
+    // 已勾选行：已勾选：上○ 中○ 下○ 单○（字在圈前，勾上的圈变打勾）。
+    private func checkedPositionText(checkedCount: Int) -> NSAttributedString {
+        let attrs: [NSAttributedString.Key: Any] = [
+            .font: UIFont.systemFont(ofSize: 13),
+            .foregroundColor: c("accent"),
+        ]
+        let a = NSMutableAttributedString(string: "已勾选：", attributes: attrs)
+        for (i, ch) in ["上", "中", "下", "单"].enumerated() {
+            if i > 0 { a.append(NSAttributedString(string: " ")) }
+            a.append(NSAttributedString(string: ch, attributes: attrs))
+            a.append(NSAttributedString(string: " "))
+            let att = NSTextAttachment()
+            att.image = positionCircleImage(checked: i < checkedCount)
+            att.bounds = CGRect(x: 0, y: -4, width: 20, height: 20)
+            a.append(NSAttributedString(attachment: att))
+        }
+        return a
     }
 
     // 已勾选圈圈：蓝底白字小圆（与缩略图上的勾选徽标同款），放在提示行里按勾的顺序排。
