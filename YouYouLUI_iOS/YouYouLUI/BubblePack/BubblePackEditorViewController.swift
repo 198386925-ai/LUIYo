@@ -1272,9 +1272,9 @@ final class BubblePackEditorViewController: UIViewController,
             let theme = night ? "night" : "day"
             let it = self.state["\(slot.identifier)|\(theme)"]
             if let it {
-                let sc = self.scaleValue(w: it.w, h: it.h)
-                let dw = it.w != 0 ? it.w / sc : 60
-                let dh = it.h != 0 ? it.h / sc : 40
+                // 预览按原图尺寸显示（与微信一致）：不再除以倍数，倍数只影响导出文件名后缀。
+                let dw = it.w != 0 ? it.w : 60
+                let dh = it.h != 0 ? it.h : 40
                 bub.showImage(it.image, displaySize: CGSize(width: dw, height: dh))
                 fn.text = String(format: "%@\n%ld×%ld · 显示 %ld×%ld",
                                  self.outName(slot, theme: theme), it.w, it.h, dw, dh)
