@@ -546,7 +546,16 @@ final class BubblePackEditorViewController: UIViewController,
     private var otherInBar: UIView!
 
     private var state: [String: PlacedImage] = [:]
-    private var unrecognized: [(name: String, image: UIImage)] = []  // 批量导入时文件名认不出的图：不进任何槽位、也不进 zip
+    private var unrecognized: [(name: String, image: UIImage)] = []  // zip 导入时文件名认不出的图：不进任何槽位、也不进 zip
+    private var pending: [UIImage] = []  // 批量导入后待手动分配的图：不按文件名自动认
+    private var selectedPending: Int?
+    private var pendingCard: UIView!
+    private var pendingTitle: UILabel!
+    private var pendingSub: UILabel!
+    private var pendingStack: UIStackView!
+    private var pendingLeftBtn: PillButton!
+    private var pendingRightBtn: PillButton!
+    private var pendingHint: UILabel!
     private var textBubbles: [String: BubbleView] = [:]
     private var textFileNames: [String: UILabel] = [:]
     private var otherBubbles: [String: BubbleView] = [:]
@@ -569,6 +578,8 @@ final class BubblePackEditorViewController: UIViewController,
         dark = false
         state = [:]
         unrecognized = []
+        pending = []
+        selectedPending = nil
         textBubbles = [:]
         textFileNames = [:]
         otherBubbles = [:]
@@ -577,6 +588,7 @@ final class BubblePackEditorViewController: UIViewController,
         buildScrollView()
         buildHeader()
         buildToolbar()
+        buildPendingCard()
         buildPhone()
         buildSummaryAndNote()
         buildOtherPhone()
@@ -649,6 +661,136 @@ final class BubblePackEditorViewController: UIViewController,
             fileBtn.centerYAnchor.constraint(equalTo: row.centerYAnchor),
         ])
         contentStack.addArrangedSubview(row)
+    }
+
+    // MARK: - 待分配
+
+    private func buildPendingCard() {
+        pendingCard = UIView()
+        pendingCard.translatesAutoresizingMaskIntoConstraints = false
+        pendingCard.layer.cornerRadius = 22
+        pendingCard.layer.borderWidth = 1
+        let stack = UIStackView()
+        stack.axis = .vertical
+        stack.spacing = 8
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        pendingTitle = UILabel()
+        pendingTitle.font = UIFont.systemFont(ofSize: 16, weight: .semibold)
+        pendingSub = UILabel()
+        pendingSub.font = UIFont.systemFont(ofSize: 13)
+        pendingSub.text = "点一张图，再选左边 / 右边"
+        let scroll = UIScrollView()
+        scroll.translatesAutoresizingMaskIntoConstraints = false
+        scroll.showsHorizontalScrollIndicator = false
+        pendingStack = UIStackView()
+        pendingStack.axis = .horizontal
+        pendingStack.spacing = 10
+        pendingStack.translatesAutoresizingMaskIntoConstraints = false
+        scroll.addSubview(pendingStack)
+        NSLayoutConstraint.activate([
+            pendingStack.topAnchor.constraint(equalTo: scroll.topAnchor),
+            pendingStack.bottomAnchor.constraint(equalTo: scroll.bottomAnchor),
+            pendingStack.leadingAnchor.constraint(equalTo: scroll.leadingAnchor),
+            pendingStack.trailingAnchor.constraint(equalTo: scroll.trailingAnchor),
+            pendingStack.heightAnchor.constraint(equalToConstant: 72),
+        ])
+        scroll.heightAnchor.constraint(equalToConstant: 72).isActive = true
+        let btnRow = UIStackView()
+        btnRow.axis = .horizontal
+        btnRow.spacing = 12
+        btnRow.alignment = .center
+        pendingLeftBtn = pillButton("放左边", primary: false)
+        pendingLeftBtn.addTarget(self, action: #selector(placePendingLeft), for: .touchUpInside)
+        pendingRightBtn = pillButton("放右边", primary: false)
+        pendingRightBtn.addTarget(self, action: #selector(placePendingRight), for: .touchUpInside)
+        pendingHint = UILabel()
+        pendingHint.font = UIFont.systemFont(ofSize: 13)
+        btnRow.addArrangedSubview(pendingLeftBtn)
+        btnRow.addArrangedSubview(pendingRightBtn)
+        btnRow.addArrangedSubview(pendingHint)
+        stack.addArrangedSubview(pendingTitle)
+        stack.addArrangedSubview(pendingSub)
+        stack.addArrangedSubview(scroll)
+        stack.addArrangedSubview(btnRow)
+        pendingCard.addSubview(stack)
+        NSLayoutConstraint.activate([
+            stack.topAnchor.constraint(equalTo: pendingCard.topAnchor, constant: 14),
+            stack.bottomAnchor.constraint(equalTo: pendingCard.bottomAnchor, constant: -14),
+            stack.leadingAnchor.constraint(equalTo: pendingCard.leadingAnchor, constant: 16),
+            stack.trailingAnchor.constraint(equalTo: pendingCard.trailingAnchor, constant: -16),
+        ])
+        pendingCard.isHidden = true
+        contentStack.insertArrangedSubview(pendingCard, at: 2)
+    }
+
+    private func pendingTheme() -> String { viewNight ? "night" : "day" }
+
+    private func nextEmptyTextSlot(side: String) -> String? {
+        let t = pendingTheme()
+        for pos in ["top", "middle", "end", "single"] {
+            let sid = "text:\(side):\(pos)"
+            if state["\(sid)|\(t)"] == nil { return sid }
+        }
+        return nil
+    }
+
+    private func cnName(for sid: String) -> String {
+        ["text:receiver:top": "左上", "text:receiver:middle": "左中", "text:receiver:end": "左下", "text:receiver:single": "左单",
+         "text:sender:top": "右上", "text:sender:middle": "右中", "text:sender:end": "右下", "text:sender:single": "右单"][sid] ?? sid
+    }
+
+    private func refreshPending() {
+        guard pendingCard != nil else { return }
+        pendingCard.isHidden = pending.isEmpty
+        pendingTitle.text = "待分配（\(pending.count) 张）"
+        for v in pendingStack.arrangedSubviews { pendingStack.removeArrangedSubview(v); v.removeFromSuperview() }
+        for (i, img) in pending.enumerated() {
+            let b = UIButton(type: .custom)
+            b.translatesAutoresizingMaskIntoConstraints = false
+            b.setImage(img, for: .normal)
+            b.imageView?.contentMode = .scaleAspectFill
+            b.clipsToBounds = true
+            b.layer.cornerRadius = 14
+            b.layer.borderWidth = (i == selectedPending) ? 3 : 1
+            b.layer.borderColor = ((i == selectedPending) ? c("accent") : c("line")).cgColor
+            b.widthAnchor.constraint(equalToConstant: 72).isActive = true
+            b.heightAnchor.constraint(equalToConstant: 72).isActive = true
+            b.tag = i
+            b.addTarget(self, action: #selector(selectPending(_:)), for: .touchUpInside)
+            pendingStack.addArrangedSubview(b)
+        }
+        let left = nextEmptyTextSlot(side: "receiver")
+        let right = nextEmptyTextSlot(side: "sender")
+        let hasSel = selectedPending != nil && selectedPending! < pending.count
+        pendingLeftBtn.isEnabled = hasSel && left != nil
+        pendingRightBtn.isEnabled = hasSel && right != nil
+        pendingLeftBtn.alpha = pendingLeftBtn.isEnabled ? 1 : 0.4
+        pendingRightBtn.alpha = pendingRightBtn.isEnabled ? 1 : 0.4
+        if let l = left, let r = right {
+            pendingHint.text = "放左边 → 下一个：\(cnName(for: l)) · 放右边 → 下一个：\(cnName(for: r))"
+        } else if left == nil && right == nil {
+            pendingHint.text = "两侧已满，点气泡指定或清空"
+        } else if left == nil {
+            pendingHint.text = "左侧已满"
+        } else {
+            pendingHint.text = "右侧已满"
+        }
+    }
+
+    @objc private func selectPending(_ sender: UIButton) {
+        selectedPending = (selectedPending == sender.tag) ? nil : sender.tag
+        refreshPending()
+    }
+
+    @objc private func placePendingLeft() { placePending(side: "receiver") }
+    @objc private func placePendingRight() { placePending(side: "sender") }
+
+    private func placePending(side: String) {
+        guard let idx = selectedPending, idx < pending.count,
+              let sid = nextEmptyTextSlot(side: side) else { return }
+        let img = pending.remove(at: idx)
+        selectedPending = nil
+        put(img, slotId: sid)
     }
 
     private func pillButton(_ title: String, primary: Bool, insets: UIEdgeInsets = UIEdgeInsets(top: 8, left: 16, bottom: 8, right: 16)) -> PillButton {
@@ -1144,6 +1286,7 @@ final class BubblePackEditorViewController: UIViewController,
         // updateSummary 本身的统计逻辑一字没动，这里只刷新工具栏布局。
         toolbarFlow.setNeedsLayout()
         toolbarFlow.invalidateIntrinsicContentSize()
+        refreshPending()
     }
 
     private func colorBubble(_ bub: BubbleView, slot: BubbleSlot, night: Bool) {
@@ -1285,10 +1428,15 @@ final class BubblePackEditorViewController: UIViewController,
             group.label.textColor = c("text3")
             group.refreshPillColors(track: c("line"), thumb: dark ? bubbleColor(hex: "#3A3A3C") : .white, selected: c("text"), plain: c("text2"))
         }
-        for b in [batchBtn, copyBtn, clearBtn, scaleBtn] {
+        for b in [batchBtn, copyBtn, clearBtn, scaleBtn, pendingLeftBtn, pendingRightBtn] {
             b?.strokeColor = c("line")
             b?.setTitleColor(c("text2"), for: .normal)
         }
+        pendingCard.backgroundColor = c("card")
+        pendingCard.layer.borderColor = c("line").cgColor
+        pendingTitle.textColor = c("text")
+        pendingSub.textColor = c("text3")
+        pendingHint.textColor = c("accent")
         exportBtn.fillColor = c("accent")
         exportBtn.glowColor = c("accent")
 
@@ -1447,6 +1595,8 @@ final class BubblePackEditorViewController: UIViewController,
     @objc private func clearAll() {
         state.removeAll()
         unrecognized.removeAll()
+        pending.removeAll()
+        selectedPending = nil
         refresh()
     }
 
@@ -1465,6 +1615,13 @@ final class BubblePackEditorViewController: UIViewController,
     // MARK: - 放图
 
     private func pickForSlotId(_ sid: String) {
+        // 待分配已选中一张图时，点气泡 = 直接放进这个格子（不打开相册）。
+        if let idx = selectedPending, idx < pending.count {
+            let img = pending.remove(at: idx)
+            selectedPending = nil
+            put(img, slotId: sid)
+            return
+        }
         pickingSlotId = sid
         presentPickerMulti(false)
     }
@@ -1513,13 +1670,10 @@ final class BubblePackEditorViewController: UIViewController,
         for r in results {
             r.itemProvider.loadObject(ofClass: UIImage.self) { [weak self] obj, _ in
                 guard let self, let img = obj as? UIImage else { return }
-                // ObjC 版直接 append "png"，foo.png 会变成 foo.png.png 而认错槽位；
-                // 这里名字自带图片后缀时不再追加。
-                let raw = r.itemProvider.suggestedName ?? "image"
-                let ext = (raw as NSString).pathExtension.lowercased()
-                let name = ["png", "jpg", "jpeg", "webp", "heic"].contains(ext) ? raw : raw + ".png"
+                // 批量导入不再按文件名自动认：全部进待分配，由用户手动选左/右或点气泡指定。
                 DispatchQueue.main.async {
-                    self.placeImage(img, fileName: name)
+                    self.pending.append(img)
+                    self.refreshPending()
                 }
             }
         }
