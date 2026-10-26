@@ -57,6 +57,8 @@ enum SettingsContent {
             ChangelogEntry(tag: "优化", text: "优化待分配：放左边/放右边两个按钮等宽。"),
             ChangelogEntry(tag: "优化", text: "优化导出按钮：改成通栏长条，去掉阴影，加 1 磅白色描边。"),
             ChangelogEntry(tag: "优化", text: "优化夜间版：不管选不做还是要做，日间/夜间切换一直显示。"),
+            ChangelogEntry(tag: "优化", text: "优化气泡包预览顶栏：去掉“正在编辑日间版/夜间版”，只显示当前命名。"),
+            ChangelogEntry(tag: "优化", text: "优化气泡包预览：长按文字气泡可修改预览文字（退出重进保留），不影响导出。"),
             ChangelogEntry(tag: "修复", text: "修复气泡包聊天区左右留白边的问题：聊天底贴满手机框，气泡间距不变。"),
             ChangelogEntry(tag: "修复", text: "修复 App 内签名完成后校验误报「签名校验失败」、签名文件被删除的问题。"),
             ChangelogEntry(tag: "修复", text: "修复启动图在打开瞬间闪过紫色的问题。"),

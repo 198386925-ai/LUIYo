@@ -546,6 +546,9 @@ final class BubblePackEditorViewController: UIViewController,
     private var chatStack: UIStackView!
     private var inputBar: UIView!
     private var phoneTip: UILabel!
+    // 长按改预览文字：sid -> 自定义文字，存 UserDefaults，退出重进还在。
+    private let previewTextDefaultsKey = "bubblePreviewCustomTexts"
+    private var previewTextOverrides: [String: String] = [:]
     private var summaryLabel: UILabel!
     private var progressBar: UIView!
     private var progressFillW: NSLayoutConstraint!
@@ -616,6 +619,7 @@ final class BubblePackEditorViewController: UIViewController,
         textFileNames = [:]
         otherBubbles = [:]
         otherFileNames = [:]
+        previewTextOverrides = UserDefaults.standard.dictionary(forKey: previewTextDefaultsKey) as? [String: String] ?? [:]
 
         buildScrollView()
         buildHeader()
@@ -1490,6 +1494,12 @@ final class BubblePackEditorViewController: UIViewController,
         bub.category = isOther ? slot.type : nil
         let sid = slot.identifier
         bub.onDelete = { [weak self] in self?.removeSlotId(sid) }
+        if !isOther {
+            // 长按文字气泡改预览文字（其它气泡不参与）；× 按钮上的触摸不触发。
+            let lp = UILongPressGestureRecognizer(target: self, action: #selector(editPreviewText(_:)))
+            lp.delegate = bub
+            bub.addGestureRecognizer(lp)
+        }
         if isOther { otherBubbles[sid] = bub } else { textBubbles[sid] = bub }
 
         let fn = UILabel()
@@ -1525,6 +1535,33 @@ final class BubblePackEditorViewController: UIViewController,
             }
         }
         return row
+    }
+
+    // 长按文字气泡改预览文字：弹窗输入，确定后刷新预览；清空恢复默认；存 UserDefaults。
+    @objc private func editPreviewText(_ g: UILongPressGestureRecognizer) {
+        guard g.state == .began, let bub = g.view as? BubbleView else { return }
+        guard let sid = textBubbles.first(where: { $0.value === bub })?.key else { return }
+        let def = BubbleNaming.shared.textSlots().first(where: { $0.identifier == sid })?.cnName ?? ""
+        let cur = previewTextOverrides[sid] ?? def
+        let alert = UIAlertController(title: "修改预览文字", message: nil, preferredStyle: .alert)
+        alert.addTextField { tf in
+            tf.text = cur
+            tf.placeholder = "留空恢复默认"
+            tf.clearButtonMode = .whileEditing
+        }
+        alert.addAction(UIAlertAction(title: "取消", style: .cancel))
+        alert.addAction(UIAlertAction(title: "确定", style: .default) { [weak self] _ in
+            guard let self else { return }
+            let t = alert.textFields?.first?.text?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            if t.isEmpty {
+                self.previewTextOverrides.removeValue(forKey: sid)
+            } else {
+                self.previewTextOverrides[sid] = t
+            }
+            UserDefaults.standard.set(self.previewTextOverrides, forKey: self.previewTextDefaultsKey)
+            self.refresh()
+        })
+        present(alert, animated: true)
     }
 
     private func buildChat() {
@@ -1581,12 +1618,12 @@ final class BubblePackEditorViewController: UIViewController,
             if let it {
                 // 微信使用效果：图是气泡皮，拉伸铺满气泡当背景，字在上面；
                 // 气泡大小按消息内容，文件名下只写原图尺寸，不再写显示尺寸。
-                let txt = bub.isOther ? slot.desc : slot.cnName
+                let txt = bub.isOther ? slot.desc : (previewTextOverrides[slot.identifier] ?? slot.cnName)
                 bub.showImage(it.image, placeholderText: txt)
                 fn.text = String(format: "%@\n%ld×%ld",
                                  self.outName(slot, theme: theme), it.w, it.h)
             } else {
-                let txt = bub.isOther ? slot.desc : slot.cnName
+                let txt = bub.isOther ? slot.desc : (previewTextOverrides[slot.identifier] ?? slot.cnName)
                 bub.showEmpty(withText: txt)
                 fn.text = self.outName(slot, theme: theme)
             }
@@ -1867,7 +1904,7 @@ final class BubblePackEditorViewController: UIViewController,
         progressFillW = progressBar.subviews.first?.widthAnchor.constraint(equalTo: progressBar.widthAnchor, multiplier: pct)
         progressFillW?.isActive = true
 
-        phoneTip.text = "正在编辑\(viewNight ? "夜间版" : "日间版") · 当前命名：\(mode == 0 ? "中文名" : "微信英文名")"
+        phoneTip.text = "当前命名：\(mode == 0 ? "中文名" : "微信英文名")"
         copyBtn.isHidden = !wantsNight
         exportBtn.isEnabled = day == need
         noteLabel.text = mode == 0
