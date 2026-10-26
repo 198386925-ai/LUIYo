@@ -58,6 +58,11 @@ enum VersionPopup {
         let l2: String
         let l3: String
         let downloadURL: URL?
+        /// True only for the 检查更新 background-discovery popup: its
+        /// 更新 button jumps to the Settings 检查更新 page instead of
+        /// opening the feed IPA in Safari. The version-state soft
+        /// popup keeps the Safari behaviour (default false).
+        let jumpToUpdateCheck: Bool = false
     }
 
     static func checkIfNeeded(hostWindow: UIWindow) {
@@ -153,8 +158,10 @@ enum VersionPopup {
     /// NEWER build in the feed — present the same soft （蓝紫）
     /// update popup the version-state path uses, at most once per
     /// discovered build (persisted, so relaunching does not nag
-    /// again for the same build). The popup's 更新 button opens
-    /// the feed IPA in Safari, exactly like the soft state entry.
+    /// again for the same build). Build 7: this popup's 更新 button
+    /// jumps to the Settings 检查更新 page (in-app download / sign /
+    /// install) instead of opening the feed IPA in Safari; the
+    /// version-state soft entry keeps the Safari behaviour.
     /// Yields silently when the launch check has not run yet (no
     /// host window), when another popup is already up or queued,
     /// or when this build was already offered.
@@ -175,9 +182,39 @@ enum VersionPopup {
             title: "请尽快更新\(version)版本",
             l2: "发现新版 \(version) (Build \(build))，建议立即更新",
             l3: firstLine.isEmpty ? "本次更新：优化体验，修复已知问题。" : firstLine,
-            downloadURL: downloadURL
+            downloadURL: downloadURL,
+            jumpToUpdateCheck: true
         )
         tryPresent()
+    }
+
+    /// Build 7 jump target for the 检查更新 discovery popup's 更新
+    /// button: switch to the 我的 tab, open the 设置 page, then open
+    /// its 检查更新 page, so the update runs through the in-app
+    /// download / sign / install chain instead of Safari. If a
+    /// settings page is already on top, open the 检查更新 page from
+    /// it; if the 检查更新 page is already open, do nothing.
+    static func jumpToSettingsUpdateCheck() {
+        guard let shell = hostWindowRef?.rootViewController as? MainShellViewController else { return }
+        shell.selectPage(.settings)
+        var topmost: UIViewController = shell
+        while let presented = topmost.presentedViewController {
+            topmost = presented
+        }
+        if topmost is UpdateCheckViewController { return }
+        if let settingsPage = topmost as? AppSettingsViewController {
+            let updatePage = UpdateCheckViewController(updater: AppUpdateChecker.shared, homeModel: shell.homeModel)
+            updatePage.applyPageFont(shell.currentThemeFont)
+            settingsPage.present(updatePage, animated: true)
+            return
+        }
+        let settingsPage = AppSettingsViewController(homeModel: shell.homeModel)
+        settingsPage.applyPageFont(shell.currentThemeFont)
+        topmost.present(settingsPage, animated: true) {
+            let updatePage = UpdateCheckViewController(updater: AppUpdateChecker.shared, homeModel: shell.homeModel)
+            updatePage.applyPageFont(shell.currentThemeFont)
+            settingsPage.present(updatePage, animated: true)
+        }
     }
 
     /// Build 13: the popup is hosted in the app's MAIN window — the
@@ -892,6 +929,16 @@ final class VersionPopupViewController: UIViewController {
             // Shared by the version-ban popup and the account-ban
             // popup — both render through this controller.
             UIApplication.shared.open(AppConfiguration.supportURL, options: [:], completionHandler: nil)
+            return
+        }
+        if payload.jumpToUpdateCheck {
+            // 检查更新 discovery popup: jump to the Settings 检查更新
+            // page (in-app download / sign / install) instead of
+            // opening the feed IPA in Safari.
+            dismissPopup()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                VersionPopup.jumpToSettingsUpdateCheck()
+            }
             return
         }
         if let url = payload.downloadURL {
