@@ -313,6 +313,10 @@ final class ChangelogViewController: UIViewController {
         view.layer.zPosition = 3
         didMove(toParent: shell)
         view.layoutIfNeeded()
+        // Build 0: apply the page font right here at show time instead
+        // of relying on viewWillAppear timing for the overlay path.
+        if let font = pageFont { PageFontApplier.apply(font, to: view) }
+        refreshEntryFonts()
         // Slide the sheet up from below the screen to its rest
         // position (top at 84 pt). Build 67: a spring matching the
         // standard iOS sheet presentation feel, replacing the old

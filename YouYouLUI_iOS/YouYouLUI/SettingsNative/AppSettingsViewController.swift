@@ -63,8 +63,18 @@ enum AppFeedback {
 
     static func arm() { armed = true }
 
+    /// Build 0: one tap plays once. Double sources (tab-bar button +
+    /// switch callback, press-down + release, slider drags) all funnel
+    /// through tap(), so a short window here silences the echo without
+    /// touching any control. Actions still fire every time — only the
+    /// tick itself is deduped, and the first tick always plays.
+    private static var lastTapPlayedAt: TimeInterval = 0
+
     static func tap() {
         guard armed else { return }
+        let now = CFAbsoluteTimeGetCurrent()
+        guard now - lastTapPlayedAt > 0.35 else { return }
+        lastTapPlayedAt = now
         let haptics = hapticsLevel
         if (1...3).contains(haptics) { generators[haptics - 1].impactOccurred() }
         let sound = soundLevel

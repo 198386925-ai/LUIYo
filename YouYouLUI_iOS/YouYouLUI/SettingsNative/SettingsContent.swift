@@ -35,6 +35,9 @@ enum SettingsContent {
             ChangelogEntry(tag: "优化", text: "优化气泡包与更新日志查看页：跟随外观里的自定义字体。"),
             ChangelogEntry(tag: "优化", text: "优化待分配缩略图：格子还是 72 大小，图片按比例完整显示，不再铺满裁切。"),
             ChangelogEntry(tag: "修复", text: "修复已知问题。"),
+            ChangelogEntry(tag: "修复", text: "修复点按反馈偶尔响两次：短时间内只响一次。"),
+            ChangelogEntry(tag: "修复", text: "修复头像圆角展开收起无点按反馈：标题行改为按钮。"),
+            ChangelogEntry(tag: "修复", text: "修复更新日志查看页字体未完全适配：打开时直接应用自定义字体。"),
         ]),
         ChangelogVersion(title: "Version 1.0.8", isCurrent: false, entries: [
             ChangelogEntry(tag: "新增", text: "新增 App 内签名与本机直接安装：在 LUIYo 内用导入的证书给新版本签名并校验，签名后可直接在本机安装，不再跳转其他签名工具。"),

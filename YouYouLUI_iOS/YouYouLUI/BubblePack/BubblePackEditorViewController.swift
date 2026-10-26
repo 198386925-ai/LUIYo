@@ -1308,7 +1308,9 @@ final class BubblePackEditorViewController: UIViewController,
         avatarSection.axis = .vertical
         avatarSection.spacing = 12
 
-        let header = UIView()
+        // Build 0: UIControl, not UIView + gesture — so the global
+        // tap feedback swizzle covers the expand/collapse tap.
+        let header = UIControl()
         header.translatesAutoresizingMaskIntoConstraints = false
         let headerTitle = UILabel()
         headerTitle.translatesAutoresizingMaskIntoConstraints = false
@@ -1330,7 +1332,7 @@ final class BubblePackEditorViewController: UIViewController,
             avatarSectionChevron.widthAnchor.constraint(equalToConstant: 16),
             avatarSectionChevron.heightAnchor.constraint(equalToConstant: 16),
         ])
-        header.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(avatarSectionHeaderTapped)))
+        header.addTarget(self, action: #selector(avatarSectionHeaderTapped), for: .touchUpInside)
 
         avatarSectionContent = UIStackView()
         avatarSectionContent.translatesAutoresizingMaskIntoConstraints = false
