@@ -234,9 +234,22 @@ final class MainShellViewController: UITabBarController {
         // system appearance.
         delegate = self
         pageTabs = ShellPage.allCases.map { page in
+            // Bubble tab uses a custom template image (single bubble with a
+            // knocked-out #, one tint like the other tabs) instead of an
+            // SF Symbol, which has no bubble-with-# glyph.
+            let image: UIImage?
+            let selectedImage: UIImage?
+            if page == .bubble {
+                let custom = UIImage(named: "BubbleTab")?.withRenderingMode(.alwaysTemplate)
+                image = custom
+                selectedImage = custom
+            } else {
+                image = UIImage(systemName: page.iconName)
+                selectedImage = UIImage(systemName: page.selectedIconName)
+            }
             let item = UITabBarItem(title: page.title,
-                                    image: UIImage(systemName: page.iconName),
-                                    selectedImage: UIImage(systemName: page.selectedIconName))
+                                    image: image,
+                                    selectedImage: selectedImage)
             item.tag = page.rawValue
             return item
         }
