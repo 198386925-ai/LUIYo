@@ -198,6 +198,31 @@ final class AppUpdateChecker: NSObject, ObservableObject {
         Int(AppConfiguration.buildNumber) ?? 0
     }
 
+    private var currentVersion: String {
+        AppConfiguration.marketingVersion
+    }
+
+    /// Version-first freshness: a feed entry is newer when its version is
+    /// newer, or the version is equal and its build is higher. Build-only
+    /// comparison falsely offered 1.0.8 Build 38 to a 1.0.9 Build 1 phone
+    /// after the 1.0.9 build-number reset.
+    private static func isNewer(version: String, build: Int, thanVersion: String, build currentBuild: Int) -> Bool {
+        let cmp = compareVersions(version, thanVersion)
+        if cmp != 0 { return cmp > 0 }
+        return build > currentBuild
+    }
+
+    private static func compareVersions(_ a: String, _ b: String) -> Int {
+        let pa = a.split(separator: ".").map { Int($0) ?? 0 }
+        let pb = b.split(separator: ".").map { Int($0) ?? 0 }
+        for i in 0..<max(pa.count, pb.count) {
+            let x = i < pa.count ? pa[i] : 0
+            let y = i < pb.count ? pb[i] : 0
+            if x != y { return x < y ? -1 : 1 }
+        }
+        return 0
+    }
+
     override init() {
         super.init()
         UNUserNotificationCenter.current().delegate = self
@@ -250,7 +275,8 @@ final class AppUpdateChecker: NSObject, ObservableObject {
         guard latestBuild == 0,
               let stored = UserDefaults.standard.dictionary(forKey: Self.pendingDownloadKey),
               let version = stored["version"] as? String,
-              let build = stored["build"] as? Int, build > currentBuild,
+              let build = stored["build"] as? Int,
+              Self.isNewer(version: version, build: build, thanVersion: currentVersion, build: currentBuild),
               let url = stored["url"] as? String, !url.isEmpty
         else { return }
         latestVersion = version
@@ -322,7 +348,7 @@ final class AppUpdateChecker: NSObject, ObservableObject {
         }
         expectedTotalBytes = (asset["size"] as? Int).map { Int64($0) } ?? 0
 
-        if parsed.build > currentBuild {
+        if Self.isNewer(version: parsed.version, build: parsed.build, thanVersion: currentVersion, build: currentBuild) {
             updateFound = true
             phase = .updateAvailable
             statusText = "发现新版 \(parsed.version) (Build \(parsed.build))"
