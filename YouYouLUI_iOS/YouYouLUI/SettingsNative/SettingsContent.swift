@@ -29,11 +29,13 @@ enum SettingsContent {
     ].map { SettingsGuideSection(title: $0.0, body: $0.1) }
 
     static let changelog: [ChangelogVersion] = [
-        ChangelogVersion(title: "Version 1.0.8", isCurrent: true, entries: [
+        ChangelogVersion(title: "Version 1.0.9", isCurrent: true, entries: [
+            ChangelogEntry(tag: "修复", text: "修复已知问题。"),
+        ]),
+        ChangelogVersion(title: "Version 1.0.8", isCurrent: false, entries: [
             ChangelogEntry(tag: "新增", text: "新增 App 内签名与本机直接安装：在 LUIYo 内用导入的证书给新版本签名并校验，签名后可直接在本机安装，不再跳转其他签名工具。"),
             ChangelogEntry(tag: "新增", text: "新增证书详情查看：点证书可看证书名称、团队 ID、描述文件名称、到期时间与包含的设备 UDID；导入证书支持 zip 压缩包，导出同为 zip。"),
-            ChangelogEntry(tag: "新增", text: "新增修改密码：我的账号资料页新增「修改密码」，输入原密码验证后即可设置新密码（至少 8 个字符，需含大写和小写字母各 1 个），修改后当前设备保持登录。"),
-            ChangelogEntry(tag: "新增", text: "新增气泡包：底栏新增「气泡包」页，点气泡放图，自动按规则命名，导出 zip 即可上传（导出需授权）。"),
+            ChangelogEntry(tag: "新增", text: "新增气泡包：底栏新增「气泡包」页，点气泡放图，自动按规则命名，导出 zip 即可上传。"),
             ChangelogEntry(tag: "新增", text: "新增气泡包英文文件名隐藏开关：工具栏新增「英文文件名」切换，藏起其它气泡旁的英文文件名，导出 zip 不受影响。"),
             ChangelogEntry(tag: "新增", text: "新增气泡包批量导入待分配：批量导入的图不再按文件名自动认，先进待分配区，点图后选左边/右边顺序填空。"),
             ChangelogEntry(tag: "新增", text: "新增气泡包其它气泡待分配：待分配区新增「放其它」按钮，按顺序填下一个空其它气泡（红包/转账/礼物等）。"),
@@ -46,7 +48,6 @@ enum SettingsContent {
             ChangelogEntry(tag: "优化", text: "优化气泡包工具栏：倍数移到命名后面，改用下拉选择器。"),
             ChangelogEntry(tag: "优化", text: "优化气泡包导入：删除点气泡导入入口，图片只从批量导入进待分配区。"),
             ChangelogEntry(tag: "优化", text: "优化气泡包预览：移除图片大小滑条，预览恢复真实尺寸（像素 ÷ 倍数）。"),
-            ChangelogEntry(tag: "优化", text: "优化导出验证：不再联网复核，只看本地授权（启动门与心跳已验证过），有授权直接导出。"),
             ChangelogEntry(tag: "优化", text: "优化气泡包预览：导入图片不再按自己尺寸贴出来，而是像微信里真正用起来那样拉伸铺满整个气泡当皮，字显示在上面。"),
             ChangelogEntry(tag: "优化", text: "优化气泡包工作区：文字与其它分开，各自有批量导图与待分配（上面只放左边/右边，下面只放其它），不再共用一套。"),
             ChangelogEntry(tag: "优化", text: "优化待分配：放进气泡后图不再从待分配消失（只有清空才走），可多选打勾按顺序批量放（勾上显示 1、2、3，第一张进第一个空位）。"),
@@ -61,11 +62,6 @@ enum SettingsContent {
             ChangelogEntry(tag: "优化", text: "优化气泡包预览：长按文字气泡可修改预览文字（退出重进保留），不影响导出。"),
             ChangelogEntry(tag: "修复", text: "修复气泡包聊天区左右留白边的问题：聊天底贴满手机框，气泡间距不变。"),
             ChangelogEntry(tag: "修复", text: "修复 App 内签名完成后校验误报「签名校验失败」、签名文件被删除的问题。"),
-            ChangelogEntry(tag: "修复", text: "修复启动图在打开瞬间闪过紫色的问题。"),
-            ChangelogEntry(tag: "修复", text: "修复切换注册 / 登录时白色面板底部闪现直角的问题。"),
-            ChangelogEntry(tag: "修复", text: "修复打开 App 时系统启动屏闪紫的问题：启动屏改用与启动图一致的蓝色渐变。"),
-            ChangelogEntry(tag: "修复", text: "修复切换登录 / 注册时表单内容短暂空白的问题。"),
-            ChangelogEntry(tag: "修复", text: "更新日志查看页的卡片改为毛玻璃效果"),
             ChangelogEntry(tag: "修复", text: "修复气泡包批量导入时认不出的图被塞进文字气泡、导致导出文件名错乱的问题：认不出的图改为单独提示，不再进入导出。"),
             ChangelogEntry(tag: "修复", text: "修复气泡包编辑器界面与网页版不一致的问题：选中药丸与导出按钮恢复蓝色、气泡尾巴与空心虚线边框正常显示、底部输入框补齐、滚动时底栏不再消失。"),
             ChangelogEntry(tag: "修复", text: "修复气泡包编辑器进度条圆角过大导致显示为透镜形的问题：圆角改为条高的一半，恢复正常胶囊条。"),
