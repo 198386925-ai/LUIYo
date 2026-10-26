@@ -511,6 +511,52 @@ final class FlowLayoutView: UIView {
 
 // MARK: - 编辑界面
 
+// MARK: - 头像导入格子（Build 106）：64 方格，有图显示图、没图显示 +，点开相册单选。
+final class AvatarTileView: UIView {
+    let imageView = UIImageView()
+    private let plus = UILabel()
+    var onTap: (() -> Void)?
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        translatesAutoresizingMaskIntoConstraints = false
+        backgroundColor = .systemGray6
+        layer.cornerRadius = 14
+        clipsToBounds = true
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        imageView.contentMode = .scaleAspectFill
+        imageView.clipsToBounds = true
+        addSubview(imageView)
+        plus.translatesAutoresizingMaskIntoConstraints = false
+        plus.text = "+"
+        plus.font = UIFont.systemFont(ofSize: 28, weight: .light)
+        plus.textColor = .secondaryLabel
+        plus.textAlignment = .center
+        addSubview(plus)
+        NSLayoutConstraint.activate([
+            widthAnchor.constraint(equalToConstant: 64),
+            heightAnchor.constraint(equalToConstant: 64),
+            imageView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            imageView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            imageView.topAnchor.constraint(equalTo: topAnchor),
+            imageView.bottomAnchor.constraint(equalTo: bottomAnchor),
+            plus.centerXAnchor.constraint(equalTo: centerXAnchor),
+            plus.centerYAnchor.constraint(equalTo: centerYAnchor),
+        ])
+        addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(tapped)))
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    @objc private func tapped() { onTap?() }
+
+    func setImage(_ img: UIImage?) {
+        imageView.image = img
+        plus.isHidden = img != nil
+    }
+}
+
 final class BubblePackEditorViewController: UIViewController,
     UIImagePickerControllerDelegate, UINavigationControllerDelegate, PHPickerViewControllerDelegate {
     /// 导出完成回调，zipURL 是临时目录下的 气泡包.zip
@@ -594,6 +640,27 @@ final class BubblePackEditorViewController: UIViewController,
     private var otherBubbles: [String: BubbleView] = [:]
     private var otherFileNames: [String: UILabel] = [:]
 
+    // 页面字体（Build 106）：壳子在创建时给设置页的字体，字体变化时壳子重发。
+    private var pageFont: UIFont?
+
+    // 预览头像（Build 106）：左右各一张用户导入的图，只在预览里显示，不导出；
+    // 圆角 0 方 → 1 圆，图和圆角都持久化，退出重进还在。
+    private let avatarRadiusDefaultsKey = "bubbleAvatarCornerRadius"
+    private var avatarRadiusFraction: CGFloat = 0.5
+    private var leftAvatarImage: UIImage?
+    private var rightAvatarImage: UIImage?
+    private var avatarViews: [String: UIImageView] = [:]
+    private var avatarPickerSideIsLeft = true
+    private var avatarPickerActive = false
+    private var avatarSection: UIStackView!
+    private var avatarSectionContent: UIStackView!
+    private var avatarSectionChevron: UIImageView!
+    private var avatarSectionExpanded = false
+    private var leftAvatarTile: AvatarTileView!
+    private var rightAvatarTile: AvatarTileView!
+    private var avatarRadiusSlider: UISlider!
+    private var avatarRadiusValueLabel: UILabel!
+
     private var mode = 0
     private var scaleOpt = 0  // 0 自动 1 不写 2 @2x 3 @3x
     private var wantsNight = false
@@ -620,6 +687,7 @@ final class BubblePackEditorViewController: UIViewController,
         otherBubbles = [:]
         otherFileNames = [:]
         previewTextOverrides = UserDefaults.standard.dictionary(forKey: previewTextDefaultsKey) as? [String: String] ?? [:]
+        loadAvatars()
 
         buildScrollView()
         buildHeader()
@@ -632,6 +700,103 @@ final class BubblePackEditorViewController: UIViewController,
         buildOtherChat()
         applyTheme()
         refresh()
+    }
+
+    // MARK: - 页面字体（Build 106）
+
+    /// 壳子给的设置页字体；视图已加载时立即应用，否则在 viewWillAppear 时应用。
+    func applyPageFont(_ font: UIFont?) {
+        pageFont = font
+        if isViewLoaded { PageFontApplier.apply(font, to: view) }
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        PageFontApplier.apply(pageFont, to: view)
+    }
+
+    // MARK: - 预览头像（Build 106）
+
+    private var avatarDirectory: URL {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("LUIYoAvatars", isDirectory: true)
+    }
+
+    private func avatarFileURL(left: Bool) -> URL {
+        avatarDirectory.appendingPathComponent(left ? "left.png" : "right.png")
+    }
+
+    private func loadAvatars() {
+        if let saved = UserDefaults.standard.object(forKey: avatarRadiusDefaultsKey) as? Double {
+            avatarRadiusFraction = CGFloat(min(max(saved, 0), 1))
+        }
+        if let data = try? Data(contentsOf: avatarFileURL(left: true)) {
+            leftAvatarImage = UIImage(data: data)
+        }
+        if let data = try? Data(contentsOf: avatarFileURL(left: false)) {
+            rightAvatarImage = UIImage(data: data)
+        }
+    }
+
+    private func saveAvatarImage(_ img: UIImage, left: Bool) {
+        try? FileManager.default.createDirectory(at: avatarDirectory, withIntermediateDirectories: true)
+        if let data = img.pngData() {
+            try? data.write(to: avatarFileURL(left: left), options: .atomic)
+        }
+    }
+
+    /// 一行头像的显示：有图才出现，没图整行布局不变。
+    private func configureAvatarView(_ avatar: UIImageView, isMine: Bool) {
+        let img = isMine ? rightAvatarImage : leftAvatarImage
+        avatar.image = img
+        avatar.isHidden = img == nil
+        avatar.layer.cornerRadius = avatarRadiusFraction * 20
+    }
+
+    private func refreshAvatarViews() {
+        for (sid, avatar) in avatarViews {
+            if let bub = textBubbles[sid] {
+                configureAvatarView(avatar, isMine: bub.isMine)
+            }
+        }
+    }
+
+    private func refreshAvatarTiles() {
+        leftAvatarTile.setImage(leftAvatarImage)
+        rightAvatarTile.setImage(rightAvatarImage)
+        avatarRadiusSlider.value = Float(avatarRadiusFraction)
+        avatarRadiusValueLabel.text = "\(Int(round(avatarRadiusFraction * 100)))%"
+    }
+
+    @objc private func avatarSectionHeaderTapped() {
+        avatarSectionExpanded.toggle()
+        avatarSectionContent.isHidden = !avatarSectionExpanded
+        avatarSectionChevron.image = UIImage(systemName: avatarSectionExpanded ? "chevron.up" : "chevron.down")
+    }
+
+    @objc private func avatarRadiusChanged(_ slider: UISlider) {
+        avatarRadiusFraction = CGFloat(slider.value)
+        UserDefaults.standard.set(Double(slider.value), forKey: avatarRadiusDefaultsKey)
+        avatarRadiusValueLabel.text = "\(Int(round(slider.value * 100)))%"
+        refreshAvatarViews()
+    }
+
+    private func presentAvatarPicker(left: Bool) {
+        avatarPickerSideIsLeft = left
+        avatarPickerActive = true
+        if #available(iOS 14, *) {
+            var config = PHPickerConfiguration()
+            config.selectionLimit = 1
+            config.filter = .images
+            let picker = PHPickerViewController(configuration: config)
+            picker.delegate = self
+            present(picker, animated: true)
+            return
+        }
+        let picker = UIImagePickerController()
+        picker.delegate = self
+        picker.sourceType = .photoLibrary
+        present(picker, animated: true)
     }
 
     private func c(_ key: String) -> UIColor {
@@ -1117,6 +1282,7 @@ final class BubblePackEditorViewController: UIViewController,
 
         toolbar.addSubview(toolbarFlow)
         toolbar.addSubview(exportBtn)
+        buildAvatarSection()
         NSLayoutConstraint.activate([
             toolbarFlow.topAnchor.constraint(equalTo: toolbar.topAnchor, constant: 12),
             toolbarFlow.leadingAnchor.constraint(equalTo: toolbar.leadingAnchor, constant: 16),
@@ -1124,9 +1290,104 @@ final class BubblePackEditorViewController: UIViewController,
             exportBtn.topAnchor.constraint(equalTo: toolbarFlow.bottomAnchor, constant: 10),
             exportBtn.leadingAnchor.constraint(equalTo: toolbar.leadingAnchor, constant: 16),
             exportBtn.trailingAnchor.constraint(equalTo: toolbar.trailingAnchor, constant: -16),
-            exportBtn.bottomAnchor.constraint(equalTo: toolbar.bottomAnchor, constant: -12),
+            avatarSection.topAnchor.constraint(equalTo: exportBtn.bottomAnchor, constant: 10),
+            avatarSection.leadingAnchor.constraint(equalTo: toolbar.leadingAnchor, constant: 16),
+            avatarSection.trailingAnchor.constraint(equalTo: toolbar.trailingAnchor, constant: -16),
+            avatarSection.bottomAnchor.constraint(equalTo: toolbar.bottomAnchor, constant: -12),
         ])
         contentStack.addArrangedSubview(toolbar)
+    }
+
+    // 头像圆角（Build 106）：不另起卡片，直接贴在工具栏里、导出 zip 条下面；
+    // 标题行点开/收起，收起时只剩标题行。
+    private func buildAvatarSection() {
+        avatarSection = UIStackView()
+        avatarSection.translatesAutoresizingMaskIntoConstraints = false
+        avatarSection.axis = .vertical
+        avatarSection.spacing = 12
+
+        let header = UIView()
+        header.translatesAutoresizingMaskIntoConstraints = false
+        let headerTitle = UILabel()
+        headerTitle.translatesAutoresizingMaskIntoConstraints = false
+        headerTitle.text = "头像圆角"
+        headerTitle.font = UIFont.systemFont(ofSize: 14, weight: .semibold)
+        headerTitle.textColor = .label
+        avatarSectionChevron = UIImageView(image: UIImage(systemName: "chevron.down"))
+        avatarSectionChevron.translatesAutoresizingMaskIntoConstraints = false
+        avatarSectionChevron.tintColor = .secondaryLabel
+        avatarSectionChevron.contentMode = .scaleAspectFit
+        header.addSubview(headerTitle)
+        header.addSubview(avatarSectionChevron)
+        NSLayoutConstraint.activate([
+            header.heightAnchor.constraint(equalToConstant: 28),
+            headerTitle.leadingAnchor.constraint(equalTo: header.leadingAnchor),
+            headerTitle.centerYAnchor.constraint(equalTo: header.centerYAnchor),
+            avatarSectionChevron.trailingAnchor.constraint(equalTo: header.trailingAnchor),
+            avatarSectionChevron.centerYAnchor.constraint(equalTo: header.centerYAnchor),
+            avatarSectionChevron.widthAnchor.constraint(equalToConstant: 16),
+            avatarSectionChevron.heightAnchor.constraint(equalToConstant: 16),
+        ])
+        header.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(avatarSectionHeaderTapped)))
+
+        avatarSectionContent = UIStackView()
+        avatarSectionContent.translatesAutoresizingMaskIntoConstraints = false
+        avatarSectionContent.axis = .vertical
+        avatarSectionContent.spacing = 12
+        avatarSectionContent.isHidden = true
+
+        leftAvatarTile = AvatarTileView()
+        leftAvatarTile.onTap = { [weak self] in self?.presentAvatarPicker(left: true) }
+        rightAvatarTile = AvatarTileView()
+        rightAvatarTile.onTap = { [weak self] in self?.presentAvatarPicker(left: false) }
+        let hint = UILabel()
+        hint.text = "点格子从相册选图"
+        hint.font = UIFont.systemFont(ofSize: 12)
+        hint.textColor = .secondaryLabel
+        let tilesRow = UIStackView(arrangedSubviews: [tileColumn(tile: leftAvatarTile, title: "左头像"),
+                                                      tileColumn(tile: rightAvatarTile, title: "右头像"),
+                                                      hint])
+        tilesRow.axis = .horizontal
+        tilesRow.spacing = 16
+        tilesRow.alignment = .center
+
+        let radiusLabel = UILabel()
+        radiusLabel.text = "圆角"
+        radiusLabel.font = UIFont.systemFont(ofSize: 13)
+        radiusLabel.textColor = c("text2")
+        avatarRadiusSlider = UISlider()
+        avatarRadiusSlider.minimumValue = 0
+        avatarRadiusSlider.maximumValue = 1
+        avatarRadiusValueLabel = UILabel()
+        avatarRadiusValueLabel.font = UIFont.systemFont(ofSize: 12)
+        avatarRadiusValueLabel.textColor = .secondaryLabel
+        avatarRadiusValueLabel.textAlignment = .right
+        avatarRadiusValueLabel.widthAnchor.constraint(equalToConstant: 44).isActive = true
+        avatarRadiusSlider.addTarget(self, action: #selector(avatarRadiusChanged(_:)), for: .valueChanged)
+        let sliderRow = UIStackView(arrangedSubviews: [radiusLabel, avatarRadiusSlider, avatarRadiusValueLabel])
+        sliderRow.axis = .horizontal
+        sliderRow.spacing = 10
+        sliderRow.alignment = .center
+
+        avatarSectionContent.addArrangedSubview(tilesRow)
+        avatarSectionContent.addArrangedSubview(sliderRow)
+        avatarSection.addArrangedSubview(header)
+        avatarSection.addArrangedSubview(avatarSectionContent)
+        toolbar.addSubview(avatarSection)
+        refreshAvatarTiles()
+    }
+
+    private func tileColumn(tile: AvatarTileView, title: String) -> UIStackView {
+        let label = UILabel()
+        label.text = title
+        label.font = UIFont.systemFont(ofSize: 12)
+        label.textColor = .secondaryLabel
+        label.textAlignment = .center
+        let col = UIStackView(arrangedSubviews: [tile, label])
+        col.axis = .vertical
+        col.spacing = 6
+        col.alignment = .center
+        return col
     }
 
     private func groupWithLabel(_ label: String, views: [UIView]) -> GroupContainer {
@@ -1513,11 +1774,27 @@ final class BubblePackEditorViewController: UIViewController,
         row.axis = .horizontal
         row.spacing = 10
         row.alignment = .center
+        var avatar: UIImageView?
+        if !isOther {
+            // 预览头像（Build 106）：文字气泡行左右各一张，接收方在左、发送方在右；
+            // 其它气泡行不加。40 方，圆角由工具栏滑条定。
+            let av = UIImageView()
+            av.translatesAutoresizingMaskIntoConstraints = false
+            av.contentMode = .scaleAspectFill
+            av.clipsToBounds = true
+            av.widthAnchor.constraint(equalToConstant: 40).isActive = true
+            av.heightAnchor.constraint(equalToConstant: 40).isActive = true
+            configureAvatarView(av, isMine: bub.isMine)
+            avatarViews[sid] = av
+            avatar = av
+        }
         if bub.isMine {
             fn.textAlignment = .right
             row.addArrangedSubview(fn)
             row.addArrangedSubview(bub)
+            if let avatar { row.addArrangedSubview(avatar) }
         } else {
+            if let avatar { row.addArrangedSubview(avatar) }
             row.addArrangedSubview(bub)
             row.addArrangedSubview(fn)
         }
@@ -2025,7 +2302,23 @@ final class BubblePackEditorViewController: UIViewController,
 
     func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
         picker.dismiss(animated: true)
-        if results.isEmpty { return }
+        if results.isEmpty { avatarPickerActive = false; return }
+        if avatarPickerActive {
+            // 头像单选（Build 106）：只取第一张，存文件 + 刷新预览，不进待分配。
+            avatarPickerActive = false
+            guard let first = results.first else { return }
+            first.itemProvider.loadObject(ofClass: UIImage.self) { [weak self] obj, _ in
+                guard let self, let img = obj as? UIImage else { return }
+                DispatchQueue.main.async {
+                    let left = self.avatarPickerSideIsLeft
+                    if left { self.leftAvatarImage = img } else { self.rightAvatarImage = img }
+                    self.saveAvatarImage(img, left: left)
+                    self.refreshAvatarTiles()
+                    self.refreshAvatarViews()
+                }
+            }
+            return
+        }
         for r in results {
             r.itemProvider.loadObject(ofClass: UIImage.self) { [weak self] obj, _ in
                 guard let self, let img = obj as? UIImage else { return }
@@ -2046,6 +2339,16 @@ final class BubblePackEditorViewController: UIViewController,
     func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
         picker.dismiss(animated: true) {
             guard let img = info[.originalImage] as? UIImage else { return }
+            if self.avatarPickerActive {
+                // 头像单选的旧系统回落（Build 106）：同上，不进待分配。
+                self.avatarPickerActive = false
+                let left = self.avatarPickerSideIsLeft
+                if left { self.leftAvatarImage = img } else { self.rightAvatarImage = img }
+                self.saveAvatarImage(img, left: left)
+                self.refreshAvatarTiles()
+                self.refreshAvatarViews()
+                return
+            }
             // 点气泡导入已删：旧系统相册回落也只进当次目标工作区的待分配，不再直放。
             if self.pickerTargetOther {
                 self.pendingOther.append(img)

@@ -91,6 +91,8 @@ extension MainShellViewController {
         }
         let controller = BubblePackEditorViewController()
         controller.view.backgroundColor = .clear
+        // Build 106：气泡包跟设置页的字体走（字体变化时 distributeFonts 重发）。
+        controller.applyPageFont(self.fontController.font(for: .settings))
         controller.exportAuthorizationCheck = { [weak self] completion in
             self?.verifyBubbleExportAuthorization(completion: completion)
         }

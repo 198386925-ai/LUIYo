@@ -90,6 +90,7 @@ final class ChangelogViewController: UIViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         PageFontApplier.apply(pageFont, to: view)
+        refreshEntryFonts()
     }
 
     override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
@@ -399,13 +400,20 @@ final class ChangelogViewController: UIViewController {
         return card
     }
 
-    private func entryLabel(_ entry: ChangelogEntry) -> UILabel {
-        let label = UILabel()
-        label.numberOfLines = 0
+    // Entry labels whose fonts follow the page font (Build 106):
+    // the body/tag are attributed text, so PageFontApplier's
+    // label.font swap never reaches them — the strings are
+    // built from the current page font instead, and rebuilt
+    // on every appearance.
+    private var entryLabelRefs: [(UILabel, ChangelogEntry)] = []
+
+    private func attributedEntryText(_ entry: ChangelogEntry) -> NSAttributedString {
         let para = NSMutableParagraphStyle()
         para.lineSpacing = 3
+        let bodyFont = pageFont?.withSize(13) ?? UIFont.systemFont(ofSize: 13)
+        let tagFont = pageFont?.withSize(13) ?? UIFont.systemFont(ofSize: 13, weight: .semibold)
         let bodyAttributes: [NSAttributedString.Key: Any] = [
-            .font: UIFont.systemFont(ofSize: 13),
+            .font: bodyFont,
             .foregroundColor: UIColor.secondaryLabel,
             .paragraphStyle: para,
         ]
@@ -420,7 +428,7 @@ final class ChangelogViewController: UIViewController {
         let text = NSMutableAttributedString()
         if let tag = entry.tag, !tag.isEmpty {
             text.append(NSAttributedString(string: tag, attributes: [
-                .font: UIFont.systemFont(ofSize: 13, weight: .semibold),
+                .font: tagFont,
                 .foregroundColor: prefixColor(tag),
                 .paragraphStyle: para,
             ]))
@@ -428,8 +436,21 @@ final class ChangelogViewController: UIViewController {
         } else {
             text.append(NSAttributedString(string: body, attributes: bodyAttributes))
         }
-        label.attributedText = text
+        return text
+    }
+
+    private func entryLabel(_ entry: ChangelogEntry) -> UILabel {
+        let label = UILabel()
+        label.numberOfLines = 0
+        label.attributedText = attributedEntryText(entry)
+        entryLabelRefs.append((label, entry))
         return label
+    }
+
+    private func refreshEntryFonts() {
+        for (label, entry) in entryLabelRefs {
+            label.attributedText = attributedEntryText(entry)
+        }
     }
 
     /// Kind-word colours sampled from the approved reference.

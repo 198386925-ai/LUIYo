@@ -30,6 +30,9 @@ enum SettingsContent {
 
     static let changelog: [ChangelogVersion] = [
         ChangelogVersion(title: "Version 1.0.9", isCurrent: true, entries: [
+            ChangelogEntry(tag: "新增", text: "新增气泡包预览头像：左右两边各一张，可导入自己的图片，只在预览里显示，不导出。"),
+            ChangelogEntry(tag: "新增", text: "新增头像圆角调节：工具栏导出 ZIP 下面可展开/收起，滑条从方到圆。"),
+            ChangelogEntry(tag: "优化", text: "优化气泡包与更新日志查看页：跟随外观里的自定义字体。"),
             ChangelogEntry(tag: "修复", text: "修复已知问题。"),
         ]),
         ChangelogVersion(title: "Version 1.0.8", isCurrent: false, entries: [

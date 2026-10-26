@@ -179,6 +179,7 @@ extension MainShellViewController {
         activeSearchController?.themeFont = homeFont
         existingSettingsHost?.applyPageFont(settingsFont)
         existingRulesHost?.applyPageFont(fontController.font(for: .rules))
+        existingBubbleHost?.applyPageFont(settingsFont)
     }
 
     private static func applyFont(_ font: UIFont?, to appearance: UITabBarAppearance) {
