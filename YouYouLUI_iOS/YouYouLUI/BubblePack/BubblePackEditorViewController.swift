@@ -980,7 +980,8 @@ final class BubblePackEditorViewController: UIViewController,
             let b = UIButton(type: .custom)
             b.translatesAutoresizingMaskIntoConstraints = false
             b.setImage(img, for: .normal)
-            b.imageView?.contentMode = .scaleAspectFill
+            // Build 107：完整显示，不铺满裁切（格子还是 72）。
+            b.imageView?.contentMode = .scaleAspectFit
             b.clipsToBounds = true
             b.layer.cornerRadius = 14
             // 多选：勾上的图蓝边 + 右上角顺序号（按勾的顺序 1、2、3…）。
@@ -1111,7 +1112,8 @@ final class BubblePackEditorViewController: UIViewController,
             let b = UIButton(type: .custom)
             b.translatesAutoresizingMaskIntoConstraints = false
             b.setImage(img, for: .normal)
-            b.imageView?.contentMode = .scaleAspectFill
+            // Build 107：完整显示，不铺满裁切（格子还是 72）。
+            b.imageView?.contentMode = .scaleAspectFit
             b.clipsToBounds = true
             b.layer.cornerRadius = 14
             // 多选：勾上的图蓝边 + 右上角顺序号（按勾的顺序 1、2、3…）。
