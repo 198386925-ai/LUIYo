@@ -510,6 +510,12 @@ final class FlowLayoutView: UIView {
     }
 }
 
+/// 导出文件名输入框：工具栏按 intrinsicContentSize 排布，UITextField 本身
+/// 没有可用宽度，所以给一个固定内在尺寸。
+private final class ExportNameField: UITextField {
+    override var intrinsicContentSize: CGSize { CGSize(width: 200, height: 34) }
+}
+
 // MARK: - 编辑界面
 
 // MARK: - 头像导入格子（Build 106）：64 方格，有图显示图、没图显示 +，点开相册单选。
@@ -560,7 +566,7 @@ final class AvatarTileView: UIView {
 
 final class BubblePackEditorViewController: UIViewController,
     UIImagePickerControllerDelegate, UINavigationControllerDelegate, PHPickerViewControllerDelegate {
-    /// 导出完成回调，zipURL 是临时目录下的 气泡包.zip
+    /// 导出完成回调，zipURL 是临时目录下的 <导出文件名>.zip
     var onExport: ((URL) -> Void)?
     /// 壳子设置的导出授权门：点导出时先问它，回调 true 才真正打包；
     /// 没设置时（编辑器单用）直接导出。页内随便玩，只有导出 zip 过门。
@@ -589,6 +595,8 @@ final class BubblePackEditorViewController: UIViewController,
     private var copyBtn: PillButton!
     private var clearBtn: PillButton!
     private var exportBtn: PillButton!
+    private var exportNameField: ExportNameField!
+    private let exportNameDefaultsKey = "bubbleExportFileName"
     private var phoneCard: UIView!
     private var navView: UIView!
     private var chatStack: UIStackView!
@@ -710,7 +718,10 @@ final class BubblePackEditorViewController: UIViewController,
     /// 壳子给的设置页字体；视图已加载时立即应用，否则在 viewWillAppear 时应用。
     func applyPageFont(_ font: UIFont?) {
         pageFont = font
-        if isViewLoaded { PageFontApplier.apply(font, to: view) }
+        if isViewLoaded {
+            PageFontApplier.apply(font, to: view)
+            exportNameField?.font = font?.withSize(13) ?? UIFont.systemFont(ofSize: 13)
+        }
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -1253,6 +1264,24 @@ final class BubblePackEditorViewController: UIViewController,
         toolbarFlow = FlowLayoutView()
         toolbarFlow.translatesAutoresizingMaskIntoConstraints = false
         toolbarFlow.hSpacing = 14
+
+        exportNameField = ExportNameField()
+        exportNameField.backgroundColor = c("chat")
+        exportNameField.layer.cornerRadius = 17
+        exportNameField.clipsToBounds = true
+        exportNameField.font = pageFont?.withSize(13) ?? UIFont.systemFont(ofSize: 13)
+        exportNameField.textColor = c("text")
+        exportNameField.text = UserDefaults.standard.string(forKey: exportNameDefaultsKey) ?? "气泡包"
+        exportNameField.returnKeyType = .done
+        exportNameField.autocorrectionType = .no
+        exportNameField.spellCheckingType = .no
+        exportNameField.clearButtonMode = .whileEditing
+        let pad = UIView(frame: CGRect(x: 0, y: 0, width: 12, height: 0))
+        exportNameField.leftView = pad
+        exportNameField.leftViewMode = .always
+        exportNameField.delegate = self
+        exportNameField.addTarget(self, action: #selector(exportNameChanged), for: .editingDidEnd)
+        toolbarFlow.addSubview(groupWithLabel("导出文件名", views: [exportNameField]))
 
         modeSeg = PillGroup(titles: ["中文名", "英文名"], selected: 0)
         modeSeg.onChange = { [weak self] _ in self?.modeChanged() }
@@ -2478,7 +2507,19 @@ final class BubblePackEditorViewController: UIViewController,
         performExport()
     }
 
+    @objc private func exportNameChanged() {
+        UserDefaults.standard.set(exportFileName(), forKey: exportNameDefaultsKey)
+    }
+
+    /// 导出文件名：输入框去空白、去路径分隔符；空了就回默认 气泡包。
+    private func exportFileName() -> String {
+        let raw = (exportNameField?.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let clean = raw.replacingOccurrences(of: "/", with: "").replacingOccurrences(of: "\\", with: "")
+        return clean.isEmpty ? "气泡包" : clean
+    }
+
     private func performExport() {
+        UserDefaults.standard.set(exportFileName(), forKey: exportNameDefaultsKey)
         // 唯一一处有意改动：ObjC 版把 PNG 写到临时目录再调 SSZipArchive；
         // 这里直接用 App 现成的 ZipWriter 打包，输出文件名与静默行为一致。
         // 另按提示文案补了夜间 fallback：夜间没放图的槽位导出时沿用日间那张
@@ -2495,7 +2536,7 @@ final class BubblePackEditorViewController: UIViewController,
             }
         }
         if entries.isEmpty { return }
-        let zipURL = FileManager.default.temporaryDirectory.appendingPathComponent("气泡包.zip")
+        let zipURL = FileManager.default.temporaryDirectory.appendingPathComponent(exportFileName() + ".zip")
         try? FileManager.default.removeItem(at: zipURL)
         let data = ZipWriter.archive(entries: entries)
         do {
@@ -2513,5 +2554,12 @@ extension BubblePackEditorViewController: UIDocumentPickerDelegate {
     func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
         guard let url = urls.first else { return }
         importZip(at: url)
+    }
+}
+
+extension BubblePackEditorViewController: UITextFieldDelegate {
+    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+        textField.resignFirstResponder()
+        return true
     }
 }
