@@ -1,5 +1,6 @@
 import PhotosUI
 import UIKit
+import UniformTypeIdentifiers
 
 /// 气泡包编辑界面（Swift 版，LUBubblePackEditorViewController 的一比一移植）
 ///
@@ -584,6 +585,7 @@ final class BubblePackEditorViewController: UIViewController,
     private var scaleBtn: PillButton!
     private var hideEnglishFileNames = false
     private var batchBtn: PillButton!
+    private var importBtn: PillButton!
     private var copyBtn: PillButton!
     private var clearBtn: PillButton!
     private var exportBtn: PillButton!
@@ -629,6 +631,7 @@ final class BubblePackEditorViewController: UIViewController,
     private var pickerTargetOther = false
     private var otherBatchRow: UIView!
     private var otherBatchBtn: PillButton!
+    private var otherImportBtn: PillButton!
     private var otherPendingCard: UIView!
     private var otherPendingTitle: UILabel!
     private var otherPendingSub: UILabel!
@@ -1268,6 +1271,8 @@ final class BubblePackEditorViewController: UIViewController,
 
         batchBtn = pillButton("批量导图", primary: false)
         batchBtn.addTarget(self, action: #selector(batch), for: .touchUpInside)
+        importBtn = pillButton("导入文件", primary: false)
+        importBtn.addTarget(self, action: #selector(importFile), for: .touchUpInside)
         copyBtn = pillButton("复制日间到夜间", primary: false)
         copyBtn.isHidden = true
         copyBtn.addTarget(self, action: #selector(copyDayToNight), for: .touchUpInside)
@@ -1278,7 +1283,7 @@ final class BubblePackEditorViewController: UIViewController,
         exportBtn.titleLabel?.font = UIFont.systemFont(ofSize: 13, weight: .semibold)
         exportBtn.contentEdgeInsets = UIEdgeInsets(top: 8, left: 16, bottom: 8, right: 16)
         exportBtn.addTarget(self, action: #selector(doExport), for: .touchUpInside)
-        for b in [batchBtn, copyBtn, clearBtn] {
+        for b in [batchBtn, importBtn, copyBtn, clearBtn] {
             if let b { toolbarFlow.addSubview(b) }
         }
 
@@ -1680,10 +1685,16 @@ final class BubblePackEditorViewController: UIViewController,
         otherBatchBtn = pillButton("批量导图", primary: false)
         otherBatchBtn.addTarget(self, action: #selector(otherBatch), for: .touchUpInside)
         otherBatchRow.addSubview(otherBatchBtn)
+        otherImportBtn = pillButton("导入文件", primary: false)
+        otherImportBtn.addTarget(self, action: #selector(otherImportFile), for: .touchUpInside)
+        otherBatchRow.addSubview(otherImportBtn)
         NSLayoutConstraint.activate([
             otherBatchBtn.topAnchor.constraint(equalTo: otherBatchRow.topAnchor),
             otherBatchBtn.bottomAnchor.constraint(equalTo: otherBatchRow.bottomAnchor),
             otherBatchBtn.leadingAnchor.constraint(equalTo: otherBatchRow.leadingAnchor),
+            otherImportBtn.topAnchor.constraint(equalTo: otherBatchRow.topAnchor),
+            otherImportBtn.bottomAnchor.constraint(equalTo: otherBatchRow.bottomAnchor),
+            otherImportBtn.leadingAnchor.constraint(equalTo: otherBatchBtn.trailingAnchor, constant: 14),
         ])
 
         otherPendingCard = UIView()
@@ -2304,6 +2315,22 @@ final class BubblePackEditorViewController: UIViewController,
         presentPickerMulti()
     }
 
+    @objc private func importFile() {
+        pickerTargetOther = false
+        presentZipPicker()
+    }
+
+    @objc private func otherImportFile() {
+        pickerTargetOther = true
+        presentZipPicker()
+    }
+
+    private func presentZipPicker() {
+        let picker = UIDocumentPickerViewController(forOpeningContentTypes: [UTType.zip], asCopy: true)
+        picker.delegate = self
+        present(picker, animated: true)
+    }
+
     func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
         picker.dismiss(animated: true)
         if results.isEmpty { avatarPickerActive = false; return }
@@ -2399,6 +2426,45 @@ final class BubblePackEditorViewController: UIViewController,
         }
     }
 
+    /// 导入文件：选 zip，自动解压，里面的图片全部进当次目标工作区的待分配，
+    /// 不按文件名自动放（和批量导图一样，之后手动放）。复用证书页现成的 ZipEntryReader。
+    private func importZip(at url: URL) {
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+        guard let data = try? Data(contentsOf: url) else {
+            showImportZipAlert("读不到这个文件，换一个 zip 再试。")
+            return
+        }
+        guard let entries = ZipEntryReader.entries(in: data) else {
+            showImportZipAlert("这不是一个能解开的 zip，换一个再试。")
+            return
+        }
+        var images: [UIImage] = []
+        for entry in entries {
+            if entry.name.hasSuffix("/") { continue }
+            guard let entryData = ZipEntryReader.entryData(entry, in: data),
+                  let img = UIImage(data: entryData) else { continue }
+            images.append(img)
+        }
+        guard !images.isEmpty else {
+            showImportZipAlert("这个 zip 里没有能用的图片。")
+            return
+        }
+        if pickerTargetOther {
+            pendingOther.append(contentsOf: images)
+            refreshOtherPending()
+        } else {
+            pending.append(contentsOf: images)
+            refreshPending()
+        }
+    }
+
+    private func showImportZipAlert(_ message: String) {
+        let alert = UIAlertController(title: "导入文件", message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "好", style: .default))
+        present(alert, animated: true)
+    }
+
     @objc private func doExport() {
         // 导出过门：壳子设了授权检查就先问它（未授权时壳子弹授权提示，
         // 这里直接不导）；没设置时直接导出。
@@ -2438,5 +2504,14 @@ final class BubblePackEditorViewController: UIViewController,
         } catch {
             // ObjC 版 zip 失败时静默（无回调），这里同样静默
         }
+    }
+}
+
+// MARK: - 导入文件（zip 解压进待分配）
+
+extension BubblePackEditorViewController: UIDocumentPickerDelegate {
+    func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+        guard let url = urls.first else { return }
+        importZip(at: url)
     }
 }

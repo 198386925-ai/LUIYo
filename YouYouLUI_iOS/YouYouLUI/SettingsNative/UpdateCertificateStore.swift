@@ -206,7 +206,7 @@ enum UpdateCertificateStore {
 // size from the central directory sizes the inflate buffer, so
 // entries larger than the compressed heuristic still decode.
 
-private enum ZipEntryReader {
+enum ZipEntryReader {
     struct Entry {
         let name: String
         let method: UInt16
