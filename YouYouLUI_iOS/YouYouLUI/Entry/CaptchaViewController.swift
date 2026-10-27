@@ -107,8 +107,9 @@ enum CaptchaGate {
 extension AccountFormBaseViewController {
     /// Runs one of the backend's captcha-protected actions: secures
     /// a slider proof first (the captcha sheet appears only when no
-    /// valid proof is held — the register flow asks ONCE for
-    /// 获取验证码 → 创建账户）, attaches `captcha_proof` + `device_id`,
+    /// valid proof is held — only send_code is gated since 2026-10-27;
+    /// login / register / reset_password use performDirect and never
+    /// show the sheet), attaches `captcha_proof` + `device_id`,
     /// and if the server still answers `captcha_required` (a proof
     /// that expired between check and call), re-verifies once and
     /// retries. The completion receives the raw post result, or nil
@@ -124,6 +125,17 @@ extension AccountFormBaseViewController {
             onStart?()
             self.sendProtected(action, params, retried: false, completion: completion)
         }
+    }
+
+    /// Ungated send (2026-10-27 rule: only send_code is captcha-gated).
+    /// Login / register / reset_password go through here: no slider,
+    /// ever — `retried: true` also disables sendProtected's
+    /// captcha_required re-verify path for these actions.
+    func performDirect(_ action: String, _ params: [String: Any],
+                       onStart: (() -> Void)? = nil,
+                       completion: @escaping (Result<[String: Any], AccountAPI.Failure>?) -> Void) {
+        onStart?()
+        sendProtected(action, params, retried: true, completion: completion)
     }
 
     private func sendProtected(_ action: String, _ params: [String: Any], retried: Bool,

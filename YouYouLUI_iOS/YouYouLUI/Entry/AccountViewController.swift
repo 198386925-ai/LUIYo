@@ -1629,7 +1629,7 @@ extension AccountViewController {
             firstBad?.becomeFirstResponder()
             return
         }
-        performProtected("register", [
+        performDirect("register", [
             "email": email, "password": suPass.text, "code": code
         ], onStart: { [weak self] in self?.suButton.setBusy("正在创建账户…") }
         ) { [weak self] result in
@@ -1680,7 +1680,7 @@ extension AccountViewController {
     func login(email: String, password: String, button: DarkButton,
                restoreTitle: String, busyTitle: String, card: String,
                passwordField: FormField, emailField: FormField) {
-        performProtected("login", [
+        performDirect("login", [
             "email": email, "password": password,
             "device_id": AccountSession.deviceID
         ], onStart: { button.setBusy(busyTitle) }

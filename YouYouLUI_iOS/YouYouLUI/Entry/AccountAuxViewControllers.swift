@@ -126,7 +126,7 @@ final class ResetPasswordViewController: AccountFormBaseViewController {
             firstBad.becomeFirstResponder()
             return
         }
-        performProtected("reset_password", [
+        performDirect("reset_password", [
             "email": email, "password": passField.text, "code": code
         ], onStart: { [weak self] in self?.submitButton.setBusy("正在重置…") }
         ) { [weak self] result in
