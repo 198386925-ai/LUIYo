@@ -173,28 +173,46 @@ enum UpdateCertificateStore {
         return (p12, profile)
     }
 
+    /// Why a PKCS12 archive failed to open (Build 19): the old
+    /// single-nil result hid wrong-password vs corrupt-file vs
+    /// no-identity behind one message, so a failed import could
+    /// never explain itself. The three failures are now distinct:
+    /// wrongPassword = the system refused the passphrase;
+    /// badFile = the data is not a readable PKCS12 archive;
+    /// noIdentity = the archive opened but holds no identity
+    /// (a certificate without its private key).
+    enum P12Validation {
+        case ok(String)
+        case wrongPassword
+        case badFile
+        case noIdentity
+    }
+
     /// Validates that `data` is a PKCS12 archive that actually opens
     /// with `password`. Returns the certificate's subject summary as
-    /// the identity label on success, nil on any failure (wrong
-    /// password, corrupt file, no identity inside).
-    static func p12IdentityLabel(data: Data, password: String) -> String? {
+    /// the identity label on success.
+    static func validateP12(data: Data, password: String) -> P12Validation {
         let options: [String: Any] = [kSecImportExportPassphrase as String: password]
         var items: CFArray?
         let status = SecPKCS12Import(data as CFData, options as CFDictionary, &items)
+        if status == errSecAuthFailed { return .wrongPassword }
         guard status == errSecSuccess,
               let array = items as? [NSDictionary],
               let first = array.first,
               let rawIdentity = first[kSecImportItemIdentity as String]
-        else { return nil }
+        else {
+            if status == errSecSuccess { return .noIdentity }
+            return .badFile
+        }
         let identity = rawIdentity as! SecIdentity
         var certificate: SecCertificate?
         if SecIdentityCopyCertificate(identity, &certificate) == errSecSuccess,
            let certificate,
            let summary = SecCertificateCopySubjectSummary(certificate) as String?,
            !summary.isEmpty {
-            return summary
+            return .ok(summary)
         }
-        return "已导入证书"
+        return .ok("已导入证书")
     }
 }
 

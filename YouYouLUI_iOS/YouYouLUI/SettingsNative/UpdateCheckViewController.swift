@@ -774,11 +774,17 @@ final class UpdateCheckViewController: UIViewController {
         alert.addAction(UIAlertAction(title: "导入", style: .default) { [weak self, weak alert] _ in
             guard let self else { return }
             let password = alert?.textFields?.first?.text ?? ""
-            guard let label = UpdateCertificateStore.p12IdentityLabel(data: p12Data, password: password) else {
-                self.showMessage(title: "导入失败", message: "P12 密码错误或文件已损坏，未保存任何内容。")
-                return
+            // Build 19：失败原因分开显示，不再混成一句话
+            switch UpdateCertificateStore.validateP12(data: p12Data, password: password) {
+            case .ok(let label):
+                self.saveImport(p12: (data: p12Data, password: password, label: label), profile: profile)
+            case .wrongPassword:
+                self.showMessage(title: "导入失败", message: "P12 密码不对，请重新输入，未保存任何内容。")
+            case .badFile:
+                self.showMessage(title: "导入失败", message: "文件已损坏或不是 P12 格式，未保存任何内容。")
+            case .noIdentity:
+                self.showMessage(title: "导入失败", message: "P12 里没有私钥，只有证书打不开，需要连私钥一起重新导出，未保存任何内容。")
             }
-            self.saveImport(p12: (data: p12Data, password: password, label: label), profile: profile)
         })
         present(alert, animated: true)
     }
