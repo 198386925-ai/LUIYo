@@ -253,6 +253,7 @@ final class EntryGateViewController: UIViewController {
                 guard let self, let splash = self.splash04 else { return }
                 self.splash04 = nil
                 self.remove(splash)
+                VersionPopup.noteSplashFinished()
             }
         case .banned(let title, let subtitle, let reason):
             splash.fadeOutQuickly { [weak self] in
@@ -285,6 +286,7 @@ final class EntryGateViewController: UIViewController {
             guard let self, let splash = self.splash04 else { return }
             self.splash04 = nil
             self.remove(splash)
+            VersionPopup.noteSplashFinished()
         }
     }
 
@@ -408,6 +410,7 @@ final class EntryGateViewController: UIViewController {
             splash.view.alpha = 0
         }, completion: { _ in
             self.remove(splash)
+            VersionPopup.noteSplashFinished()
         })
     }
 

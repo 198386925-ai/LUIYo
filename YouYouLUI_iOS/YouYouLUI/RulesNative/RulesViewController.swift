@@ -238,7 +238,8 @@ final class RulesViewController: UIViewController {
                 if matches {
                     // Build 68 cap: collapsed sections show only the
                     // first 10 matching rows; the footer reveals the rest.
-                    rowViews[section]?[index].isHidden = !expanded && visiblePosition >= 10
+                    // Build 10: the cap is 5 rows (both sections).
+                    rowViews[section]?[index].isHidden = !expanded && visiblePosition >= 5
                     visiblePosition += 1
                     visibleCount += 1
                 } else {
@@ -246,7 +247,7 @@ final class RulesViewController: UIViewController {
                 }
             }
             emptyLabels[section]?.isHidden = visibleCount > 0 || query.isEmpty
-            if visibleCount > 10 {
+            if visibleCount > 5 {
                 toggleFooters[section]?.isHidden = false
                 updateToggleTitle(section, count: visibleCount, expanded: expanded)
             } else {

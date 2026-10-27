@@ -50,6 +50,13 @@ enum VersionPopup {
     private static var pendingPayload: Payload?
     private static var hostWindowRef: UIWindow?
     private static var homeAppeared = false
+    /// Build 10: the launch splash must be fully gone before any
+    /// update popup may appear. The shell is installed UNDER the
+    /// splash, so its viewDidAppear fires while the splash is still
+    /// fading — gating on homeAppeared alone let the popup land on
+    /// top of the splash. The entry gate sets this flag in every
+    /// splash-removal completion.
+    private static var splashFinished = false
     private static var activeObserver: NSObjectProtocol?
 
     struct Payload {
@@ -58,10 +65,10 @@ enum VersionPopup {
         let l2: String
         let l3: String
         let downloadURL: URL?
-        /// True only for the 检查更新 background-discovery popup: its
-        /// 更新 button jumps to the Settings 检查更新 page instead of
-        /// opening the feed IPA in Safari. The version-state soft
-        /// popup keeps the Safari behaviour (default false).
+        /// True for update popups (检查更新 background discovery and
+        /// version-state soft): their 更新 button jumps to the
+        /// Settings 检查更新 page instead of opening the feed IPA in
+        /// Safari. Banned popups keep their own actions (false).
         let jumpToUpdateCheck: Bool
         /// Explicit init: Build 7 relied on the synthesized
         /// memberwise init for the defaulted flag and the compiler
@@ -97,6 +104,11 @@ enum VersionPopup {
     /// Called by the main shell on every `viewDidAppear`; only the
     /// first appearance matters (the gate opens once per launch, and
     /// any held payload is presented then if the app is active).
+    static func noteSplashFinished() {
+        splashFinished = true
+        tryPresent()
+    }
+
     static func noteHomeShellDidAppear() {
         homeAppeared = true
         tryPresent()
@@ -106,6 +118,7 @@ enum VersionPopup {
         guard popupController == nil,
               let payload = pendingPayload,
               homeAppeared,
+              splashFinished,
               UIApplication.shared.applicationState == .active,
               let hostWindow = hostWindowRef else { return }
         pendingPayload = nil
@@ -143,7 +156,8 @@ enum VersionPopup {
             title: entry["title"] as? String ?? "",
             l2: entry["l2"] as? String ?? "",
             l3: entry["l3"] as? String ?? "",
-            downloadURL: downloadURL
+            downloadURL: downloadURL,
+            jumpToUpdateCheck: state == "soft"
         )
     }
 
@@ -171,8 +185,9 @@ enum VersionPopup {
     /// discovered build (persisted, so relaunching does not nag
     /// again for the same build). Build 8: this popup's 更新 button
     /// jumps to the Settings 检查更新 page (in-app download / sign /
-    /// install) instead of opening the feed IPA in Safari; the
-    /// version-state soft entry keeps the Safari behaviour.
+    /// install) instead of opening the feed IPA in Safari. Build 10:
+    /// the version-state soft entry jumps the same way, so no update
+    /// popup opens Safari any more (banned popups untouched).
     /// (Build 7 carried the same change but failed to compile.)
     /// Yields silently when the launch check has not run yet (no
     /// host window), when another popup is already up or queued,
@@ -944,9 +959,10 @@ final class VersionPopupViewController: UIViewController {
             return
         }
         if payload.jumpToUpdateCheck {
-            // 检查更新 discovery popup: jump to the Settings 检查更新
-            // page (in-app download / sign / install) instead of
-            // opening the feed IPA in Safari.
+            // Update popup (检查更新 discovery + version-state soft):
+            // jump to the Settings 检查更新 page (in-app download /
+            // sign / install) instead of opening the feed IPA in
+            // Safari.
             dismissPopup()
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                 VersionPopup.jumpToSettingsUpdateCheck()
