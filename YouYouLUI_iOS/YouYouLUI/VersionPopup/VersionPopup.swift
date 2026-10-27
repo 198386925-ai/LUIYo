@@ -62,7 +62,18 @@ enum VersionPopup {
         /// 更新 button jumps to the Settings 检查更新 page instead of
         /// opening the feed IPA in Safari. The version-state soft
         /// popup keeps the Safari behaviour (default false).
-        let jumpToUpdateCheck: Bool = false
+        let jumpToUpdateCheck: Bool
+        /// Explicit init: Build 7 relied on the synthesized
+        /// memberwise init for the defaulted flag and the compiler
+        /// rejected the 6th argument, so the init is spelled out.
+        init(banned: Bool, title: String, l2: String, l3: String, downloadURL: URL?, jumpToUpdateCheck: Bool = false) {
+            self.banned = banned
+            self.title = title
+            self.l2 = l2
+            self.l3 = l3
+            self.downloadURL = downloadURL
+            self.jumpToUpdateCheck = jumpToUpdateCheck
+        }
     }
 
     static func checkIfNeeded(hostWindow: UIWindow) {
@@ -158,10 +169,11 @@ enum VersionPopup {
     /// NEWER build in the feed — present the same soft （蓝紫）
     /// update popup the version-state path uses, at most once per
     /// discovered build (persisted, so relaunching does not nag
-    /// again for the same build). Build 7: this popup's 更新 button
+    /// again for the same build). Build 8: this popup's 更新 button
     /// jumps to the Settings 检查更新 page (in-app download / sign /
     /// install) instead of opening the feed IPA in Safari; the
     /// version-state soft entry keeps the Safari behaviour.
+    /// (Build 7 carried the same change but failed to compile.)
     /// Yields silently when the launch check has not run yet (no
     /// host window), when another popup is already up or queued,
     /// or when this build was already offered.
@@ -188,7 +200,7 @@ enum VersionPopup {
         tryPresent()
     }
 
-    /// Build 7 jump target for the 检查更新 discovery popup's 更新
+    /// Build 8 jump target for the 检查更新 discovery popup's 更新
     /// button: switch to the 我的 tab, open the 设置 page, then open
     /// its 检查更新 page, so the update runs through the in-app
     /// download / sign / install chain instead of Safari. If a
