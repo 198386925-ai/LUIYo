@@ -775,13 +775,28 @@ final class UpdateCheckViewController: UIViewController {
             guard let self else { return }
             let password = alert?.textFields?.first?.text ?? ""
             // Build 19：失败原因分开显示，不再混成一句话
-            switch UpdateCertificateStore.validateP12(data: p12Data, password: password) {
+            // Build 20：raw 字节验不过时，自动试 base64/PEM 包裹
+            // 解开再验；能解开就按解开后的字节保存（签名要的是
+            // 真实 P12 字节，不是包裹文本）
+            var candidate = p12Data
+            var validation = UpdateCertificateStore.validateP12(data: candidate, password: password)
+            if case .badFile = validation,
+               let decoded = UpdateCertificateStore.unwrappedP12(data: p12Data) {
+                let retry = UpdateCertificateStore.validateP12(data: decoded, password: password)
+                switch retry {
+                case .ok: candidate = decoded; validation = retry
+                case .wrongPassword, .noIdentity: validation = retry
+                case .badFile: break
+                }
+            }
+            switch validation {
             case .ok(let label):
-                self.saveImport(p12: (data: p12Data, password: password, label: label), profile: profile)
+                self.saveImport(p12: (data: candidate, password: password, label: label), profile: profile)
             case .wrongPassword:
                 self.showMessage(title: "导入失败", message: "P12 密码不对，请重新输入，未保存任何内容。")
             case .badFile:
-                self.showMessage(title: "导入失败", message: "文件已损坏或不是 P12 格式，未保存任何内容。")
+                let desc = UpdateCertificateStore.describeBadP12(data: p12Data)
+                self.showMessage(title: "导入失败", message: "文件已损坏或不是 P12 格式（读到 \(p12Data.count) 字节，内容像是\(desc)），未保存任何内容。")
             case .noIdentity:
                 self.showMessage(title: "导入失败", message: "P12 里没有私钥，只有证书打不开，需要连私钥一起重新导出，未保存任何内容。")
             }

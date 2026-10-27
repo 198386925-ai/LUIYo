@@ -214,6 +214,52 @@ enum UpdateCertificateStore {
         }
         return .ok("已导入证书")
     }
+
+    /// Build 20: some services deliver a p12 wrapped as text (a
+    /// base64 body, optionally inside PEM armor). Unwrap it back to
+    /// raw PKCS12 bytes; nil when the data is not such text. The
+    /// caller stores the DECODED bytes on success — zsign needs
+    /// real PKCS12 bytes, not the wrapper.
+    static func unwrappedP12(data: Data) -> Data? {
+        guard let text = String(data: data, encoding: .utf8) else { return nil }
+        let lines = text.components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty && !$0.hasPrefix("-----") }
+        guard !lines.isEmpty else { return nil }
+        let joined = lines.joined()
+        let base64Set = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=")
+        guard joined.count % 4 == 0,
+              joined.unicodeScalars.allSatisfy({ base64Set.contains($0) }),
+              let decoded = Data(base64Encoded: joined), !decoded.isEmpty
+        else { return nil }
+        return decoded
+    }
+
+    /// Build 20: one-line description of what failed bytes actually
+    /// look like, so a badFile import can say more than "not a
+    /// p12". Only the size and the opening bytes are inspected;
+    /// nothing is uploaded or stored.
+    static func describeBadP12(data: Data) -> String {
+        if data.isEmpty { return "空文件（0 字节）" }
+        let head = data.prefix(64)
+        if let text = String(data: head, encoding: .utf8)?
+            .trimmingCharacters(in: .whitespacesAndNewlines) {
+            if text.hasPrefix("-----BEGIN") { return "PEM 文本" }
+            if text.hasPrefix("<") {
+                return text.lowercased().contains("<html") ? "网页" : "文本文件"
+            }
+        }
+        if head.starts(with: [0x50, 0x4B, 0x03, 0x04]) { return "ZIP 压缩包" }
+        if let text = String(data: data, encoding: .utf8) {
+            let cleaned = text.filter { !$0.isWhitespace }
+            let base64Set = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=")
+            if !cleaned.isEmpty && cleaned.unicodeScalars.allSatisfy({ base64Set.contains($0) }) {
+                return "base64 文本"
+            }
+        }
+        if head.first == 0x30 { return "DER 数据（可能是只有证书的 .cer）" }
+        return "未知二进制数据"
+    }
 }
 
 // MARK: - Minimal ZIP reader (central directory)
