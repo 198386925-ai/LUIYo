@@ -61,7 +61,8 @@ final class RulesViewController: UIViewController {
         subtitle.font = UIFont.systemFont(ofSize: 12)
         subtitle.textColor = UIAppColors.secondary
         stack.addArrangedSubview(subtitle)
-        stack.setCustomSpacing(4, after: title)
+        // Build 11: title-subtitle gap matches the bubble page (1 pt).
+        stack.setCustomSpacing(1, after: title)
         stack.setCustomSpacing(14, after: subtitle)
 
         for section in ["LiquidUI", "原版微信"] {

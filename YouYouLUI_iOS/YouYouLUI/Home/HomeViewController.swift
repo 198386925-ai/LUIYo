@@ -424,7 +424,8 @@ final class HomeHeaderCell: UICollectionViewCell {
         authIcon.heightAnchor.constraint(equalToConstant: 15).isActive = true
         let stack = UIStackView(arrangedSubviews: [title, subtitle, statusRow])
         stack.axis = .vertical
-        stack.spacing = 5
+        // Build 11: title-subtitle gap matches the bubble page (1 pt).
+        stack.spacing = 1
         stack.setCustomSpacing(8, after: subtitle)
         contentView.addSubview(stack)
         stack.translatesAutoresizingMaskIntoConstraints = false
