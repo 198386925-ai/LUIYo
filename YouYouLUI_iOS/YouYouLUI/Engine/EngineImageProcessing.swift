@@ -25,9 +25,10 @@ final class EngineCanvas {
         context.saveGState()
         context.translateBy(x: 0, y: CGFloat(height))
         context.scaleBy(x: 1, y: -1)
-        let flipped = CGRect(x: rect.origin.x, y: CGFloat(height) - rect.origin.y - rect.height,
-                             width: rect.width, height: rect.height)
-        context.draw(image, in: flipped)
+        // Build 18：翻转后的坐标系已经是左上原点，矩形直接用；
+        // 再镜像一次反而会把位置上下颠倒（居中内容看不出来，
+        // 裁剪类小图的位置会错）
+        context.draw(image, in: rect)
         context.restoreGState()
         readBack(from: context)
     }
@@ -62,18 +63,25 @@ final class EngineCanvas {
     private func readBack(from context: CGContext) {
         guard let raw = context.data else { return }
         let buffer = raw.bindMemory(to: UInt8.self, capacity: width * height * 4)
-        for i in 0..<(width * height) {
-            let r = buffer[i * 4], g = buffer[i * 4 + 1], b = buffer[i * 4 + 2], a = buffer[i * 4 + 3]
-            if a == 0 {
-                pixels[i * 4] = 0; pixels[i * 4 + 1] = 0; pixels[i * 4 + 2] = 0; pixels[i * 4 + 3] = 0
-            } else if a == 255 {
-                pixels[i * 4] = r; pixels[i * 4 + 1] = g; pixels[i * 4 + 2] = b; pixels[i * 4 + 3] = a
-            } else {
-                let af = Int(a)
-                pixels[i * 4] = UInt8(min(255, (Int(r) * 255 + af / 2) / af))
-                pixels[i * 4 + 1] = UInt8(min(255, (Int(g) * 255 + af / 2) / af))
-                pixels[i * 4 + 2] = UInt8(min(255, (Int(b) * 255 + af / 2) / af))
-                pixels[i * 4 + 3] = a
+        // Build 18：上下文底层像素是倒着存的（第一行实际是图片最
+        // 底下一行），按顺序读会让整张图上下颠倒；这里按行倒着读，
+        // pixels 才真正是左上原点——导出 PNG 翻转的根因就在这里
+        for y in 0..<height {
+            let srcRow = height - 1 - y
+            for x in 0..<width {
+                let s = (srcRow * width + x) * 4, d = (y * width + x) * 4
+                let r = buffer[s], g = buffer[s + 1], b = buffer[s + 2], a = buffer[s + 3]
+                if a == 0 {
+                    pixels[d] = 0; pixels[d + 1] = 0; pixels[d + 2] = 0; pixels[d + 3] = 0
+                } else if a == 255 {
+                    pixels[d] = r; pixels[d + 1] = g; pixels[d + 2] = b; pixels[d + 3] = a
+                } else {
+                    let af = Int(a)
+                    pixels[d] = UInt8(min(255, (Int(r) * 255 + af / 2) / af))
+                    pixels[d + 1] = UInt8(min(255, (Int(g) * 255 + af / 2) / af))
+                    pixels[d + 2] = UInt8(min(255, (Int(b) * 255 + af / 2) / af))
+                    pixels[d + 3] = a
+                }
             }
         }
     }
