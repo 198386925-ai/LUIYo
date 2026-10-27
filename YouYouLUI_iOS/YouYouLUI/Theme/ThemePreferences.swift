@@ -14,6 +14,7 @@ enum PreferenceKey {
     static let bottomSearchEnabled = "youyou.bottomSearchEnabled"
     static let bottomSearchLayout = "youyou.bottomSearchLayout"
     static let minimizeBottomBar = "youyou.minimizeBottomBar"
+    static let tabBarTitles = "youyou.tabBarTitles"
     static let cardMaterialMode = "youyou.cardMaterialMode"
     static let accountSVIP = "youyou.account.svip"
     static let accountSVIPExpiresAt = "youyou.account.svipExpiresAt"
@@ -47,7 +48,8 @@ final class ThemePreferences {
     func registerDefaults() {
         defaults.register(defaults: [
             PreferenceKey.bottomSearchEnabled: true,
-            PreferenceKey.bottomSearchLayout: "separate"
+            PreferenceKey.bottomSearchLayout: "separate",
+            PreferenceKey.tabBarTitles: true
         ])
     }
 
@@ -74,6 +76,13 @@ final class ThemePreferences {
     var minimizeBottomBar: Bool {
         get { defaults.bool(forKey: PreferenceKey.minimizeBottomBar) }
         set { defaults.set(newValue, forKey: PreferenceKey.minimizeBottomBar) }
+    }
+
+    /// Build 12: whether the bottom tab bar shows its titles
+    /// (首页/气泡包/规则/我的）. Default true; off = icons only.
+    var tabBarTitles: Bool {
+        get { defaults.bool(forKey: PreferenceKey.tabBarTitles) }
+        set { defaults.set(newValue, forKey: PreferenceKey.tabBarTitles) }
     }
 
     /// Card material mode: "liquid" (iOS 26+ liquid glass) or "blur" (native frosted).

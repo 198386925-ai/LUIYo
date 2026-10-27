@@ -92,4 +92,12 @@ extension MainShellViewController {
         preferences.minimizeBottomBar = enabled
         if #available(iOS 26.0, *) { tabBarMinimizeBehavior = enabled ? .onScrollDown : .never }
     }
+
+    /// Build 12: show or hide the four page tab titles. Off = icons only;
+    /// the search button is a separate control and is untouched.
+    func setTabTitlesVisible(_ visible: Bool) {
+        for (page, item) in zip(ShellPage.allCases, pageTabs) {
+            item.title = visible ? page.title : nil
+        }
+    }
 }

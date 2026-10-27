@@ -196,6 +196,7 @@ final class SettingsViewController: UIViewController {
     private var guideFold: FoldView!
     private let appSettingsCard = SolidCardView(radius: 24)
     private var minimizeSwitch: UISwitch!
+    private var tabTitlesSwitch: UISwitch?
     private var appearanceSeg: PillSegmentedControl!
     private var materialSeg: PillSegmentedControl!
     private var bottomSearchSeg: PillSegmentedControl!
@@ -473,11 +474,16 @@ final class SettingsViewController: UIViewController {
         fontChevron.translatesAutoresizingMaskIntoConstraints = false
         fontChevron.widthAnchor.constraint(equalToConstant: 16).isActive = true
         fontChevron.heightAnchor.constraint(equalToConstant: 16).isActive = true
-        let fontRow = themeRow(title: "自定义字体", subtitle: nil, control: fontChevron, divider: false)
+        let fontRow = themeRow(title: "自定义字体", subtitle: nil, control: fontChevron, divider: true)
         fontSubtitleLabel = fontRow.viewWithTag(77) as? UILabel
         fontRow.isUserInteractionEnabled = true
         fontRow.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(fontEntryTapped)))
         inner.addArrangedSubview(fontRow)
+        // Build 12: bottom tab bar titles, below 自定义字体.
+        tabTitlesSwitch = UISwitch.luiyoSmall()
+        tabTitlesSwitch?.isOn = model.tabBarTitles
+        tabTitlesSwitch?.addTarget(self, action: #selector(tabTitlesChanged(_:)), for: .valueChanged)
+        inner.addArrangedSubview(themeRow(title: "底栏标题", subtitle: "关闭后底栏只显示图标", control: tabTitlesSwitch!, divider: false))
         let fontSpacer = UIView()
         fontSpacer.translatesAutoresizingMaskIntoConstraints = false
         fontSpacer.heightAnchor.constraint(equalToConstant: 8).isActive = true
@@ -486,6 +492,7 @@ final class SettingsViewController: UIViewController {
     }
 
     @objc private func minimizeChanged(_ sender: UISwitch) { model.minimizeBottomBar = sender.isOn }
+    @objc private func tabTitlesChanged(_ sender: UISwitch) { model.tabBarTitles = sender.isOn }
     @objc private func resetCard() { model.resetCardColor() }
     @objc private func fontEntryTapped() {
         guard let controller = model.fontController else { return }
@@ -639,6 +646,7 @@ final class SettingsViewController: UIViewController {
 
     private func refreshFromModel() {
         minimizeSwitch?.setOn(model.minimizeBottomBar, animated: false)
+        tabTitlesSwitch?.setOn(model.tabBarTitles, animated: false)
         appearanceSeg?.setSelectedValue(model.appearanceMode)
         materialSeg?.setSelectedValue(model.cardMaterial)
         bottomSearchSeg?.setSelectedValue(model.bottomSearchLayout)

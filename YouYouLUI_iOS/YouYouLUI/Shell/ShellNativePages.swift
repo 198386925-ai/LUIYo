@@ -22,6 +22,7 @@ extension MainShellViewController {
         setCardMaterialMode(model.cardMaterial)
         model.onColorsChanged = { [weak self] in self?.applyStoredPalette() }
         model.onMinimizeChanged = { [weak self] enabled in self?.setScrollMinimize(enabled) }
+        model.onTabTitlesChanged = { [weak self] visible in self?.setTabTitlesVisible(visible) }
         model.onBottomSearchLayoutChanged = { [weak self] layout in
             guard let self else { return }
             let enabled = layout != "off"

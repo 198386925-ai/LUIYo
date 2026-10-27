@@ -110,6 +110,7 @@ final class MainShellViewController: UITabBarController {
         AppFeedback.install()
         preferences.registerDefaults()
         setScrollMinimize(preferences.minimizeBottomBar)
+        setTabTitlesVisible(preferences.tabBarTitles)
         separateSearch = preferences.isSeparateSearch
         setBottomSearchEnabled(preferences.bottomSearchEnabled)
         applyAppearance(preferences.appearanceMode)

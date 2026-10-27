@@ -16,6 +16,7 @@ final class SettingsNativeModel: ObservableObject {
     var onCardMaterialChanged: ((String) -> Void)?
     var onColorsChanged: (() -> Void)?
     var onMinimizeChanged: ((Bool) -> Void)?
+    var onTabTitlesChanged: ((Bool) -> Void)?
     var onBottomSearchLayoutChanged: ((String) -> Void)?
     var onFontChanged: (() -> Void)?
 
@@ -48,6 +49,11 @@ final class SettingsNativeModel: ObservableObject {
         didSet { prefs.minimizeBottomBar = minimizeBottomBar; onMinimizeChanged?(minimizeBottomBar) }
     }
 
+    // MARK: - Bottom tab bar titles (Build 12)
+    @Published var tabBarTitles: Bool {
+        didSet { prefs.tabBarTitles = tabBarTitles; onTabTitlesChanged?(tabBarTitles) }
+    }
+
     // MARK: - Custom font
     @Published var customFontName: String = "使用默认字体"
     @Published var hasCustomFont: Bool = false
@@ -61,6 +67,7 @@ final class SettingsNativeModel: ObservableObject {
         self.cardMaterial = prefs.cardMaterialMode
         self.bottomSearchLayout = prefs.bottomSearchLayout
         self.minimizeBottomBar = prefs.minimizeBottomBar
+        self.tabBarTitles = prefs.tabBarTitles
         // Load saved colors for current appearance
         let appearance = prefs.appearanceMode == "dark" ? "dark" : "light"
         if let hex = prefs.colorHex(.heroCardColor, appearance: appearance) {
