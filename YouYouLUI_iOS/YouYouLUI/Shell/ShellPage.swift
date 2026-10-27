@@ -32,7 +32,7 @@ enum ShellPage: Int, CaseIterable {
     var iconName: String {
         switch self {
         case .home: return "house"
-        case .bubble: return "bubble.right"
+        case .bubble: return "text.bubble"
         case .rules: return "list.bullet.rectangle"
         case .settings: return "person.crop.circle"
         }
@@ -41,7 +41,7 @@ enum ShellPage: Int, CaseIterable {
     var selectedIconName: String {
         switch self {
         case .home: return "house.fill"
-        case .bubble: return "bubble.right.fill"
+        case .bubble: return "text.bubble.fill"
         case .rules: return "list.bullet.rectangle.fill"
         case .settings: return "person.crop.circle.fill"
         }
