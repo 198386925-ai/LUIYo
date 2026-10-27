@@ -174,9 +174,12 @@ final class RulesViewController: UIViewController {
         config.imagePlacement = .trailing
         config.imagePadding = 4
         config.baseForegroundColor = .systemBlue
-        config.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attributes in
+        // Build 13: the expand button must follow the page's custom font —
+        // a hardcoded system font here was re-applied on every
+        // setNeedsUpdateConfiguration, wiping out PageFontApplier.
+        config.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { [weak self] attributes in
             var result = attributes
-            result.font = UIFont.systemFont(ofSize: 13, weight: .medium)
+            result.font = self?.pageFont?.withSize(13) ?? UIFont.systemFont(ofSize: 13, weight: .medium)
             return result
         }
         toggle.configuration = config
@@ -203,6 +206,9 @@ final class RulesViewController: UIViewController {
                 self.expandedSections.insert(section)
             }
             self.applyFilter()
+            // Build 13: rows revealed by expanding pick up the custom
+            // font too, even if they were built before the last apply.
+            if self.pageFontSet { PageFontApplier.apply(self.pageFont, to: self.view) }
         }, for: .touchUpInside)
         inner.addArrangedSubview(footer)
         toggleFooters[section] = footer
@@ -274,7 +280,12 @@ final class RulesViewController: UIViewController {
     func applyPageFont(_ font: UIFont?) {
         pageFont = font
         pageFontSet = true
-        if isViewLoaded { PageFontApplier.apply(font, to: view) }
+        if isViewLoaded {
+            PageFontApplier.apply(font, to: view)
+            // Build 13: re-run the expand buttons' transformer so a
+            // newly chosen custom font reaches them as well.
+            for button in toggleButtons.values { button.setNeedsUpdateConfiguration() }
+        }
     }
 
     override func viewWillAppear(_ animated: Bool) {

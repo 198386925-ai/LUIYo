@@ -95,9 +95,17 @@ extension MainShellViewController {
 
     /// Build 12: show or hide the four page tab titles. Off = icons only;
     /// the search button is a separate control and is untouched.
+    /// Build 13: the bar actually shows UITabs cached in retainedTabs
+    /// (titles copied from pageTabs at creation), so sync them too —
+    /// changing pageTabs alone only took effect after relaunch.
     func setTabTitlesVisible(_ visible: Bool) {
         for (page, item) in zip(ShellPage.allCases, pageTabs) {
             item.title = visible ? page.title : nil
+        }
+        if #available(iOS 18.0, *) {
+            for (index, page) in ShellPage.allCases.enumerated() {
+                (retainedTabs["page.\(index)"] as? UITab)?.title = visible ? page.title : ""
+            }
         }
     }
 }

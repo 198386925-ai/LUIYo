@@ -293,8 +293,23 @@ final class AccountInfoViewController: UIViewController {
         emailValueLabel.text = email
         avatarImageView.image = AccountProfileStore.avatarImage(for: email) ?? UIImage(named: "DefaultAvatar")
         let authorized = AccountAuthorization.isAuthorized
-        authValueLabel.text = authorized ? "已授权" : "未授权"
-        authValueLabel.textColor = authorized ? Self.authorizedGold : UIAppColors.secondary
+        // Build 13：账号授权行改显示到期时间——永久显示永久有效，
+        // 有限期显示“yyyy年M月d日到期”，未授权仍显示未授权
+        if authorized {
+            let expiresAt = ThemePreferences.shared.accountSVIPExpiresAt
+            if expiresAt >= 4102444800 {
+                authValueLabel.text = "永久有效"
+            } else {
+                let formatter = DateFormatter()
+                formatter.locale = Locale(identifier: "zh_CN")
+                formatter.dateFormat = "yyyy年M月d日"
+                authValueLabel.text = formatter.string(from: Date(timeIntervalSince1970: TimeInterval(expiresAt))) + "到期"
+            }
+            authValueLabel.textColor = Self.authorizedGold
+        } else {
+            authValueLabel.text = "未授权"
+            authValueLabel.textColor = UIAppColors.secondary
+        }
     }
 
     // MARK: - Editing
