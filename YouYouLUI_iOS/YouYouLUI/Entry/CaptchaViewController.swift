@@ -173,6 +173,7 @@ final class CaptchaViewController: AccountFormBaseViewController {
     private var dragStartTime: CFTimeInterval = 0
     private var verifying = false
     private var finished = false
+    private var retriedLoad = false
 
     private let handleSize: CGFloat = 48
 
@@ -308,11 +309,23 @@ final class CaptchaViewController: AccountFormBaseViewController {
             guard let self, !finished else { return }
             switch AccountAPI.outcome(result) {
             case .ok(let json):
+                retriedLoad = false
                 challengeID = json["cid"] as? String
                 targetPerMille = json["target"] as? Int ?? 0
                 positionPieces()
-            case .error:
-                setStatus("验证加载失败，请取消后重试", danger: true)
+            case .error(let message):
+                // 诊断版：先自动重试一次；还失败就把真实原因写进红字，
+                // 否则网络错 / 格式错 / 服务器错都显示同一句，没法定位。
+                if !retriedLoad {
+                    retriedLoad = true
+                    setStatus("正在重试…", danger: false)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+                        guard let self, !finished else { return }
+                        loadChallenge()
+                    }
+                } else {
+                    setStatus("验证加载失败（\(message)），请取消后重试", danger: true)
+                }
             }
         }
     }
